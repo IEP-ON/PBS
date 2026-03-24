@@ -1,0 +1,1503 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>행동계약서 — 특수학급 행복은행</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600;700;900&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1a1410;
+    --ink-light: #4a3f35;
+    --paper: #faf6ef;
+    --paper-dark: #f0e9dc;
+    --seal-red: #c0392b;
+    --gold: #b8860b;
+    --gold-light: #d4a843;
+    --blue-gov: #1a3a6b;
+    --blue-light: #e8eef8;
+    --green-ok: #1a6b3a;
+    --green-light: #e8f5ee;
+    --border: #c8b99a;
+    --stamp-blue: #2c4a8a;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #d4c9b5;
+    font-family: 'Noto Sans KR', sans-serif;
+    color: var(--ink);
+    padding: 40px 20px;
+  }
+
+  /* 탭 네비게이션 */
+  .tab-nav {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-bottom: 32px;
+    flex-wrap: wrap;
+  }
+
+  .tab-btn {
+    padding: 10px 24px;
+    border: 2px solid var(--border);
+    background: var(--paper-dark);
+    color: var(--ink-light);
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.2s;
+  }
+
+  .tab-btn.active {
+    background: var(--blue-gov);
+    color: white;
+    border-color: var(--blue-gov);
+  }
+
+  /* 계약서 컨테이너 */
+  .contract {
+    display: none;
+    max-width: 780px;
+    margin: 0 auto;
+  }
+  .contract.active { display: block; }
+
+  /* 계약서 본체 */
+  .contract-paper {
+    background: var(--paper);
+    border: 1px solid var(--border);
+    box-shadow:
+      0 2px 0 #b8a888,
+      4px 6px 20px rgba(0,0,0,0.25),
+      inset 0 0 60px rgba(184,166,136,0.1);
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* 배경 무늬 */
+  .contract-paper::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 27px,
+        rgba(184,155,96,0.06) 27px,
+        rgba(184,155,96,0.06) 28px
+      );
+    pointer-events: none;
+  }
+
+  /* 헤더 */
+  .contract-header {
+    background: var(--blue-gov);
+    color: white;
+    padding: 28px 40px 24px;
+    position: relative;
+  }
+
+  .bank-logo-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 16px;
+  }
+
+  .bank-emblem {
+    width: 48px;
+    height: 48px;
+    background: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    flex-shrink: 0;
+  }
+
+  .bank-name {
+    font-family: 'Noto Serif KR', serif;
+    font-size: 13px;
+    font-weight: 600;
+    opacity: 0.85;
+    letter-spacing: 2px;
+  }
+
+  .contract-title {
+    font-family: 'Noto Serif KR', serif;
+    font-size: 28px;
+    font-weight: 900;
+    letter-spacing: 6px;
+    text-align: center;
+    border-top: 1px solid rgba(255,255,255,0.3);
+    padding-top: 16px;
+  }
+
+  .contract-no {
+    font-size: 11px;
+    opacity: 0.7;
+    text-align: right;
+    margin-top: 8px;
+    letter-spacing: 1px;
+  }
+
+  /* 계약서 바디 */
+  .contract-body {
+    padding: 36px 44px;
+    position: relative;
+  }
+
+  /* 학생 정보 카드 */
+  .student-card {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    background: var(--blue-light);
+    border: 1.5px solid #b8c8e8;
+    border-radius: 8px;
+    padding: 20px 24px;
+    margin-bottom: 28px;
+  }
+
+  .student-avatar {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: var(--blue-gov);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 30px;
+    flex-shrink: 0;
+  }
+
+  .student-info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px 24px;
+    flex: 1;
+  }
+
+  .info-row {
+    display: flex;
+    gap: 8px;
+    align-items: baseline;
+  }
+
+  .info-label {
+    font-size: 11px;
+    color: var(--blue-gov);
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+    min-width: 52px;
+  }
+
+  .info-value {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--ink);
+  }
+
+  /* 섹션 */
+  .section {
+    margin-bottom: 24px;
+  }
+
+  .section-title {
+    font-family: 'Noto Serif KR', serif;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--blue-gov);
+    letter-spacing: 2px;
+    border-bottom: 2px solid var(--blue-gov);
+    padding-bottom: 6px;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* 목표 행동 박스 */
+  .goal-box {
+    border: 2px solid var(--ink);
+    border-radius: 6px;
+    overflow: hidden;
+    margin-bottom: 16px;
+  }
+
+  .goal-box-header {
+    background: var(--ink);
+    color: white;
+    padding: 10px 16px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .goal-box-body {
+    padding: 16px;
+    background: white;
+  }
+
+  .goal-text {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--ink);
+    margin-bottom: 8px;
+    line-height: 1.4;
+  }
+
+  .goal-definition {
+    font-size: 13px;
+    color: var(--ink-light);
+    line-height: 1.7;
+    border-left: 3px solid var(--border);
+    padding-left: 12px;
+  }
+
+  /* 조건 테이블 */
+  .conditions-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+
+  .conditions-table th {
+    background: var(--paper-dark);
+    border: 1px solid var(--border);
+    padding: 10px 14px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--ink-light);
+    letter-spacing: 1px;
+    text-align: center;
+  }
+
+  .conditions-table td {
+    border: 1px solid var(--border);
+    padding: 12px 14px;
+    vertical-align: middle;
+    line-height: 1.5;
+  }
+
+  .conditions-table tr:nth-child(even) td {
+    background: rgba(240,233,220,0.4);
+  }
+
+  .amount-badge {
+    display: inline-block;
+    background: var(--green-ok);
+    color: white;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .amount-badge.bonus {
+    background: var(--gold);
+  }
+
+  .amount-badge.deduct {
+    background: var(--seal-red);
+  }
+
+  /* 시각적 목표 달성 표시 */
+  .visual-goal {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .goal-dot {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 2.5px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    background: white;
+  }
+
+  .goal-dot.filled {
+    background: var(--green-ok);
+    border-color: var(--green-ok);
+    color: white;
+  }
+
+  .goal-dot.bonus-dot {
+    background: var(--gold);
+    border-color: var(--gold);
+    color: white;
+  }
+
+  /* DRO 타이머 표시 */
+  .dro-timer-visual {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--green-light);
+    border: 1.5px solid #9dc8ae;
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin-top: 10px;
+  }
+
+  .timer-icon {
+    font-size: 32px;
+    flex-shrink: 0;
+  }
+
+  .timer-text {
+    font-size: 13px;
+    color: var(--green-ok);
+    font-weight: 600;
+    line-height: 1.6;
+  }
+
+  .timer-auto-badge {
+    display: inline-block;
+    background: var(--green-ok);
+    color: white;
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+  }
+
+  /* Shaping 레벨 표시 */
+  .shaping-levels {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .shaping-level {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 16px;
+    border: 1.5px solid var(--border);
+    border-radius: 6px;
+    background: white;
+    position: relative;
+  }
+
+  .shaping-level.current {
+    border-color: var(--blue-gov);
+    background: var(--blue-light);
+    box-shadow: 0 0 0 2px rgba(26,58,107,0.15);
+  }
+
+  .shaping-level.done {
+    opacity: 0.5;
+  }
+
+  .level-badge {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--border);
+    color: var(--ink);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 900;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+
+  .shaping-level.current .level-badge {
+    background: var(--blue-gov);
+    color: white;
+  }
+
+  .level-text { flex: 1; }
+  .level-name { font-weight: 700; font-size: 14px; margin-bottom: 2px; }
+  .level-criteria { font-size: 12px; color: var(--ink-light); }
+
+  .current-tag {
+    background: var(--blue-gov);
+    color: white;
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 10px;
+    font-weight: 700;
+  }
+
+  /* 정산 안내 */
+  .settlement-info {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .settlement-item {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px 14px;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+  }
+
+  .settlement-icon { font-size: 20px; flex-shrink: 0; margin-top: 2px; }
+
+  .settlement-label {
+    font-size: 11px;
+    color: var(--ink-light);
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    margin-bottom: 3px;
+  }
+
+  .settlement-value {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--ink);
+  }
+
+  /* 약속 조항 */
+  .promise-box {
+    background: white;
+    border: 2px solid var(--gold);
+    border-radius: 8px;
+    padding: 20px 22px;
+    margin-bottom: 10px;
+  }
+
+  .promise-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--gold);
+    letter-spacing: 1.5px;
+    margin-bottom: 12px;
+  }
+
+  .promise-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .promise-list li {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+
+  .promise-list li::before {
+    content: '◆';
+    color: var(--gold);
+    font-size: 10px;
+    margin-top: 4px;
+    flex-shrink: 0;
+  }
+
+  /* 서명란 */
+  .signature-section {
+    margin-top: 32px;
+    border-top: 2px solid var(--border);
+    padding-top: 24px;
+  }
+
+  .sig-title {
+    font-family: 'Noto Serif KR', serif;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--ink-light);
+    letter-spacing: 2px;
+    text-align: center;
+    margin-bottom: 20px;
+  }
+
+  .sig-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+  }
+
+  .sig-box {
+    border: 1.5px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+
+  .sig-header {
+    background: var(--paper-dark);
+    padding: 8px 12px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--ink-light);
+    letter-spacing: 1px;
+    text-align: center;
+  }
+
+  .sig-body {
+    padding: 16px 12px;
+    min-height: 70px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+  }
+
+  .sig-name-line {
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 4px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--ink);
+    min-height: 28px;
+  }
+
+  .sig-date-line {
+    font-size: 11px;
+    color: var(--ink-light);
+    margin-top: 6px;
+  }
+
+  .sig-stamp-area {
+    height: 36px;
+    border: 1.5px dashed var(--border);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    color: var(--border);
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+  }
+
+  /* 계약 기간 바 */
+  .contract-period {
+    background: var(--paper-dark);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+
+  .period-icon { font-size: 24px; }
+
+  .period-dates {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+  }
+
+  .period-date {
+    font-size: 15px;
+    font-weight: 700;
+  }
+
+  .period-arrow {
+    color: var(--border);
+    font-size: 18px;
+  }
+
+  .period-label {
+    font-size: 11px;
+    color: var(--ink-light);
+    font-weight: 700;
+    letter-spacing: 0.5px;
+  }
+
+  /* 페이지 구분 */
+  .page-divider {
+    text-align: center;
+    margin: 48px 0 32px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    color: var(--border);
+    font-size: 12px;
+    letter-spacing: 1px;
+    font-weight: 700;
+  }
+
+  .page-divider::before, .page-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* 인장 */
+  .official-stamp {
+    position: absolute;
+    top: 36px;
+    right: 44px;
+    width: 68px;
+    height: 68px;
+    border: 3px solid var(--seal-red);
+    border-radius: 50%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: var(--seal-red);
+    font-size: 9px;
+    font-weight: 900;
+    letter-spacing: 0.5px;
+    opacity: 0.6;
+    transform: rotate(-12deg);
+    text-align: center;
+    line-height: 1.4;
+    padding: 6px;
+  }
+
+  /* 특약 박스 */
+  .special-terms {
+    background: #fff8f0;
+    border: 1.5px solid #e8c88a;
+    border-radius: 6px;
+    padding: 14px 16px;
+    margin-top: 8px;
+  }
+
+  .special-terms-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--gold);
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .special-terms p {
+    font-size: 12px;
+    color: var(--ink-light);
+    line-height: 1.7;
+  }
+
+  /* 케이스 라벨 */
+  .case-badge {
+    display: inline-block;
+    padding: 4px 14px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+  }
+
+  .case-a { background: #e8eef8; color: var(--blue-gov); }
+  .case-b { background: var(--green-light); color: var(--green-ok); }
+  .case-c { background: #fef3e8; color: #b35c00; }
+
+  @media print {
+    body { padding: 0; background: white; }
+    .tab-nav { display: none; }
+    .contract { display: block !important; page-break-after: always; }
+    .contract-paper { box-shadow: none; border: 1px solid #ccc; }
+  }
+</style>
+</head>
+<body>
+
+<div class="tab-nav">
+  <button class="tab-btn active" onclick="showContract('a')">📋 케이스 A — 관심 기능</button>
+  <button class="tab-btn" onclick="showContract('b')">📋 케이스 B — 회피 기능</button>
+  <button class="tab-btn" onclick="showContract('c')">📋 케이스 C — 행동형성</button>
+</div>
+
+<!-- ===================== 케이스 A ===================== -->
+<div class="contract active" id="contract-a">
+<div class="contract-paper">
+
+  <div class="contract-header">
+    <div class="bank-logo-row">
+      <div class="bank-emblem">🏦</div>
+      <div>
+        <div class="bank-name">행복학급 행복은행 · HAENGBOK CLASS BANK</div>
+      </div>
+    </div>
+    <div class="contract-title">행 동 계 약 서</div>
+    <div class="contract-no">계약번호 HCB-2026-A-001 · 관심기능 · DRA 전략</div>
+  </div>
+
+  <div class="contract-body">
+    <div class="official-stamp">행복은행<br>공식<br>계약</div>
+
+    <div style="margin-bottom:20px;">
+      <span class="case-badge case-a">CASE A — 사회적 관심 기능 (Attention)</span>
+    </div>
+
+    <!-- 학생 정보 -->
+    <div class="student-card">
+      <div class="student-avatar">👦</div>
+      <div class="student-info-grid">
+        <div class="info-row">
+          <span class="info-label">이름</span>
+          <span class="info-value">이민준</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">장애유형</span>
+          <span class="info-value">자폐성장애</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">학년/반</span>
+          <span class="info-value">4학년 특수학급</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">지원단계</span>
+          <span class="info-value">PBS 2단계</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 계약 기간 -->
+    <div class="contract-period">
+      <div class="period-icon">📅</div>
+      <div>
+        <div class="period-label">계약 기간</div>
+        <div class="period-dates">
+          <span class="period-date">2026년 3월 24일 (월)</span>
+          <span class="period-arrow">→</span>
+          <span class="period-date">2026년 4월 18일 (금)</span>
+        </div>
+      </div>
+      <div style="text-align:right;">
+        <div class="period-label">기간</div>
+        <div style="font-size:15px;font-weight:700;">4주</div>
+      </div>
+    </div>
+
+    <!-- 목표 행동 -->
+    <div class="section">
+      <div class="section-title">📌 제1조 — 목표 행동 (업무 내용)</div>
+      <div class="goal-box">
+        <div class="goal-box-header">🎯 내가 약속하는 행동</div>
+        <div class="goal-box-body">
+          <div class="goal-text">✋ 손을 들고 발표하기</div>
+          <div class="goal-definition">
+            하고 싶은 말이 있을 때, 큰 소리로 혼잣말을 하지 않고<br>
+            손을 먼저 든 다음, 선생님이 허락하면 말한다.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 달성 조건 및 급여 -->
+    <div class="section">
+      <div class="section-title">💰 제2조 — 임금 (달성 조건과 보상)</div>
+
+      <table class="conditions-table">
+        <thead>
+          <tr>
+            <th>조건</th>
+            <th>달성 기준</th>
+            <th>보상</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>🌟 기본 보상</td>
+            <td>
+              하루에 손 들고 발표를 <strong>5번 이상</strong> 해요<br>
+              <div class="visual-goal" style="margin-top:8px;">
+                <div class="goal-dot filled">✓</div>
+                <div class="goal-dot filled">✓</div>
+                <div class="goal-dot filled">✓</div>
+                <div class="goal-dot filled">✓</div>
+                <div class="goal-dot filled">✓</div>
+                <div class="goal-dot"></div>
+                <div class="goal-dot"></div>
+                <div class="goal-dot"></div>
+                <div class="goal-dot"></div>
+                <div class="goal-dot"></div>
+              </div>
+              <div style="font-size:11px;color:#888;margin-top:4px;">동그라미 5개 이상 채우기</div>
+            </td>
+            <td style="text-align:center;">
+              <span class="amount-badge">+300원</span>
+              <div style="font-size:11px;color:#888;margin-top:4px;">매일 오후 3시 자동입금</div>
+            </td>
+          </tr>
+          <tr>
+            <td>🏆 주간 보너스</td>
+            <td>
+              한 주에 <strong>4일 이상</strong> 기본 보상을 받아요<br>
+              <div class="visual-goal" style="margin-top:8px;">
+                <div class="goal-dot bonus-dot">월</div>
+                <div class="goal-dot bonus-dot">화</div>
+                <div class="goal-dot bonus-dot">수</div>
+                <div class="goal-dot bonus-dot">목</div>
+                <div class="goal-dot">금</div>
+              </div>
+            </td>
+            <td style="text-align:center;">
+              <span class="amount-badge bonus">+500원</span>
+              <div style="font-size:11px;color:#888;margin-top:4px;">금요일 오후 자동입금</div>
+            </td>
+          </tr>
+          <tr>
+            <td>❌ 반응대가</td>
+            <td colspan="2" style="color:#888;font-size:13px;">
+              이 계약에서는 적용하지 않아요. 민준이는 잘할 수 있어요! 💪
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 정산 안내 -->
+    <div class="section">
+      <div class="section-title">🏧 제3조 — 임금 지급일 (정산 방법)</div>
+      <div class="settlement-info">
+        <div class="settlement-item">
+          <div class="settlement-icon">📱</div>
+          <div>
+            <div class="settlement-label">확인 방법</div>
+            <div class="settlement-value">내 태블릿 뱅킹앱</div>
+          </div>
+        </div>
+        <div class="settlement-item">
+          <div class="settlement-icon">⏰</div>
+          <div>
+            <div class="settlement-label">매일 입금 시간</div>
+            <div class="settlement-value">오후 3시 자동</div>
+          </div>
+        </div>
+        <div class="settlement-item">
+          <div class="settlement-icon">📅</div>
+          <div>
+            <div class="settlement-label">주간 보너스</div>
+            <div class="settlement-value">금요일 오후</div>
+          </div>
+        </div>
+        <div class="settlement-item">
+          <div class="settlement-icon">📊</div>
+          <div>
+            <div class="settlement-label">통장 출력</div>
+            <div class="settlement-value">매주 금요일</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 약속 조항 -->
+    <div class="section">
+      <div class="section-title">📜 제4조 — 특약 사항 (우리의 약속)</div>
+      <div class="promise-box">
+        <div class="promise-title">🤝 이민준 학생의 약속</div>
+        <ul class="promise-list">
+          <li>하고 싶은 말이 생기면, 큰 소리로 먼저 말하지 않고 손을 들겠습니다.</li>
+          <li>선생님이 허락하기 전에는 기다릴 수 있도록 노력하겠습니다.</li>
+          <li>이 계약서를 잘 지키기 위해 최선을 다하겠습니다.</li>
+        </ul>
+      </div>
+      <div class="promise-box" style="border-color:var(--blue-gov);">
+        <div class="promise-title" style="color:var(--blue-gov);">🏫 선생님의 약속</div>
+        <ul class="promise-list">
+          <li style="--bullet-color:var(--blue-gov);">민준이가 손을 들면 가능한 한 빨리 발표 기회를 드리겠습니다.</li>
+          <li>조건을 달성하면 약속한 금액을 반드시 제때 입금하겠습니다.</li>
+          <li>계약이 잘 진행되도록 매일 함께 확인하겠습니다.</li>
+        </ul>
+      </div>
+      <div class="special-terms">
+        <div class="special-terms-title">⚠️ AI 행동 기능 분석 참고</div>
+        <p>이 계약은 <strong>사회적 관심 기능(DRA 전략)</strong> 분석에 기반합니다. 큰 소리 혼잣말이 감소하지 않을 경우, 비수반 관심(NCE) 전략 병행을 검토합니다. [GPT 분석 신뢰도: 높음]</p>
+      </div>
+    </div>
+
+    <!-- 서명란 -->
+    <div class="signature-section">
+      <div class="sig-title">위 내용에 동의하며 계약을 체결합니다</div>
+      <div style="text-align:center;font-size:13px;color:var(--ink-light);margin-bottom:18px;">
+        2026년 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 월 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 일
+      </div>
+      <div class="sig-grid">
+        <div class="sig-box">
+          <div class="sig-header">🏫 교사 (사용자)</div>
+          <div class="sig-body">
+            <div class="sig-stamp-area">인 / 서명</div>
+            <div class="sig-name-line"></div>
+            <div class="sig-date-line">성명: ________________</div>
+          </div>
+        </div>
+        <div class="sig-box">
+          <div class="sig-header">👦 학생 (근로자)</div>
+          <div class="sig-body">
+            <div class="sig-stamp-area" style="font-size:20px;color:var(--border);border-style:solid;">👋</div>
+            <div class="sig-name-line">이민준</div>
+            <div class="sig-date-line">손도장 또는 서명</div>
+          </div>
+        </div>
+        <div class="sig-box">
+          <div class="sig-header">👨‍👩‍👦 보호자 (확인)</div>
+          <div class="sig-body">
+            <div class="sig-stamp-area">인 / 서명</div>
+            <div class="sig-name-line"></div>
+            <div class="sig-date-line">성명: ________________</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</div>
+
+<!-- ===================== 케이스 B ===================== -->
+<div class="contract" id="contract-b">
+<div class="contract-paper">
+
+  <div class="contract-header" style="background: #1a4a2e;">
+    <div class="bank-logo-row">
+      <div class="bank-emblem">🏦</div>
+      <div>
+        <div class="bank-name">행복학급 행복은행 · HAENGBOK CLASS BANK</div>
+      </div>
+    </div>
+    <div class="contract-title">행 동 계 약 서</div>
+    <div class="contract-no">계약번호 HCB-2026-B-001 · 회피기능 · FCT+DRO 전략</div>
+  </div>
+
+  <div class="contract-body">
+    <div class="official-stamp">행복은행<br>공식<br>계약</div>
+
+    <div style="margin-bottom:20px;">
+      <span class="case-badge case-b">CASE B — 회피/도피 기능 (Escape) + DRO 타이머</span>
+    </div>
+
+    <!-- 학생 정보 -->
+    <div class="student-card" style="background:#e8f5ee;border-color:#9dc8ae;">
+      <div class="student-avatar" style="background:#1a4a2e;">👧</div>
+      <div class="student-info-grid">
+        <div class="info-row">
+          <span class="info-label" style="color:#1a4a2e;">이름</span>
+          <span class="info-value">박서연</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label" style="color:#1a4a2e;">장애유형</span>
+          <span class="info-value">지적장애</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label" style="color:#1a4a2e;">학년/반</span>
+          <span class="info-value">5학년 특수학급</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label" style="color:#1a4a2e;">지원단계</span>
+          <span class="info-value">PBS 3단계</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 계약 기간 -->
+    <div class="contract-period">
+      <div class="period-icon">📅</div>
+      <div>
+        <div class="period-label">계약 기간</div>
+        <div class="period-dates">
+          <span class="period-date">2026년 3월 24일 (월)</span>
+          <span class="period-arrow">→</span>
+          <span class="period-date">2026년 4월 18일 (금)</span>
+        </div>
+      </div>
+      <div style="text-align:right;">
+        <div class="period-label">기간</div>
+        <div style="font-size:15px;font-weight:700;">4주</div>
+      </div>
+    </div>
+
+    <!-- 목표 행동 -->
+    <div class="section">
+      <div class="section-title">📌 제1조 — 목표 행동 (업무 내용)</div>
+      <div class="goal-box">
+        <div class="goal-box-header" style="background:#1a4a2e;">🎯 내가 약속하는 행동 — 두 가지</div>
+        <div class="goal-box-body">
+          <div class="goal-text">🆘 도움 요청 카드 사용하기</div>
+          <div class="goal-definition">
+            쓰기가 힘들거나 쉬고 싶을 때, 자리를 벗어나지 않고<br>
+            도움 요청 카드를 들어서 선생님에게 알린다.
+          </div>
+          <div style="height:12px;"></div>
+          <div class="goal-text">🪑 자리 지키며 쓰기 하기</div>
+          <div class="goal-definition">
+            쓰기 과제 시간에 자리에 앉아서 3줄을 완성한다.<br>
+            (3줄 = 노트 3번째 줄까지)
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DRO 타이머 설명 (시각적) -->
+    <div class="section">
+      <div class="section-title">⏱️ 특별 기능 — DRO 자동 타이머</div>
+      <div class="dro-timer-visual">
+        <div class="timer-icon">⏱️</div>
+        <div class="timer-text">
+          <span class="timer-auto-badge">🤖 시스템 자동</span><br>
+          자리에서 <strong>15분 동안</strong> 이탈하지 않으면<br>
+          타이머가 울리면서 <strong>200원이 자동으로 입금</strong>돼요!<br>
+          선생님이 타이머를 켜고, 서연이가 자리를 벗어나면 타이머가 다시 시작돼요.
+        </div>
+      </div>
+    </div>
+
+    <!-- 달성 조건 및 급여 -->
+    <div class="section">
+      <div class="section-title">💰 제2조 — 임금 (달성 조건과 보상)</div>
+
+      <table class="conditions-table">
+        <thead>
+          <tr>
+            <th>조건</th>
+            <th>달성 기준</th>
+            <th>보상</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>⏱️ DRO 타이머<br><small style="color:#888;">자동 감지</small></td>
+            <td>
+              자리 이탈 없이 <strong>15분</strong> 유지<br>
+              <div style="margin-top:8px;background:#e8f5ee;border-radius:6px;padding:8px 10px;font-size:12px;color:var(--green-ok);">
+                🤖 시스템이 자동으로 감지해서 입금해요
+              </div>
+            </td>
+            <td style="text-align:center;">
+              <span class="amount-badge">+200원</span>
+              <div style="font-size:11px;color:#888;margin-top:4px;">타이머 완료 시 즉시</div>
+            </td>
+          </tr>
+          <tr>
+            <td>🆘 도움 카드 사용</td>
+            <td>힘들 때 카드를 들어서 선생님에게 보여주기</td>
+            <td style="text-align:center;">
+              <span class="amount-badge">+100원</span>
+              <div style="font-size:11px;color:#888;margin-top:4px;">즉시 입금</div>
+            </td>
+          </tr>
+          <tr>
+            <td>✏️ 쓰기 3줄 완성</td>
+            <td>
+              노트에 3줄 쓰기 완료<br>
+              <div class="visual-goal" style="margin-top:6px;">
+                <span style="font-size:20px;">1️⃣</span>
+                <span style="font-size:20px;">2️⃣</span>
+                <span style="font-size:20px;">3️⃣</span>
+                <span style="font-size:13px;color:var(--green-ok);font-weight:700;">완성!</span>
+              </div>
+            </td>
+            <td style="text-align:center;">
+              <span class="amount-badge">+150원</span>
+              <div style="font-size:11px;color:#888;margin-top:4px;">완료 즉시</div>
+            </td>
+          </tr>
+          <tr>
+            <td>🏆 주간 보너스</td>
+            <td>이번 주에 DRO 타이머를 <strong>10번 이상</strong> 완료해요</td>
+            <td style="text-align:center;">
+              <span class="amount-badge bonus">+800원</span>
+              <div style="font-size:11px;color:#888;margin-top:4px;">금요일 자동</div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="special-terms" style="margin-top:12px;">
+        <div class="special-terms-title">⚠️ 반응대가 안내</div>
+        <p>자리 이탈 발생 시 타이머가 리셋됩니다. 금액이 차감되지는 않아요.<br>
+        보호자 동의 하에 추후 반응대가 적용 여부를 함께 논의할 수 있습니다.</p>
+      </div>
+    </div>
+
+    <!-- 정산 안내 -->
+    <div class="section">
+      <div class="section-title">🏧 제3조 — 임금 지급일 (정산 방법)</div>
+      <div class="settlement-info">
+        <div class="settlement-item">
+          <div class="settlement-icon">🤖</div>
+          <div>
+            <div class="settlement-label">DRO 타이머</div>
+            <div class="settlement-value">완료 즉시 자동입금</div>
+          </div>
+        </div>
+        <div class="settlement-item">
+          <div class="settlement-icon">✅</div>
+          <div>
+            <div class="settlement-label">도움카드·쓰기</div>
+            <div class="settlement-value">교사 체크 후 입금</div>
+          </div>
+        </div>
+        <div class="settlement-item">
+          <div class="settlement-icon">📅</div>
+          <div>
+            <div class="settlement-label">주간 보너스</div>
+            <div class="settlement-value">금요일 오후 자동</div>
+          </div>
+        </div>
+        <div class="settlement-item">
+          <div class="settlement-icon">📱</div>
+          <div>
+            <div class="settlement-label">확인</div>
+            <div class="settlement-value">내 태블릿 뱅킹앱</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 약속 -->
+    <div class="section">
+      <div class="section-title">📜 제4조 — 특약 사항 (우리의 약속)</div>
+      <div class="promise-box" style="border-color:var(--green-ok);">
+        <div class="promise-title" style="color:var(--green-ok);">🤝 박서연 학생의 약속</div>
+        <ul class="promise-list">
+          <li>쓰기가 힘들 때는 자리에서 벗어나지 않고 도움 요청 카드를 사용하겠습니다.</li>
+          <li>자리에 앉아서 15분 동안 있으려고 노력하겠습니다.</li>
+          <li>노트에 3줄 쓰기를 완성하기 위해 최선을 다하겠습니다.</li>
+        </ul>
+      </div>
+      <div class="promise-box" style="border-color:#1a4a2e;">
+        <div class="promise-title" style="color:#1a4a2e;">🏫 선생님의 약속</div>
+        <ul class="promise-list">
+          <li>도움 카드를 들면 바로 와서 도와드리겠습니다.</li>
+          <li>쓰기 과제의 양과 난이도를 서연이 수준에 맞게 조정하겠습니다. (과제 수정)</li>
+          <li>DRO 타이머를 매 수업 시작 때 켜드리겠습니다.</li>
+          <li>약속한 금액을 반드시 제때 입금하겠습니다.</li>
+        </ul>
+      </div>
+      <div class="special-terms">
+        <div class="special-terms-title">⚠️ AI 행동 기능 분석 참고</div>
+        <p>이 계약은 <strong>회피/도피 기능 (FCT + DRO + 과제수정 전략)</strong> 분석에 기반합니다. 소거 폭발 위험도: <strong>높음</strong>. 반드시 FCT(도움 카드) 확립 후 소거 적용. 안전 계획 수립 권장. [GPT 분석 신뢰도: 중간 → 추가 관찰 2주 권장]</p>
+      </div>
+    </div>
+
+    <!-- 서명란 -->
+    <div class="signature-section">
+      <div class="sig-title">위 내용에 동의하며 계약을 체결합니다</div>
+      <div style="text-align:center;font-size:13px;color:var(--ink-light);margin-bottom:18px;">
+        2026년 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 월 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 일
+      </div>
+      <div class="sig-grid">
+        <div class="sig-box">
+          <div class="sig-header">🏫 교사 (사용자)</div>
+          <div class="sig-body">
+            <div class="sig-stamp-area">인 / 서명</div>
+            <div class="sig-name-line"></div>
+            <div class="sig-date-line">성명: ________________</div>
+          </div>
+        </div>
+        <div class="sig-box">
+          <div class="sig-header">👧 학생 (근로자)</div>
+          <div class="sig-body">
+            <div class="sig-stamp-area" style="font-size:20px;color:var(--border);border-style:solid;">✋</div>
+            <div class="sig-name-line">박서연</div>
+            <div class="sig-date-line">손도장 또는 서명</div>
+          </div>
+        </div>
+        <div class="sig-box">
+          <div class="sig-header">👨‍👩‍👦 보호자 (확인)</div>
+          <div class="sig-body">
+            <div class="sig-stamp-area">인 / 서명</div>
+            <div class="sig-name-line"></div>
+            <div class="sig-date-line">성명: ________________</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</div>
+
+<!-- ===================== 케이스 C ===================== -->
+<div class="contract" id="contract-c">
+<div class="contract-paper">
+
+  <div class="contract-header" style="background: #5c3a00;">
+    <div class="bank-logo-row">
+      <div class="bank-emblem">🏦</div>
+      <div>
+        <div class="bank-name">행복학급 행복은행 · HAENGBOK CLASS BANK</div>
+      </div>
+    </div>
+    <div class="contract-title">행 동 계 약 서</div>
+    <div class="contract-no">계약번호 HCB-2026-C-001 · 행동형성(Shaping) · 레벨 계약</div>
+  </div>
+
+  <div class="contract-body">
+    <div class="official-stamp">행복은행<br>공식<br>계약</div>
+
+    <div style="margin-bottom:20px;">
+      <span class="case-badge case-c">CASE C — 행동형성 (Shaping) · 단계별 레벨업 계약</span>
+    </div>
+
+    <!-- 학생 정보 -->
+    <div class="student-card" style="background:#fef3e8;border-color:#e8c88a;">
+      <div class="student-avatar" style="background:#5c3a00;">👦</div>
+      <div class="student-info-grid">
+        <div class="info-row">
+          <span class="info-label" style="color:#5c3a00;">이름</span>
+          <span class="info-value">김태호</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label" style="color:#5c3a00;">장애유형</span>
+          <span class="info-value">정서행동장애</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label" style="color:#5c3a00;">학년/반</span>
+          <span class="info-value">6학년 특수학급</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label" style="color:#5c3a00;">지원단계</span>
+          <span class="info-value">PBS 2단계</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 최종 목표 -->
+    <div class="section">
+      <div class="section-title">🏁 최종 목표 행동</div>
+      <div class="goal-box">
+        <div class="goal-box-header" style="background:#5c3a00;">🎯 우리가 함께 향하는 목표</div>
+        <div class="goal-box-body">
+          <div class="goal-text">👋 친구에게 먼저 인사하기</div>
+          <div class="goal-definition">
+            학교에서 친구를 만났을 때, 먼저 "안녕!" 하고 인사한다.<br>
+            현재 수준: 선생님이 옆에서 도와줄 때만 가능<br>
+            목표 수준: 선생님 도움 없이 스스로 먼저 인사하기
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 레벨 계약 -->
+    <div class="section">
+      <div class="section-title">🎮 제1조 — 레벨업 계약 (단계별 목표)</div>
+
+      <div class="shaping-levels">
+
+        <div class="shaping-level done">
+          <div class="level-badge">✓</div>
+          <div class="level-text">
+            <div class="level-name">레벨 0 — 시작 전 (현재 수준 확인)</div>
+            <div class="level-criteria">선생님이 "인사해" 라고 말해야만 인사 가능 → 기초선 측정</div>
+          </div>
+          <div style="font-size:11px;color:#aaa;font-weight:700;">완료</div>
+        </div>
+
+        <div class="shaping-level current">
+          <div class="level-badge">1</div>
+          <div class="level-text">
+            <div class="level-name">⭐ 레벨 1 — 현재 계약 (3월)</div>
+            <div class="level-criteria">
+              선생님이 <strong>옆에 함께 서서</strong> 같이 인사하기<br>
+              → 하루 3회 이상 성공 시 100원 / 주 4일 달성 시 보너스 300원
+            </div>
+          </div>
+          <div class="current-tag">현재</div>
+        </div>
+
+        <div class="shaping-level">
+          <div class="level-badge">2</div>
+          <div class="level-text">
+            <div class="level-name">레벨 2 — 다음 계약 (4월 예정)</div>
+            <div class="level-criteria">
+              선생님이 <strong>눈짓만 해주면</strong> 혼자 인사하기<br>
+              → 하루 3회 이상 성공 시 150원 / 주 4일 달성 시 보너스 400원
+            </div>
+          </div>
+          <div style="font-size:11px;color:#aaa;border:1px dashed #ccc;padding:3px 8px;border-radius:10px;">예정</div>
+        </div>
+
+        <div class="shaping-level">
+          <div class="level-badge">3</div>
+          <div class="level-text">
+            <div class="level-name">레벨 3 — 최종 계약 (5월 예정)</div>
+            <div class="level-criteria">
+              선생님 도움 없이 <strong>스스로 먼저</strong> 인사하기 🏆<br>
+              → 하루 3회 이상 성공 시 200원 / 주 4일 달성 시 보너스 600원
+            </div>
+          </div>
+          <div style="font-size:11px;color:#aaa;border:1px dashed #ccc;padding:3px 8px;border-radius:10px;">예정</div>
+        </div>
+
+      </div>
+
+      <div class="special-terms" style="margin-top:14px;background:#fff8f0;border-color:#e8c88a;">
+        <div class="special-terms-title">⬆️ 레벨 업 조건</div>
+        <p>레벨 1 계약을 <strong>3회 연속 주간 보너스 달성</strong>하면 선생님과 함께 레벨 2 계약을 새로 씁니다.<br>
+        레벨이 올라갈 때마다 통장에 <strong>"레벨 2 달성! 🎉"</strong> 기록이 남아요.</p>
+      </div>
+    </div>
+
+    <!-- 현재 계약 (레벨 1) 상세 -->
+    <div class="section">
+      <div class="section-title">💰 제2조 — 임금 (레벨 1 현재 계약 상세)</div>
+
+      <table class="conditions-table">
+        <thead>
+          <tr>
+            <th>조건</th>
+            <th>달성 기준</th>
+            <th>보상</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>🌟 기본 보상<br><small style="color:#888;">레벨 1</small></td>
+            <td>
+              선생님과 함께 서서 친구에게 인사하기<br>
+              <strong>하루 3번 이상</strong><br>
+              <div class="visual-goal" style="margin-top:6px;">
+                <div class="goal-dot filled">1</div>
+                <div class="goal-dot filled">2</div>
+                <div class="goal-dot filled">3</div>
+                <div class="goal-dot"></div>
+                <div class="goal-dot"></div>
+              </div>
+            </td>
+            <td style="text-align:center;">
+              <span class="amount-badge" style="background:#5c3a00;">+100원</span>
+              <div style="font-size:11px;color:#888;margin-top:4px;">매일 오후 3시 자동</div>
+            </td>
+          </tr>
+          <tr>
+            <td>🏆 주간 보너스<br><small style="color:#888;">레벨 1</small></td>
+            <td>한 주에 4일 이상 기본 보상 달성</td>
+            <td style="text-align:center;">
+              <span class="amount-badge bonus">+300원</span>
+              <div style="font-size:11px;color:#888;margin-top:4px;">금요일 자동</div>
+            </td>
+          </tr>
+          <tr>
+            <td>🎮 레벨업 보너스</td>
+            <td>레벨 1을 3주 연속 주간 보너스 달성</td>
+            <td style="text-align:center;">
+              <span class="amount-badge bonus">+1,000원</span>
+              <div style="font-size:11px;color:#888;margin-top:4px;">레벨업 시 1회</div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 자기모니터링 -->
+    <div class="section">
+      <div class="section-title">📊 제3조 — 자기모니터링</div>
+      <div style="background:white;border:1.5px solid var(--border);border-radius:8px;padding:16px 18px;">
+        <div style="font-size:13px;color:var(--ink-light);margin-bottom:12px;line-height:1.7;">
+          태호가 인사했다고 생각하면 <strong>태블릿 앱에서 직접 체크</strong>할 수 있어요.<br>
+          선생님이 확인하고 승인하면 바로 입금이 돼요.
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;">
+          <div style="background:#fef3e8;border:1.5px solid #e8c88a;border-radius:6px;padding:10px 14px;font-size:13px;font-weight:700;color:#5c3a00;flex:1;text-align:center;">
+            📱 태호가 체크
+          </div>
+          <div style="font-size:20px;color:var(--border);">→</div>
+          <div style="background:var(--blue-light);border:1.5px solid #b8c8e8;border-radius:6px;padding:10px 14px;font-size:13px;font-weight:700;color:var(--blue-gov);flex:1;text-align:center;">
+            👩‍🏫 선생님 승인
+          </div>
+          <div style="font-size:20px;color:var(--border);">→</div>
+          <div style="background:var(--green-light);border:1.5px solid #9dc8ae;border-radius:6px;padding:10px 14px;font-size:13px;font-weight:700;color:var(--green-ok);flex:1;text-align:center;">
+            💰 자동 입금
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 약속 -->
+    <div class="section">
+      <div class="section-title">📜 제4조 — 특약 사항 (우리의 약속)</div>
+      <div class="promise-box" style="border-color:#5c3a00;">
+        <div class="promise-title" style="color:#5c3a00;">🤝 김태호 학생의 약속</div>
+        <ul class="promise-list">
+          <li>선생님과 함께 친구에게 "안녕!" 하고 인사하려고 노력하겠습니다.</li>
+          <li>인사를 잘 하면 스스로 체크해서 선생님에게 알리겠습니다.</li>
+          <li>레벨 3까지 올라가는 것을 목표로 최선을 다하겠습니다.</li>
+        </ul>
+      </div>
+      <div class="promise-box" style="border-color:var(--blue-gov);">
+        <div class="promise-title" style="color:var(--blue-gov);">🏫 선생님의 약속</div>
+        <ul class="promise-list">
+          <li>레벨 1에서는 반드시 옆에 함께 서서 인사 기회를 만들어 드리겠습니다.</li>
+          <li>태호가 잘 할 수 있는 기회를 하루 최소 5번 이상 만들겠습니다.</li>
+          <li>레벨업 기준을 달성하면 반드시 다음 계약서를 함께 새로 작성하겠습니다.</li>
+          <li>통장에 레벨업 기록이 남도록 하겠습니다.</li>
+        </ul>
+      </div>
+      <div class="special-terms">
+        <div class="special-terms-title">⚠️ AI 행동 기능 분석 참고</div>
+        <p>이 계약은 <strong>행동형성(Shaping) + 자기모니터링(SM)</strong> 전략 분석에 기반합니다. 현재 수준에서 너무 빠르게 기준을 높이면 소거 위험이 있습니다. 각 레벨에서 <strong>3회 연속 달성</strong> 확인 후 레벨업을 권장합니다. [GPT 분석 신뢰도: 높음]</p>
+      </div>
+    </div>
+
+    <!-- 서명란 -->
+    <div class="signature-section">
+      <div class="sig-title">위 내용에 동의하며 계약을 체결합니다</div>
+      <div style="text-align:center;font-size:13px;color:var(--ink-light);margin-bottom:18px;">
+        2026년 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 월 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 일
+      </div>
+      <div class="sig-grid">
+        <div class="sig-box">
+          <div class="sig-header">🏫 교사 (사용자)</div>
+          <div class="sig-body">
+            <div class="sig-stamp-area">인 / 서명</div>
+            <div class="sig-name-line"></div>
+            <div class="sig-date-line">성명: ________________</div>
+          </div>
+        </div>
+        <div class="sig-box">
+          <div class="sig-header">👦 학생 (근로자)</div>
+          <div class="sig-body">
+            <div class="sig-stamp-area" style="font-size:20px;color:var(--border);border-style:solid;">👊</div>
+            <div class="sig-name-line">김태호</div>
+            <div class="sig-date-line">손도장 또는 서명</div>
+          </div>
+        </div>
+        <div class="sig-box">
+          <div class="sig-header">👨‍👩‍👦 보호자 (확인)</div>
+          <div class="sig-body">
+            <div class="sig-stamp-area">인 / 서명</div>
+            <div class="sig-name-line"></div>
+            <div class="sig-date-line">성명: ________________</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</div>
+
+<script>
+function showContract(id) {
+  document.querySelectorAll('.contract').forEach(c => c.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('contract-' + id).classList.add('active');
+  event.target.classList.add('active');
+}
+</script>
+</body>
+</html>
