@@ -37,6 +37,13 @@ export async function POST(request: Request) {
 - Repp & Dietz (1974) DRO 간격 설정 원칙 (기저선 빈도의 1/2 간격 권장)
 - What Works Clearinghouse (IES) 근거기반 중재 목록
 
+중요 규칙:
+1. 반드시 모든 필드를 한국어로 작성하세요 (영어 사용 금지).
+2. pbsGoals는 최소 2개 이상 포함하세요 (대체행동 + 보완행동).
+3. interventions는 최소 2개 이상 포함하세요.
+4. tokenPerOccurrence는 100~500원 범위로 설정하세요 (학교 PBS 토큰경제 기준).
+5. contract의 rewardAmount는 1000~5000원 범위로 설정하세요.
+
 반드시 JSON 형식으로만 응답하세요. 마크다운이나 설명 텍스트 없이 순수 JSON만 반환하세요.`
 
     const userPrompt = `다음 학생의 행동 지원 계획 초안을 작성해주세요:
@@ -61,7 +68,7 @@ export async function POST(request: Request) {
       "behaviorName": "목표 행동명 (관찰 가능한 형태)",
       "behaviorDefinition": "조작적 정의 (관찰·측정 가능하게)",
       "strategyType": "DRO|DRA|DRI|DRL|FCT|NCR|BC|Shaping 중 하나",
-      "tokenPerOccurrence": 숫자,
+      "tokenPerOccurrence": 100~500 사이 숫자(원),
       "rationale": "이 전략을 선택한 ABA 근거"
     }
   ],
@@ -71,7 +78,7 @@ export async function POST(request: Request) {
     "behaviorDefinition": "관찰 가능한 정의",
     "measurementMethod": "측정 방법 (예: 빈도, 지속시간, 간격)",
     "achievementCriteria": "달성 기준 (예: 하루 2회 이하 3일 연속)",
-    "rewardAmount": 숫자,
+    "rewardAmount": 1000~5000 사이 숫자(원),
     "teacherNote": "교사 코멘트"
   },
   "interventions": [
@@ -84,7 +91,7 @@ export async function POST(request: Request) {
   ],
   "dro": {
     "intervalMinutes": 숫자,
-    "tokenReward": 숫자,
+    "tokenReward": 100~500 사이 숫자(원),
     "rationale": "간격 설정 근거 (Repp & Dietz 원칙 적용)"
   },
   "extinctionAlert": {
