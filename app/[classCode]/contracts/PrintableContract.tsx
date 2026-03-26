@@ -209,8 +209,8 @@ export default function PrintableContract({ contract, onClose }: PrintableContra
                 </thead>
                 <tbody>
                   <tr>
-                    <td className="border border-[#c8b99a] px-3.5 py-3 align-middle">🌟 기본 보상</td>
-                    <td className="border border-[#c8b99a] px-3.5 py-3 align-middle">
+                    <td className="border border-[#c8b99a] px-3.5 py-3 align-middle text-[#1a1410]">🌟 기본 보상</td>
+                    <td className="border border-[#c8b99a] px-3.5 py-3 align-middle text-[#1a1410]">
                       {contract.achievement_criteria || '목표 행동 달성 시'}
                       {contract.measurement_method && (
                         <div className="text-[11px] text-[#1a1410] mt-1">
