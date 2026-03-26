@@ -1,6 +1,26 @@
 import { NextResponse } from 'next/server'
 import { getSession } from '@/lib/session'
+import { createServerSupabase } from '@/lib/supabase/server'
 import OpenAI from 'openai'
+
+async function fetchFunctionSignals(): Promise<string> {
+  try {
+    const supabase = await createServerSupabase()
+    const { data } = await supabase
+      .from('pbs_behavior_functions')
+      .select('function_type,name_ko,detection_signals,common_antecedents,common_consequences')
+    if (!data?.length) return ''
+    return `\n=== 행동 기능 분류 기준 (pbs_behavior_functions DB) ===\n` +
+      data.map(f =>
+        `[${f.function_type} / ${f.name_ko}]\n` +
+        `  탐지 신호: ${(f.detection_signals ?? []).join(' | ')}\n` +
+        `  공통 선행사건: ${(f.common_antecedents ?? []).join(' | ')}\n` +
+        `  공통 결과사건: ${(f.common_consequences ?? []).join(' | ')}`
+      ).join('\n')
+  } catch {
+    return ''
+  }
+}
 
 export async function POST(request: Request) {
   try {
@@ -19,7 +39,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: '학생에 대한 설명을 10자 이상 입력해주세요.' }, { status: 400 })
     }
 
-    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+    const [openai, functionSignals] = await Promise.all([
+      Promise.resolve(new OpenAI({ apiKey: process.env.OPENAI_API_KEY })),
+      fetchFunctionSignals(),
+    ])
 
     const systemPrompt = `당신은 BCBA(Board Certified Behavior Analyst) 자격을 갖춘 응용행동분석(ABA) 전문가입니다.
 교사가 학생에 대해 두서없이 작성한 자유 기술(free narrative)을 분석하여 구조화된 FBA(기능행동평가) 입력 필드로 분배합니다.
@@ -41,7 +64,7 @@ export async function POST(request: Request) {
 3. **Bijou, Peterson & Ault (1968) 서술적 행동 분석(Descriptive Analysis)**:
    - 관찰된 사실과 추론을 구분
    - 빈도·비율·강도 등 측정 단위 추출
-
+${functionSignals ? `\n${functionSignals}\n\n위 DB 기준을 활용하여 탐지 신호와 선행/결과 사건 패턴을 분류에 반드시 참고하세요.` : ''}
 분류 규칙:
 - 원문에 명시된 정보만 해당 필드에 배치 (추론 최소화)
 - 한 문장에 여러 필드 정보가 섞여 있으면 분리하여 각 필드에 배치

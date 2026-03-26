@@ -75,7 +75,8 @@ const CONFIDENCE_LABELS: Record<string, string> = {
 }
 
 const EVIDENCE_LABELS: Record<string, string> = {
-  'evidence-based': '근거기반', promising: '유망', emerging: '신규',
+  strong: '강력 근거', moderate: '중간 근거', emerging: '신규 근거',
+  'evidence-based': '근거기반', promising: '유망',
 }
 
 const FUNCTION_COLORS: Record<string, string> = {
@@ -110,6 +111,10 @@ export default function AiBehaviorPlan({ studentId, studentName, grade, classCod
 
   // 편집 가능한 초안 상태
   const [editedPlan, setEditedPlan] = useState<BehaviorPlan | null>(null)
+
+  // 피드백 루프용: 생성 로그 ID + 원본 계획 참조
+  const [logId, setLogId] = useState<string | null>(null)
+  const [originalPlan, setOriginalPlan] = useState<BehaviorPlan | null>(null)
 
   // 저장 상태 (섹션별)
   const [saveStatus, setSaveStatus] = useState<Record<string, SaveStatus>>({})
@@ -155,6 +160,8 @@ export default function AiBehaviorPlan({ studentId, studentName, grade, classCod
     setEditedPlan(null)
     setSaveStatus({})
     setSaveMsg({})
+    setLogId(null)
+    setOriginalPlan(null)
 
     try {
       const res = await fetch('/api/ai/behavior-plan', {
@@ -168,12 +175,15 @@ export default function AiBehaviorPlan({ studentId, studentName, grade, classCod
           antecedents,
           consequences,
           environment,
+          studentId,
         }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'AI 오류')
       setPlan(data.plan)
       setEditedPlan(JSON.parse(JSON.stringify(data.plan)))
+      setOriginalPlan(JSON.parse(JSON.stringify(data.plan)))
+      if (data.logId) setLogId(data.logId)
     } catch (e: unknown) {
       setGenError(e instanceof Error ? e.message : '오류가 발생했습니다.')
     } finally {
@@ -282,6 +292,20 @@ export default function AiBehaviorPlan({ studentId, studentName, grade, classCod
 
   const saveAll = async () => {
     await Promise.all([saveFba(), savePbsGoals(), saveContract(), saveInterventions()])
+    // 피드백 루프: 저장 완료 후 교사 수정 여부 기록
+    if (logId && editedPlan) {
+      const teacherModified = JSON.stringify(editedPlan) !== JSON.stringify(originalPlan)
+      fetch('/api/ai/behavior-plan-feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          logId,
+          accepted: true,
+          teacherModified,
+          finalSaved: editedPlan,
+        }),
+      }).catch(() => {})
+    }
   }
 
   const updateGoal = (i: number, field: keyof PbsGoalDraft, value: string | number) => {
@@ -599,7 +623,9 @@ export default function AiBehaviorPlan({ studentId, studentName, grade, classCod
                     <div className="flex items-center gap-2">
                       <p className="font-medium text-sm text-gray-900">{iv.strategyName}</p>
                       <span className={`text-xs px-2 py-0.5 rounded-full ${
+                        iv.evidenceLevel === 'strong' ? 'bg-green-100 text-green-700' :
                         iv.evidenceLevel === 'evidence-based' ? 'bg-green-100 text-green-700' :
+                        iv.evidenceLevel === 'moderate' ? 'bg-yellow-100 text-yellow-700' :
                         iv.evidenceLevel === 'promising' ? 'bg-yellow-100 text-yellow-700' :
                         'bg-gray-100 text-gray-600'
                       }`}>{EVIDENCE_LABELS[iv.evidenceLevel]}</span>
