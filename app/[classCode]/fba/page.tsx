@@ -34,6 +34,7 @@ export default function FbaPage() {
   const [submitting, setSubmitting] = useState(false)
   const [message, setMessage] = useState('')
   const [expandedRecord, setExpandedRecord] = useState<string | null>(null)
+  const [filterStudent, setFilterStudent] = useState('')
 
   const fetchData = async () => {
     const [sRes, fRes] = await Promise.all([
@@ -105,9 +106,45 @@ export default function FbaPage() {
     tangible: '물건 획득',
   }
 
+  const functionColors: Record<string, string> = {
+    attention: 'bg-purple-100 text-purple-700 border-purple-200',
+    escape: 'bg-orange-100 text-orange-700 border-orange-200',
+    sensory: 'bg-green-100 text-green-700 border-green-200',
+    tangible: 'bg-blue-100 text-blue-700 border-blue-200',
+  }
+
+  const functionBg: Record<string, string> = {
+    attention: 'border-l-purple-400',
+    escape: 'border-l-orange-400',
+    sensory: 'border-l-green-400',
+    tangible: 'border-l-blue-400',
+  }
+
+  const functionStats = ['attention', 'escape', 'sensory', 'tangible'].map(fn => ({
+    fn,
+    count: records.filter(r => r.estimated_function === fn).length,
+  }))
+
+  const filteredRecords = filterStudent ? records.filter(r => r.student_id === filterStudent) : records
+
   return (
     <div className="p-6 space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900">🔍 기능행동분석 (FBA)</h1>
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900">🔍 기능행동분석 (FBA)</h1>
+        <p className="text-xs text-gray-400 mt-0.5">Functional Behavior Assessment · Cooper et al. (2020) ABA 3판 기반</p>
+      </div>
+
+      {/* 행동 기능별 통계 */}
+      {records.some(r => r.estimated_function) && (
+        <div className="grid grid-cols-4 gap-2">
+          {functionStats.map(({ fn, count }) => (
+            <div key={fn} className={`rounded-xl border p-3 text-center ${functionColors[fn]}`}>
+              <p className="text-xl font-bold">{count}</p>
+              <p className="text-xs mt-0.5">{functionLabels[fn]}</p>
+            </div>
+          ))}
+        </div>
+      )}
 
       {message && (
         <div className="px-4 py-3 bg-gray-50 rounded-xl text-sm text-gray-700">{message}</div>
@@ -163,17 +200,28 @@ export default function FbaPage() {
         </button>
       </div>
 
+      {/* 학생 필터 */}
+      <div className="flex gap-2 overflow-x-auto pb-1">
+        <button onClick={() => setFilterStudent('')} className={`px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${!filterStudent ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 border border-gray-200'}`}>전체</button>
+        {students.map(s => (
+          <button key={s.id} onClick={() => setFilterStudent(s.id)} className={`px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${filterStudent === s.id ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 border border-gray-200'}`}>{s.name}</button>
+        ))}
+      </div>
+
       {/* FBA 기록 목록 */}
       <div>
-        <h2 className="font-bold text-gray-900 mb-3">FBA 기록 ({records.length}건)</h2>
-        {records.length === 0 ? (
+        <h2 className="font-bold text-gray-900 mb-3">FBA 기록 ({filteredRecords.length}건)</h2>
+        {filteredRecords.length === 0 ? (
           <div className="bg-white rounded-2xl border border-gray-100 p-8 text-center">
             <p className="text-gray-400">FBA 기록이 없습니다.</p>
+            <p className="text-xs text-gray-400 mt-2">학생 상세 페이지 → AI 행동 지원 계획에서 자동 생성할 수 있습니다.</p>
           </div>
         ) : (
           <div className="space-y-3">
-            {records.map(r => (
-              <div key={r.id} className="bg-white rounded-2xl border border-gray-100 p-5">
+            {filteredRecords.map(r => (
+              <div key={r.id} className={`bg-white rounded-2xl border border-l-4 p-5 ${
+                r.estimated_function ? functionBg[r.estimated_function] || 'border-l-gray-300' : 'border-l-gray-200'
+              } border-gray-100`}>
                 <div className="flex items-start justify-between mb-3">
                   <div>
                     <p className="font-bold text-gray-900">{r.pbs_students?.name}</p>

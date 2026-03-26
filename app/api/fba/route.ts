@@ -47,6 +47,10 @@ export async function POST(request: Request) {
       consequencePatterns, 
       frequencyData,
       requestAiAnalysis = false,
+      // AI 행동 지원 계획에서 직접 전달받는 필드
+      estimatedFunction: externalFunction,
+      confidence: externalConfidence,
+      rationale: externalRationale,
     } = await request.json()
 
     if (!studentId || !behaviorDescription) {
@@ -67,12 +71,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: '학생을 찾을 수 없습니다.' }, { status: 404 })
     }
 
-    let gptAnalysis = null
-    let estimatedFunction = null
-    let confidence = null
+    // 외부(AI 행동 지원 계획)에서 전달된 분석 결과 우선 사용
+    let gptAnalysis: string | null = externalRationale || null
+    let estimatedFunction: string | null = externalFunction || null
+    let confidence: string | null = externalConfidence || null
 
-    // AI 분석 요청 시
-    if (requestAiAnalysis && process.env.OPENAI_API_KEY) {
+    // AI 분석 요청 시 (외부 전달값이 없을 때만)
+    if (requestAiAnalysis && !estimatedFunction && process.env.OPENAI_API_KEY) {
       try {
         const { default: OpenAI } = await import('openai')
         const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })

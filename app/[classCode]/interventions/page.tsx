@@ -106,10 +106,17 @@ function InterventionsContent() {
     'emerging': '신규',
   }
 
+  const ebCount = strategies.filter(s => s.evidence_level === 'evidence-based').length
+  const prCount = strategies.filter(s => s.evidence_level === 'promising').length
+  const emCount = strategies.filter(s => s.evidence_level === 'emerging').length
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">📚 중재 전략 라이브러리</h1>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">📚 중재 전략 라이브러리</h1>
+          <p className="text-xs text-gray-400 mt-0.5">What Works Clearinghouse (IES) 근거기반 목록 기반</p>
+        </div>
         <button
           onClick={() => setShowAddModal(true)}
           className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl transition-colors"
@@ -117,6 +124,24 @@ function InterventionsContent() {
           + 전략 추가
         </button>
       </div>
+
+      {/* 요약 통계 */}
+      {strategies.length > 0 && (
+        <div className="grid grid-cols-3 gap-3">
+          <div className="bg-green-50 border border-green-100 rounded-2xl p-4 text-center">
+            <p className="text-2xl font-bold text-green-700">{ebCount}</p>
+            <p className="text-xs text-green-600 mt-0.5">근거기반</p>
+          </div>
+          <div className="bg-yellow-50 border border-yellow-100 rounded-2xl p-4 text-center">
+            <p className="text-2xl font-bold text-yellow-700">{prCount}</p>
+            <p className="text-xs text-yellow-600 mt-0.5">유망</p>
+          </div>
+          <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 text-center">
+            <p className="text-2xl font-bold text-gray-600">{emCount}</p>
+            <p className="text-xs text-gray-500 mt-0.5">신규</p>
+          </div>
+        </div>
+      )}
 
       {message && (
         <div className="px-4 py-3 bg-gray-50 rounded-xl text-sm text-gray-700">{message}</div>
@@ -156,35 +181,48 @@ function InterventionsContent() {
         <h2 className="font-bold text-gray-900 mb-3">전략 목록 ({strategies.length}개)</h2>
         {strategies.length === 0 ? (
           <div className="bg-white rounded-2xl border border-gray-100 p-8 text-center">
-            <p className="text-gray-400">등록된 중재 전략이 없습니다.</p>
+            <p className="text-4xl mb-3">📚</p>
+            <p className="text-gray-500">등록된 중재 전략이 없습니다.</p>
+            <p className="text-xs text-gray-400 mt-1">학생 상세 페이지 → AI 행동 지원 계획에서 자동 생성할 수 있습니다.</p>
             <button
               onClick={() => setShowAddModal(true)}
               className="mt-3 text-sm text-blue-600 hover:text-blue-700"
             >
-              첫 전략 추가하기 →
+              직접 전략 추가하기 →
             </button>
           </div>
         ) : (
           <div className="space-y-3">
             {strategies.map(s => (
-              <div key={s.id} className="bg-white rounded-2xl border border-gray-100 p-5">
+              <div key={s.id} className={`bg-white rounded-2xl border p-5 ${
+                s.evidence_level === 'evidence-based' ? 'border-green-200' :
+                s.evidence_level === 'promising' ? 'border-yellow-200' :
+                'border-gray-100'
+              }`}>
                 <div className="flex items-start justify-between mb-2">
                   <p className="font-bold text-gray-900">{s.strategy_name}</p>
-                  <span className={`text-xs px-2 py-1 rounded-full ${
+                  <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${
                     s.evidence_level === 'evidence-based' ? 'bg-green-100 text-green-700' :
                     s.evidence_level === 'promising' ? 'bg-yellow-100 text-yellow-700' :
                     'bg-gray-100 text-gray-600'
                   }`}>
-                    {evidenceLevels[s.evidence_level] || s.evidence_level}
+                    {s.evidence_level === 'evidence-based' ? '★ 근거기반' :
+                     s.evidence_level === 'promising' ? '▲ 유망' : '○ 신규'}
                   </span>
                 </div>
-                <p className="text-sm text-gray-600">{s.description}</p>
-                <div className="mt-3 pt-3 border-t border-gray-50">
+                <p className="text-sm text-gray-600 leading-relaxed">{s.description}</p>
+                <div className="mt-3 pt-3 border-t border-gray-50 flex items-center justify-between">
                   <Link
                     href={`/${classCode}/pbs`}
                     className="inline-flex items-center gap-1 text-xs text-blue-500 hover:text-blue-700"
                   >
-                    ✅ 이 전략으로 PBS 목표 설정하기 →
+                    ✅ PBS 목표로 설정하기 →
+                  </Link>
+                  <Link
+                    href={`/${classCode}/fba`}
+                    className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600"
+                  >
+                    🔍 FBA 분석 보기
                   </Link>
                 </div>
               </div>

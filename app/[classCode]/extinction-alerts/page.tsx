@@ -64,6 +64,9 @@ export default function ExtinctionAlertsPage() {
 
   const activeAlerts = alerts.filter(a => !a.is_resolved)
   const resolvedAlerts = alerts.filter(a => a.is_resolved)
+  const highRisk = activeAlerts.filter(a => a.risk_level === 'high').length
+  const mediumRisk = activeAlerts.filter(a => a.risk_level === 'medium').length
+  const lowRisk = activeAlerts.filter(a => a.risk_level === 'low').length
 
   const riskColors: Record<string, string> = {
     high: 'bg-red-100 border-red-300 text-red-700',
@@ -80,7 +83,10 @@ export default function ExtinctionAlertsPage() {
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">🚨 소거 위험 모니터링</h1>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">🚨 소거 위험 모니터링</h1>
+          <p className="text-xs text-gray-400 mt-0.5">Extinction Burst · Lerman &amp; Iwata (1995) 패턴 데이터 기반 자동 감지</p>
+        </div>
         <label className="flex items-center gap-2 text-sm">
           <input
             type="checkbox"
@@ -92,18 +98,47 @@ export default function ExtinctionAlertsPage() {
         </label>
       </div>
 
+      {/* 위험도별 통계 */}
+      {activeAlerts.length > 0 && (
+        <div className="grid grid-cols-3 gap-3">
+          <div className="bg-red-50 border border-red-200 rounded-2xl p-4 text-center">
+            <p className="text-2xl font-bold text-red-600">{highRisk}</p>
+            <p className="text-xs text-red-500 mt-0.5">높음</p>
+          </div>
+          <div className="bg-yellow-50 border border-yellow-100 rounded-2xl p-4 text-center">
+            <p className="text-2xl font-bold text-yellow-600">{mediumRisk}</p>
+            <p className="text-xs text-yellow-500 mt-0.5">중간</p>
+          </div>
+          <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 text-center">
+            <p className="text-2xl font-bold text-blue-600">{lowRisk}</p>
+            <p className="text-xs text-blue-500 mt-0.5">낙음</p>
+          </div>
+        </div>
+      )}
+
       {message && (
         <div className="px-4 py-3 bg-gray-50 rounded-xl text-sm text-gray-700">{message}</div>
       )}
 
-      {/* 안내 */}
-      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-        <p className="text-sm text-blue-800">
-          <strong>소거 폭발(Extinction Burst)</strong>: PBS 목표 행동이 급증 후 연속 감소하는 패턴으로, 소거 과정에서 일시적으로 문제 행동이 증가할 수 있는 현상입니다.
-        </p>
-        <p className="text-xs text-blue-600 mt-2">
-          💡 시스템이 자동으로 감지하며, 크론 작업으로 주기적으로 업데이트됩니다.
-        </p>
+      {/* ABA 안내 */}
+      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-2">
+        <p className="text-sm font-semibold text-blue-900">소거 폭발(Extinction Burst)이란?</p>
+        <p className="text-sm text-blue-800">행동에 대한 강화를 중단(소거)할 때 일시적으로 해당 행동의 빈도와 강도가 증가하는 현상. 소거 절차 지속 시 주로 24~72시간 이내 소실됩니다.</p>
+        <div className="grid grid-cols-3 gap-2 text-xs">
+          <div className="bg-white/70 rounded-lg p-2">
+            <p className="font-medium text-blue-700">태도</p>
+            <p className="text-blue-600">소거 절차 지속</p>
+          </div>
+          <div className="bg-white/70 rounded-lg p-2">
+            <p className="font-medium text-blue-700">대체행동</p>
+            <p className="text-blue-600">DRA/FCT 병행</p>
+          </div>
+          <div className="bg-white/70 rounded-lg p-2">
+            <p className="font-medium text-blue-700">환경</p>
+            <p className="text-blue-600">안전한 공간 확보</p>
+          </div>
+        </div>
+        <p className="text-xs text-blue-600">💡 시스템이 PBS 기록의 급증 후 감소 패턴을 자동 감지합니다 (Lerman &amp; Iwata, 1995).</p>
       </div>
 
       {/* 활성 알림 */}

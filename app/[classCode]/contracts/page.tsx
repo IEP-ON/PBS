@@ -178,6 +178,18 @@ export default function ContractsPage() {
     ? contracts.filter(c => c.student_id === filterStudent)
     : contracts
 
+  const activeContracts = contracts.filter(c => c.is_active)
+  const fullySignedCount = contracts.filter(c => c.teacher_signed && c.student_signed && c.parent_signed).length
+  const totalReward = activeContracts.reduce((s, c) => s + c.reward_amount, 0)
+
+  const today = new Date().toISOString().split('T')[0]
+
+  const signProgress = (c: Contract) => {
+    const total = 3
+    const done = [c.teacher_signed, c.student_signed, c.parent_signed].filter(Boolean).length
+    return Math.round((done / total) * 100)
+  }
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -187,19 +199,40 @@ export default function ContractsPage() {
         </button>
       </div>
 
+      {/* 요약 통계 */}
+      <div className="grid grid-cols-3 gap-3">
+        <div className="bg-green-50 border border-green-100 rounded-2xl p-4 text-center">
+          <p className="text-2xl font-bold text-green-700">{activeContracts.length}</p>
+          <p className="text-xs text-green-600 mt-0.5">진행 중 계약서</p>
+        </div>
+        <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 text-center">
+          <p className="text-2xl font-bold text-blue-700">{fullySignedCount}</p>
+          <p className="text-xs text-blue-600 mt-0.5">3자 서명 완료</p>
+        </div>
+        <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 text-center">
+          <p className="text-lg font-bold text-amber-700">{formatCurrency(totalReward)}</p>
+          <p className="text-xs text-amber-600 mt-0.5">진행 중 보상 합계</p>
+        </div>
+      </div>
+
       {/* 학생 필터 */}
       <div className="flex gap-2 overflow-x-auto pb-1">
         <button
           onClick={() => setFilterStudent('')}
           className={`px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${!filterStudent ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 border border-gray-200'}`}
-        >전체</button>
-        {students.map(s => (
-          <button
-            key={s.id}
-            onClick={() => setFilterStudent(s.id)}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${filterStudent === s.id ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 border border-gray-200'}`}
-          >{s.name}</button>
-        ))}
+        >전체 ({contracts.length})</button>
+        {students.map(s => {
+          const cnt = contracts.filter(c => c.student_id === s.id && c.is_active).length
+          return (
+            <button
+              key={s.id}
+              onClick={() => setFilterStudent(s.id)}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${filterStudent === s.id ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 border border-gray-200'}`}
+            >
+              {s.name}{cnt > 0 && <span className="ml-1 text-xs opacity-70">({cnt})</span>}
+            </button>
+          )
+        })}
       </div>
 
       {/* 계약서 목록 */}
@@ -207,77 +240,95 @@ export default function ContractsPage() {
         <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
           <p className="text-4xl mb-3">📋</p>
           <p className="text-gray-500">행동계약서가 없습니다.</p>
+          <p className="text-xs text-gray-400 mt-2">학생 상세 페이지 → AI 행동 지원 계획에서 자동 생성할 수 있습니다.</p>
         </div>
       ) : (
         <div className="space-y-4">
-          {filtered.map(c => (
-            <div key={c.id} className={`bg-white rounded-2xl border p-5 space-y-3 ${c.is_active ? 'border-green-200' : 'border-gray-100 opacity-60'}`}>
-              <div className="flex items-start justify-between">
-                <div>
+          {filtered.map(c => {
+            const isExpiring = c.is_active && c.contract_end && c.contract_end <= today
+            const signPct = signProgress(c)
+            return (
+              <div key={c.id} className={`bg-white rounded-2xl border p-5 space-y-3 ${isExpiring ? 'border-red-300' : c.is_active ? 'border-green-200' : 'border-gray-100 opacity-60'}`}>
+                <div className="flex items-start justify-between">
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-bold text-gray-900">{c.contract_title}</p>
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${c.is_active ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-500'}`}>
+                        {c.is_active ? '진행중' : '종료'}
+                      </span>
+                      {isExpiring && <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-600">⚠️ 만료</span>}
+                    </div>
+                    <p className="text-sm text-gray-500 mt-0.5">
+                      {c.pbs_students?.name || '학생'} · {c.target_behavior}
+                    </p>
+                  </div>
                   <div className="flex items-center gap-2">
-                    <p className="font-bold text-gray-900">{c.contract_title}</p>
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${c.is_active ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-500'}`}>
-                      {c.is_active ? '진행중' : '종료'}
-                    </span>
+                    <button onClick={() => setPrintContract(c)} className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-xl transition-colors text-sm" title="계약서 출력">🖨️</button>
+                    <button onClick={() => openEditModal(c)} className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors text-sm">✏️</button>
+                    <button onClick={() => toggleActive(c)} className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${c.is_active ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'bg-green-50 text-green-600 hover:bg-green-100'}`}>
+                      {c.is_active ? '종료' : '재활성'}
+                    </button>
                   </div>
-                  <p className="text-sm text-gray-500 mt-0.5">
-                    {c.pbs_students?.name || '학생'} · {c.target_behavior}
-                  </p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <button onClick={() => setPrintContract(c)} className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-xl transition-colors text-sm" title="계약서 출력">🖨️</button>
-                  <button onClick={() => openEditModal(c)} className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors text-sm">✏️</button>
-                  <button onClick={() => toggleActive(c)} className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${c.is_active ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'bg-green-50 text-green-600 hover:bg-green-100'}`}>
-                    {c.is_active ? '종료' : '재활성'}
-                  </button>
-                </div>
-              </div>
 
-              {/* 상세 정보 */}
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                {c.behavior_definition && (
-                  <div className="bg-gray-50 rounded-lg p-3">
-                    <p className="text-xs text-gray-400">행동 정의</p>
-                    <p className="text-gray-700">{c.behavior_definition}</p>
-                  </div>
-                )}
-                {c.measurement_method && (
-                  <div className="bg-gray-50 rounded-lg p-3">
-                    <p className="text-xs text-gray-400">측정 방법</p>
-                    <p className="text-gray-700">{c.measurement_method}</p>
-                  </div>
-                )}
-                {c.achievement_criteria && (
-                  <div className="bg-gray-50 rounded-lg p-3">
-                    <p className="text-xs text-gray-400">달성 기준</p>
-                    <p className="text-gray-700">{c.achievement_criteria}</p>
-                  </div>
-                )}
-                {c.reward_amount > 0 && (
-                  <div className="bg-gray-50 rounded-lg p-3">
-                    <p className="text-xs text-gray-400">보상 금액</p>
-                    <p className="text-gray-700 font-bold">{formatCurrency(c.reward_amount)}</p>
-                  </div>
-                )}
-              </div>
+                {/* 상세 정보 */}
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  {c.behavior_definition && (
+                    <div className="bg-gray-50 rounded-lg p-3">
+                      <p className="text-xs text-gray-400">행동 정의</p>
+                      <p className="text-gray-700 text-xs mt-0.5">{c.behavior_definition}</p>
+                    </div>
+                  )}
+                  {c.measurement_method && (
+                    <div className="bg-gray-50 rounded-lg p-3">
+                      <p className="text-xs text-gray-400">측정 방법</p>
+                      <p className="text-gray-700 text-xs mt-0.5">{c.measurement_method}</p>
+                    </div>
+                  )}
+                  {c.achievement_criteria && (
+                    <div className="bg-amber-50 rounded-lg p-3 border border-amber-100">
+                      <p className="text-xs text-amber-600 font-medium">달성 기준</p>
+                      <p className="text-gray-700 text-xs mt-0.5">{c.achievement_criteria}</p>
+                    </div>
+                  )}
+                  {c.reward_amount > 0 && (
+                    <div className="bg-green-50 rounded-lg p-3 border border-green-100">
+                      <p className="text-xs text-green-600 font-medium">달성 보상</p>
+                      <p className="text-green-700 font-bold mt-0.5">{formatCurrency(c.reward_amount)}</p>
+                    </div>
+                  )}
+                </div>
 
-              {/* 기간 + 서명 */}
-              <div className="flex items-center justify-between pt-1">
-                <p className="text-xs text-gray-400">
-                  {c.contract_start}{c.contract_end ? ` ~ ${c.contract_end}` : ' ~'}
-                </p>
-                <div className="flex gap-2">
-                  <span className={`text-xs px-2 py-1 rounded-lg ${c.teacher_signed ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-400'}`}>교사 ✓</span>
-                  <button onClick={() => toggleSign(c, 'studentSigned')} className={`text-xs px-2 py-1 rounded-lg transition-colors ${c.student_signed ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400 hover:bg-green-50'}`}>
-                    학생 {c.student_signed ? '✓' : '○'}
-                  </button>
-                  <button onClick={() => toggleSign(c, 'parentSigned')} className={`text-xs px-2 py-1 rounded-lg transition-colors ${c.parent_signed ? 'bg-purple-100 text-purple-600' : 'bg-gray-100 text-gray-400 hover:bg-purple-50'}`}>
-                    보호자 {c.parent_signed ? '✓' : '○'}
-                  </button>
+                {/* 서명 진행률 */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-gray-500">서명 진행률</p>
+                    <p className="text-xs font-medium text-gray-700">{signPct}%</p>
+                  </div>
+                  <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all ${signPct === 100 ? 'bg-green-500' : 'bg-blue-400'}`}
+                      style={{ width: `${signPct}%` }}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-gray-400">
+                      {c.contract_start}{c.contract_end ? ` ~ ${c.contract_end}` : ' ~'}
+                    </p>
+                    <div className="flex gap-1.5">
+                      <span className={`text-xs px-2 py-0.5 rounded-lg ${c.teacher_signed ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-400'}`}>교사 {c.teacher_signed ? '✓' : '○'}</span>
+                      <button onClick={() => toggleSign(c, 'studentSigned')} className={`text-xs px-2 py-0.5 rounded-lg transition-colors ${c.student_signed ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400 hover:bg-green-50'}`}>
+                        학생 {c.student_signed ? '✓' : '○'}
+                      </button>
+                      <button onClick={() => toggleSign(c, 'parentSigned')} className={`text-xs px-2 py-0.5 rounded-lg transition-colors ${c.parent_signed ? 'bg-purple-100 text-purple-600' : 'bg-gray-100 text-gray-400 hover:bg-purple-50'}`}>
+                        보호자 {c.parent_signed ? '✓' : '○'}
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
 

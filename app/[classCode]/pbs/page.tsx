@@ -227,15 +227,38 @@ export default function PbsCheckPage() {
     )
   }
 
+  const activeGoalCount = goals.length
+  const checkedGoalCount = goals.filter(g => todayRecords.some(r => r.goal_id === g.id)).length
+  const achievementRate = activeGoalCount > 0 ? Math.round((checkedGoalCount / activeGoalCount) * 100) : 0
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">✅ PBS 행동 체크</h1>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">✅ PBS 행동 체크</h1>
+          <p className="text-xs text-gray-400 mt-0.5">Positive Behavior Support · Cooper et al. (2020) 토큰 강화 기반</p>
+        </div>
         <div className="text-right">
           <p className="text-sm text-gray-500">오늘 정산 예정</p>
           <p className="text-xl font-bold text-green-600">{formatCurrency(todayTotal)}</p>
         </div>
       </div>
+
+      {/* 오늘 달성률 */}
+      {selectedStudent && activeGoalCount > 0 && (
+        <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 space-y-2">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-semibold text-blue-900">오늘 목표 달성률</p>
+            <p className="text-sm font-bold text-blue-700">{checkedGoalCount}/{activeGoalCount} ({achievementRate}%)</p>
+          </div>
+          <div className="w-full h-2.5 bg-blue-100 rounded-full overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all ${achievementRate === 100 ? 'bg-green-500' : 'bg-blue-500'}`}
+              style={{ width: `${achievementRate}%` }}
+            />
+          </div>
+        </div>
+      )}
 
       {/* 학생 선택 탭 */}
       <div className="flex gap-2 overflow-x-auto pb-2">

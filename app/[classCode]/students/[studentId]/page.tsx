@@ -6,6 +6,7 @@ import { formatCurrency } from '@/lib/utils'
 import QrCardButton from './QrCardButton'
 import EditStudentButton from './EditStudentButton'
 import LevelUpButton from './LevelUpButton'
+import AiBehaviorPlan from './AiBehaviorPlan'
 
 export default async function StudentDetailPage({
   params,
@@ -252,6 +253,14 @@ export default async function StudentDetailPage({
           </div>
         )}
       </div>
+
+      {/* AI 행동 지원 계획 */}
+      <AiBehaviorPlan
+        studentId={studentId}
+        studentName={student.name}
+        grade={student.grade}
+        classCode={classCode}
+      />
 
       {/* QR 코드 */}
       <div className="bg-white rounded-2xl border border-gray-100 p-4 text-center space-y-3">

@@ -113,6 +113,10 @@ export default function DroPage() {
 
   const runningTimers = timers.filter(t => t.status === 'running')
   const recentTimers = timers.filter(t => t.status !== 'running').slice(0, 10)
+  const completedTotal = timers.filter(t => t.status === 'completed').length
+  const totalResets = timers.reduce((s, t) => s + t.reset_count, 0)
+  const today = new Date().toISOString().split('T')[0]
+  const todayCompleted = timers.filter(t => t.status === 'completed' && t.started_at.startsWith(today)).length
 
   if (loading) {
     return (
@@ -124,7 +128,32 @@ export default function DroPage() {
 
   return (
     <div className="p-6 space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900">⏱️ DRO 타이머</h1>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">⏱️ DRO 타이머</h1>
+          <p className="text-xs text-gray-400 mt-0.5">Differential Reinforcement of Other Behavior</p>
+        </div>
+        <div className="text-right">
+          <p className="text-xs text-gray-400">오늘 완료</p>
+          <p className="text-xl font-bold text-green-600">{todayCompleted}회</p>
+        </div>
+      </div>
+
+      {/* 요약 통계 */}
+      <div className="grid grid-cols-3 gap-3">
+        <div className="bg-orange-50 border border-orange-100 rounded-2xl p-4 text-center">
+          <p className="text-2xl font-bold text-orange-600">{runningTimers.length}</p>
+          <p className="text-xs text-orange-500 mt-0.5">실행 중</p>
+        </div>
+        <div className="bg-green-50 border border-green-100 rounded-2xl p-4 text-center">
+          <p className="text-2xl font-bold text-green-600">{completedTotal}</p>
+          <p className="text-xs text-green-500 mt-0.5">누적 완료</p>
+        </div>
+        <div className="bg-red-50 border border-red-100 rounded-2xl p-4 text-center">
+          <p className="text-2xl font-bold text-red-500">{totalResets}</p>
+          <p className="text-xs text-red-400 mt-0.5">누적 리셋</p>
+        </div>
+      </div>
 
       {message && (
         <div className="px-4 py-3 bg-gray-50 rounded-xl text-sm text-gray-700">{message}</div>
@@ -162,7 +191,7 @@ export default function DroPage() {
             const isExpired = new Date(t.ends_at).getTime() <= now
             return (
               <div key={t.id} className={`bg-white rounded-2xl border-2 p-5 ${isExpired ? 'border-green-400 bg-green-50' : 'border-orange-300'}`}>
-                <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center justify-between mb-2">
                   <div>
                     <p className="font-bold text-gray-900">{studentName} · {t.pbs_goals?.behavior_name}</p>
                     <p className="text-xs text-gray-500">리셋 {t.reset_count}회</p>
@@ -171,6 +200,17 @@ export default function DroPage() {
                     {isExpired ? '✅ 완료!' : remaining}
                   </div>
                 </div>
+                {/* 진행률 바 */}
+                {!isExpired && (() => {
+                  const total = new Date(t.ends_at).getTime() - new Date(t.started_at).getTime()
+                  const elapsed = now - new Date(t.started_at).getTime()
+                  const pct = Math.min(100, Math.round((elapsed / total) * 100))
+                  return (
+                    <div className="w-full h-2 bg-orange-100 rounded-full overflow-hidden mb-3">
+                      <div className="h-full bg-orange-400 rounded-full transition-all" style={{ width: `${pct}%` }} />
+                    </div>
+                  )
+                })()}
                 <div className="flex gap-2">
                   <button onClick={() => handleAction(t.id, 'reset')} className="flex-1 py-2.5 bg-orange-50 hover:bg-orange-100 border border-orange-200 text-orange-600 font-medium rounded-xl transition-colors">
                     🔄 리셋 (문제행동 발생)
