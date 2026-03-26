@@ -44,26 +44,38 @@ export default function PrintableContract({ contract, onClose }: PrintableContra
         @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600;700;900&family=Noto+Sans+KR:wght@400;500;700&display=swap');
 
         @media print {
-          @page { size: A4 portrait; margin: 0; }
+          @page { size: A4 portrait; margin: 10mm; }
           .no-print { display: none !important; }
-          body { background: white !important; padding: 0 !important; margin: 0 !important; }
-          .contract {
-            max-width: 100% !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            height: 100vh !important;
-            display: flex !important;
-            flex-direction: column !important;
-            justify-content: center !important;
+          body { 
+            background: white !important; 
+            padding: 0 !important; 
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
           }
           .contract-paper { 
             box-shadow: none !important; 
-            border: none !important;
-            width: 100% !important;
-            height: 100% !important;
-            page-break-after: avoid;
-            page-break-inside: avoid;
+            border: 1px solid #000 !important;
+            page-break-after: always;
+            transform: scale(0.95);
+            transform-origin: top center;
+            max-height: 277mm;
+            overflow: hidden;
+            background-color: white !important;
           }
+          /* 모든 텍스트를 검정색으로 강제 */
+          .contract-paper * {
+            color: black !important;
+            border-color: black !important;
+          }
+          /* 배경색상 초기화 (흑백 대비를 위해) */
+          .bg-\[\#1a3a6b\], .bg-\[\#f0e9dc\], .bg-\[\#1a1410\], .bg-\[\#e8eef8\], .bg-\[\#fff8f0\], .bg-blue-50, .bg-green-50 {
+            background-color: transparent !important;
+            border: 1px solid black !important;
+          }
+          .text-white, .text-\[\#4a3f35\], .text-\[\#1a3a6b\], .text-\[\#1a1410\], .text-\[\#c8b99a\], .text-blue-600, .text-green-600 { 
+            color: black !important; 
+          }
+          .bg-\[\#1a6b3a\] { background-color: transparent !important; border: 1px solid black !important; }
         }
       `}</style>
 
@@ -104,7 +116,7 @@ export default function PrintableContract({ contract, onClose }: PrintableContra
                 </div>
               </div>
             </div>
-            <div className="text-center text-[28px] font-black tracking-[6px] border-t border-white/30 pt-4" style={{ fontFamily: "'Noto Serif KR', serif" }}>
+            <div className="text-center text-[28px] font-black tracking-[6px] border-t border-black/30 pt-4" style={{ fontFamily: "'Noto Serif KR', serif" }}>
               행 동 계 약 서
             </div>
             <div className="text-[11px] opacity-70 text-right mt-2 tracking-[1px]">
@@ -127,20 +139,20 @@ export default function PrintableContract({ contract, onClose }: PrintableContra
               </div>
               <div className="grid grid-cols-2 gap-y-1.5 gap-x-6 flex-1">
                 <div className="flex gap-2 items-baseline">
-                  <span className="text-[11px] text-[#1a3a6b] font-bold tracking-[0.5px] min-w-[52px]">이름</span>
-                  <span className="text-[14px] font-bold text-[#1a1410]">{contract.pbs_students?.name || '학생'}</span>
+                  <span className="text-[11px] text-black font-bold tracking-[0.5px] min-w-[52px]">이름</span>
+                  <span className="text-[14px] font-bold text-black">{contract.pbs_students?.name || '학생'}</span>
                 </div>
                 <div className="flex gap-2 items-baseline">
-                  <span className="text-[11px] text-[#1a3a6b] font-bold tracking-[0.5px] min-w-[52px]">계약번호</span>
-                  <span className="text-[14px] font-bold text-[#1a1410]">{contract.id.slice(0, 8)}</span>
+                  <span className="text-[11px] text-black font-bold tracking-[0.5px] min-w-[52px]">계약번호</span>
+                  <span className="text-[14px] font-bold text-black">{contract.id.slice(0, 8)}</span>
                 </div>
                 <div className="flex gap-2 items-baseline">
-                  <span className="text-[11px] text-[#1a3a6b] font-bold tracking-[0.5px] min-w-[52px]">계약제목</span>
-                  <span className="text-[14px] font-bold text-[#1a1410]">{contract.contract_title}</span>
+                  <span className="text-[11px] text-black font-bold tracking-[0.5px] min-w-[52px]">계약제목</span>
+                  <span className="text-[14px] font-bold text-black">{contract.contract_title}</span>
                 </div>
                 <div className="flex gap-2 items-baseline">
-                  <span className="text-[11px] text-[#1a3a6b] font-bold tracking-[0.5px] min-w-[52px]">상태</span>
-                  <span className="text-[14px] font-bold text-[#1a1410]">{contract.is_active ? '진행중' : '종료'}</span>
+                  <span className="text-[11px] text-black font-bold tracking-[0.5px] min-w-[52px]">상태</span>
+                  <span className="text-[14px] font-bold text-black">{contract.is_active ? '진행중' : '종료'}</span>
                 </div>
               </div>
             </div>
@@ -205,7 +217,7 @@ export default function PrintableContract({ contract, onClose }: PrintableContra
                       )}
                     </td>
                     <td className="border border-[#c8b99a] px-3.5 py-3 align-middle text-center">
-                      <span className="inline-block bg-[#1a6b3a] text-white px-2.5 py-0.5 rounded-xl text-[13px] font-bold">
+                      <span className="inline-block bg-[#1a6b3a] text-white print:text-black px-2.5 py-0.5 rounded-xl text-[13px] font-bold">
                         +{formatCurrency(contract.reward_amount)}
                       </span>
                       <div className="text-[11px] text-black font-medium mt-1">조건 달성 시</div>
@@ -243,35 +255,35 @@ export default function PrintableContract({ contract, onClose }: PrintableContra
               <div className="text-[13px] font-bold text-[#1a3a6b] tracking-[2px] border-b-2 border-[#1a3a6b] pb-1.5 mb-3.5 flex items-center gap-2" style={{ fontFamily: "'Noto Serif KR', serif" }}>
                 📜 제4조 — 특약 사항 (우리의 약속)
               </div>
-              <div className="bg-white border-2 border-[#b8860b] rounded-lg px-5 py-5 mb-2.5">
-                <div className="text-[11px] font-bold text-[#b8860b] tracking-[1.5px] mb-3">🤝 학생의 약속</div>
+              <div className="bg-white border-2 border-black rounded-lg px-5 py-5 mb-2.5">
+                <div className="text-[11px] font-bold text-black tracking-[1.5px] mb-3">🤝 학생의 약속</div>
                 <ul className="space-y-2">
-                  <li className="flex gap-2.5 items-start text-[13px] leading-relaxed">
-                    <span className="text-[#b8860b] text-[10px] mt-1 flex-shrink-0">◆</span>
+                  <li className="flex gap-2.5 items-start text-[13px] text-black font-medium leading-relaxed">
+                    <span className="text-black text-[10px] mt-1 flex-shrink-0">◆</span>
                     <span>이 계약서에 명시된 목표 행동을 달성하기 위해 최선을 다하겠습니다.</span>
                   </li>
-                  <li className="flex gap-2.5 items-start text-[13px] leading-relaxed">
-                    <span className="text-[#b8860b] text-[10px] mt-1 flex-shrink-0">◆</span>
+                  <li className="flex gap-2.5 items-start text-[13px] text-black font-medium leading-relaxed">
+                    <span className="text-black text-[10px] mt-1 flex-shrink-0">◆</span>
                     <span>약속한 행동을 지속적으로 실천하겠습니다.</span>
                   </li>
                 </ul>
               </div>
-              <div className="bg-white border-2 border-[#1a3a6b] rounded-lg px-5 py-5">
-                <div className="text-[11px] font-bold text-[#1a3a6b] tracking-[1.5px] mb-3">🏫 선생님의 약속</div>
+              <div className="bg-white border-2 border-black rounded-lg px-5 py-5">
+                <div className="text-[11px] font-bold text-black tracking-[1.5px] mb-3">🏫 선생님의 약속</div>
                 <ul className="space-y-2">
-                  <li className="flex gap-2.5 items-start text-[13px] leading-relaxed">
-                    <span className="text-[#1a3a6b] text-[10px] mt-1 flex-shrink-0">◆</span>
+                  <li className="flex gap-2.5 items-start text-[13px] text-black font-medium leading-relaxed">
+                    <span className="text-black text-[10px] mt-1 flex-shrink-0">◆</span>
                     <span>조건을 달성하면 약속한 금액을 반드시 제때 입금하겠습니다.</span>
                   </li>
-                  <li className="flex gap-2.5 items-start text-[13px] leading-relaxed">
-                    <span className="text-[#1a3a6b] text-[10px] mt-1 flex-shrink-0">◆</span>
+                  <li className="flex gap-2.5 items-start text-[13px] text-black font-medium leading-relaxed">
+                    <span className="text-black text-[10px] mt-1 flex-shrink-0">◆</span>
                     <span>계약이 잘 진행되도록 매일 함께 확인하겠습니다.</span>
                   </li>
                 </ul>
               </div>
               {contract.teacher_note && (
-                <div className="bg-[#fff8f0] border-[1.5px] border-[#e8c88a] rounded-md px-4 py-3.5 mt-2">
-                  <div className="text-[11px] font-bold text-[#b8860b] tracking-[1px] mb-2 flex items-center gap-1.5">
+                <div className="bg-[#fff8f0] border-[1.5px] border-[#e8c88a] print:border-black rounded-md px-4 py-3.5 mt-2">
+                  <div className="text-[11px] font-bold text-black tracking-[1px] mb-2 flex items-center gap-1.5">
                     ⚠️ 교사 참고사항
                   </div>
                   <p className="text-[12px] text-black font-medium leading-relaxed">{contract.teacher_note}</p>
@@ -280,50 +292,50 @@ export default function PrintableContract({ contract, onClose }: PrintableContra
             </div>
 
             {/* 서명란 */}
-            <div className="mt-8 border-t-2 border-[#c8b99a] pt-6">
-              <div className="text-[12px] font-bold text-[#4a3f35] tracking-[2px] text-center mb-5" style={{ fontFamily: "'Noto Serif KR', serif" }}>
+            <div className="mt-8 border-t-2 border-black pt-6">
+              <div className="text-[12px] font-bold text-black tracking-[2px] text-center mb-5" style={{ fontFamily: "'Noto Serif KR', serif" }}>
                 위 내용에 동의하며 계약을 체결합니다
               </div>
-              <div className="text-center text-[13px] text-[#4a3f35] mb-4">
+              <div className="text-center text-[13px] text-black font-medium mb-4">
                 {new Date().getFullYear()}년 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 월 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 일
               </div>
               <div className="grid grid-cols-3 gap-4">
-                <div className="border-[1.5px] border-[#c8b99a] rounded-md overflow-hidden">
-                  <div className="bg-[#f0e9dc] px-3 py-2 text-[11px] font-bold text-[#4a3f35] tracking-[1px] text-center">
+                <div className="border-[1.5px] border-black rounded-md overflow-hidden">
+                  <div className="bg-transparent px-3 py-2 text-[11px] font-bold text-black tracking-[1px] text-center border-b border-black">
                     🏫 교사 (사용자)
                   </div>
                   <div className="px-3 py-4 min-h-[70px] flex flex-col justify-end">
-                    <div className={`h-9 border-[1.5px] ${contract.teacher_signed ? 'border-solid bg-blue-50' : 'border-dashed'} border-[#c8b99a] rounded flex items-center justify-center text-[10px] ${contract.teacher_signed ? 'text-blue-600 font-bold' : 'text-[#c8b99a] font-bold'} tracking-[0.5px] mb-1.5`}>
+                    <div className={`h-9 border-[1.5px] border-black rounded flex items-center justify-center text-[10px] text-black font-bold tracking-[0.5px] mb-1.5`}>
                       {contract.teacher_signed ? '✓ 서명완료' : '인 / 서명'}
                     </div>
-                    <div className="border-b border-[#c8b99a] pb-1 text-[13px] font-bold text-[#1a1410] min-h-7"></div>
-                    <div className="text-[11px] text-[#4a3f35] mt-1.5">성명: ________________</div>
+                    <div className="border-b border-black pb-1 text-[13px] font-bold text-black min-h-7"></div>
+                    <div className="text-[11px] text-black mt-1.5">성명: ________________</div>
                   </div>
                 </div>
-                <div className="border-[1.5px] border-[#c8b99a] rounded-md overflow-hidden">
-                  <div className="bg-[#f0e9dc] px-3 py-2 text-[11px] font-bold text-[#4a3f35] tracking-[1px] text-center">
+                <div className="border-[1.5px] border-black rounded-md overflow-hidden">
+                  <div className="bg-transparent px-3 py-2 text-[11px] font-bold text-black tracking-[1px] text-center border-b border-black">
                     👦 학생 (근로자)
                   </div>
                   <div className="px-3 py-4 min-h-[70px] flex flex-col justify-end">
-                    <div className={`h-9 border-[1.5px] ${contract.student_signed ? 'border-solid bg-green-50' : 'border-dashed'} border-[#c8b99a] rounded flex items-center justify-center text-xl ${contract.student_signed ? 'text-green-600' : 'text-[#c8b99a]'} mb-1.5`}>
+                    <div className={`h-9 border-[1.5px] border-black rounded flex items-center justify-center text-xl text-black mb-1.5`}>
                       {contract.student_signed ? '👋' : ''}
                     </div>
-                    <div className="border-b border-[#c8b99a] pb-1 text-[13px] font-bold text-[#1a1410] min-h-7">
+                    <div className="border-b border-black pb-1 text-[13px] font-bold text-black min-h-7">
                       {contract.pbs_students?.name || ''}
                     </div>
-                    <div className="text-[11px] text-[#4a3f35] mt-1.5">손도장 또는 서명</div>
+                    <div className="text-[11px] text-black mt-1.5">성명: {contract.pbs_students?.name ? `${contract.pbs_students?.name} (인)` : '________________'}</div>
                   </div>
                 </div>
-                <div className="border-[1.5px] border-[#c8b99a] rounded-md overflow-hidden">
-                  <div className="bg-[#f0e9dc] px-3 py-2 text-[11px] font-bold text-[#4a3f35] tracking-[1px] text-center">
-                    👨‍👩‍👦 보호자 (확인)
+                <div className="border-[1.5px] border-black rounded-md overflow-hidden">
+                  <div className="bg-transparent px-3 py-2 text-[11px] font-bold text-black tracking-[1px] text-center border-b border-black">
+                    👨‍👩‍� 학부모
                   </div>
                   <div className="px-3 py-4 min-h-[70px] flex flex-col justify-end">
-                    <div className={`h-9 border-[1.5px] ${contract.parent_signed ? 'border-solid bg-purple-50' : 'border-dashed'} border-[#c8b99a] rounded flex items-center justify-center text-[10px] ${contract.parent_signed ? 'text-purple-600 font-bold' : 'text-[#c8b99a] font-bold'} tracking-[0.5px] mb-1.5`}>
-                      {contract.parent_signed ? '✓ 서명완료' : '인 / 서명'}
+                    <div className={`h-9 border-[1.5px] border-black rounded flex items-center justify-center text-xl text-black mb-1.5`}>
+                      {contract.parent_signed ? '👋' : ''}
                     </div>
-                    <div className="border-b border-[#c8b99a] pb-1 text-[13px] font-bold text-[#1a1410] min-h-7"></div>
-                    <div className="text-[11px] text-[#4a3f35] mt-1.5">성명: ________________</div>
+                    <div className="border-b border-black pb-1 text-[13px] font-bold text-black min-h-7"></div>
+                    <div className="text-[11px] text-black mt-1.5">성명: ________________</div>
                   </div>
                 </div>
               </div>
