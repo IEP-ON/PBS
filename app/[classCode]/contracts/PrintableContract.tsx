@@ -48,17 +48,24 @@ export default function PrintableContract({ contract, onClose }: PrintableContra
             size: A4 portrait;
             margin: 6mm 8mm;
           }
+          /* 전체 숨김 → 계약서 컨테이너만 표시 */
+          body * { visibility: hidden !important; }
+          .print-outer,
+          .print-outer * { visibility: visible !important; }
+
           .no-print { display: none !important; }
+
           html, body {
             background: white !important;
             margin: 0 !important;
             padding: 0 !important;
           }
           .print-outer {
-            position: static !important;
+            position: fixed !important;
+            inset: 0 !important;
             background: white !important;
             overflow: visible !important;
-            display: block !important;
+            z-index: 99999 !important;
           }
           .print-wrapper {
             max-width: 100% !important;
