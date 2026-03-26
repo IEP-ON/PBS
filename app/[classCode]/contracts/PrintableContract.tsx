@@ -29,7 +29,42 @@ interface PrintableContractProps {
 
 export default function PrintableContract({ contract, onClose }: PrintableContractProps) {
   const handlePrint = () => {
-    window.print()
+    const paperEl = document.querySelector('.contract-paper') as HTMLElement
+    if (!paperEl) { window.print(); return }
+
+    const win = window.open('', '_blank', 'width=900,height=1300')
+    if (!win) { window.print(); return }
+
+    let styles = ''
+    Array.from(document.styleSheets).forEach(sheet => {
+      try {
+        Array.from(sheet.cssRules || []).forEach(r => { styles += r.cssText + '\n' })
+      } catch {
+        if (sheet.href) styles += `@import url("${sheet.href}");\n`
+      }
+    })
+
+    win.document.write(`<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    @page { size: A4 portrait; margin: 8mm 10mm; }
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
+    body { margin: 0; padding: 0; background: white; }
+    ${styles}
+  </style>
+</head>
+<body>
+  ${paperEl.outerHTML}
+  <script>
+    window.addEventListener('load', function() {
+      setTimeout(function() { window.print(); window.close(); }, 400);
+    });
+  <\/script>
+</body>
+</html>`)
+    win.document.close()
   }
 
   const formatDate = (dateStr: string) => {
