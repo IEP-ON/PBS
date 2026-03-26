@@ -90,6 +90,12 @@ type SaveStatus = 'idle' | 'saving' | 'done' | 'error'
 export default function AiBehaviorPlan({ studentId, studentName, grade, classCode }: Props) {
   const [open, setOpen] = useState(true)
 
+  // 입력 모드: 'structured' | 'free'
+  const [inputMode, setInputMode] = useState<'structured' | 'free'>('free')
+  const [freeText, setFreeText] = useState('')
+  const [parsing, setParsing] = useState(false)
+  const [parseError, setParseError] = useState('')
+
   // 입력 폼
   const [currentLevel, setCurrentLevel] = useState('')
   const [targetBehavior, setTargetBehavior] = useState('')
@@ -108,6 +114,35 @@ export default function AiBehaviorPlan({ studentId, studentName, grade, classCod
   // 저장 상태 (섹션별)
   const [saveStatus, setSaveStatus] = useState<Record<string, SaveStatus>>({})
   const [saveMsg, setSaveMsg] = useState<Record<string, string>>({})
+
+  const handleParse = async () => {
+    if (!freeText || freeText.trim().length < 10) {
+      setParseError('학생에 대한 설명을 10자 이상 입력해주세요.')
+      return
+    }
+    setParsing(true)
+    setParseError('')
+    try {
+      const res = await fetch('/api/ai/parse-behavior', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ freeText, studentName, grade }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || '분석 오류')
+      const p = data.parsed
+      if (p.currentLevel) setCurrentLevel(p.currentLevel)
+      if (p.targetBehavior) setTargetBehavior(p.targetBehavior)
+      if (p.antecedents) setAntecedents(p.antecedents)
+      if (p.consequences) setConsequences(p.consequences)
+      if (p.environment) setEnvironment(p.environment)
+      setInputMode('structured')
+    } catch (e: unknown) {
+      setParseError(e instanceof Error ? e.message : '오류가 발생했습니다.')
+    } finally {
+      setParsing(false)
+    }
+  }
 
   const handleGenerate = async () => {
     if (!currentLevel || !targetBehavior) {
@@ -299,8 +334,70 @@ export default function AiBehaviorPlan({ studentId, studentName, grade, classCod
       {open && (
         <div className="px-6 pb-6 space-y-5 border-t border-purple-100">
 
-          {/* 입력 폼 */}
-          <div className="space-y-3 pt-4">
+          {/* 입력 모드 토글 */}
+          <div className="flex items-center gap-2 pt-4">
+            <button
+              onClick={() => setInputMode('free')}
+              className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                inputMode === 'free'
+                  ? 'bg-purple-600 text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              ✍️ 자유 입력
+            </button>
+            <button
+              onClick={() => setInputMode('structured')}
+              className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                inputMode === 'structured'
+                  ? 'bg-purple-600 text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              📋 항목별 입력
+            </button>
+            <span className="text-xs text-gray-400 ml-2">
+              {inputMode === 'free' ? 'AI가 ABA ABC 모델 기반으로 자동 분배합니다' : '각 항목에 직접 입력합니다'}
+            </span>
+          </div>
+
+          {/* 자유 입력 모드 */}
+          {inputMode === 'free' && (
+            <div className="space-y-3">
+              <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 rounded-xl p-4">
+                <p className="text-sm font-semibold text-purple-800 mb-1">💡 자유롭게 작성하세요</p>
+                <p className="text-xs text-purple-600">학생의 장애 유형, 현재 수준, 문제 행동, 발생 상황 등을 순서 상관없이 편하게 적어주세요. AI가 ABA 기능행동평가(FBA) 프레임워크에 맞게 자동으로 분류합니다.</p>
+              </div>
+              <textarea
+                value={freeText}
+                onChange={e => setFreeText(e.target.value)}
+                placeholder="예: 지적장애 2급인 3학년 남학생이에요. 수업 중에 자리를 이탈하는 행동이 하루에 5~8번 정도 있어요. 특히 수학 시간이나 어려운 과제가 주어지면 더 심해지고, 자리를 이탈하면 제가 가서 개별 지도를 해주게 돼요. 통합학급 25명이고 보조교사가 오전에만 있어요. 단어~짧은 문장 수준으로 표현하고 숫자는 10까지 인식해요."
+                rows={6}
+                className="block w-full px-4 py-3 bg-white border border-purple-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-400 resize-none"
+              />
+              {parseError && <p className="text-sm text-red-500">{parseError}</p>}
+              <button
+                onClick={handleParse}
+                disabled={parsing}
+                className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white font-semibold rounded-xl transition-colors flex items-center justify-center gap-2"
+              >
+                {parsing ? (
+                  <>
+                    <span className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
+                    AI 분석 중... (ABC 모델 기반 분류)
+                  </>
+                ) : '🧠 AI 자동 분배 (ABA 기반)'}
+              </button>
+            </div>
+          )}
+
+          {/* 구조화 입력 폼 */}
+          <div className={`space-y-3 ${inputMode === 'free' ? 'pt-2' : 'pt-4'}`}>
+            {inputMode === 'structured' && currentLevel && (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                <p className="text-xs text-green-700">✅ AI 자동 분배 완료 — 아래 항목을 확인하고 필요시 수정하세요</p>
+              </div>
+            )}
             <label className="block">
               <span className="text-sm font-semibold text-gray-700">현행수준 <span className="text-red-400">*</span></span>
               <textarea
