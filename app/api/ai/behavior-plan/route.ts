@@ -1,6 +1,59 @@
 import { NextResponse } from 'next/server'
 import { getSession } from '@/lib/session'
+import { createServerSupabase } from '@/lib/supabase/server'
 import OpenAI from 'openai'
+
+async function fetchReferenceContext() {
+  try {
+    const supabase = await createServerSupabase()
+
+    const [{ data: strategies }, { data: extinctionRisk }, { data: funcMap }] = await Promise.all([
+      supabase
+        .from('pbs_intervention_library')
+        .select('abbreviation,name_ko,evidence_level,target_functions,description_ko,cautions,contraindicated_functions')
+        .in('evidence_level', ['strong', 'moderate'])
+        .order('evidence_level'),
+      supabase
+        .from('pbs_extinction_risk_criteria')
+        .select('function_type,risk_level,burst_likelihood,recommended_preparation'),
+      supabase
+        .from('pbs_function_intervention_map')
+        .select('function_type,intervention_abbreviation,priority,rationale')
+        .order('priority'),
+    ])
+
+    const strategyMap: Record<string, string[]> = {}
+    for (const row of (funcMap ?? [])) {
+      if (!strategyMap[row.function_type]) strategyMap[row.function_type] = []
+      strategyMap[row.function_type].push(
+        `[우선순위${row.priority}] ${row.intervention_abbreviation}: ${row.rationale}`
+      )
+    }
+
+    const extinctionMap: Record<string, string> = {}
+    for (const row of (extinctionRisk ?? [])) {
+      extinctionMap[row.function_type] =
+        `위험도:${row.risk_level} / ${row.burst_likelihood ?? ''}`
+    }
+
+    const strategyDetails = (strategies ?? [])
+      .map((s) => `${s.abbreviation}(${s.name_ko})[${s.evidence_level}]: ${s.description_ko.slice(0, 80)}`)
+      .join('\n')
+
+    return `
+=== 근거기반 중재전략 DB (pbs_intervention_library) ===
+${strategyDetails}
+
+=== 행동 기능별 우선 전략 매핑 (pbs_function_intervention_map) ===
+${Object.entries(strategyMap).map(([fn, list]) => `[${fn}]\n  ${list.join('\n  ')}`).join('\n')}
+
+=== 소거 위험도 기준 (pbs_extinction_risk_criteria) ===
+${Object.entries(extinctionMap).map(([fn, info]) => `${fn}: ${info}`).join('\n')}
+`
+  } catch {
+    return ''
+  }
+}
 
 export async function POST(request: Request) {
   try {
@@ -21,28 +74,35 @@ export async function POST(request: Request) {
       antecedents,
       consequences,
       environment,
+      studentId,
     } = await request.json()
 
     if (!studentName || !currentLevel || !targetBehavior) {
       return NextResponse.json({ error: '학생 이름, 현행수준, 표적행동은 필수입니다.' }, { status: 400 })
     }
 
-    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+    const [openai, dbContext] = await Promise.all([
+      Promise.resolve(new OpenAI({ apiKey: process.env.OPENAI_API_KEY })),
+      fetchReferenceContext(),
+    ])
 
     const systemPrompt = `당신은 ABA(응용행동분석) 전문가이자 BCBA 수준의 행동 지원 계획 전문가입니다.
-다음 근거기반 문헌과 프레임워크를 기반으로 계획을 수립하세요:
+아래 근거기반 문헌을 기반으로 계획을 수립하세요:
 - Cooper, Heron & Heward (2020) Applied Behavior Analysis 3판
-- Sugai & Horner (2002) PBIS (긍정적 행동 지원) 3단계 프레임워크
-- Lerman & Iwata (1995) 소거 폭발(Extinction Burst) 예측 모델
-- Repp & Dietz (1974) DRO 간격 설정 원칙 (기저선 빈도의 1/2 간격 권장)
+- Sugai & Horner (2002) PBIS 3단계 프레임워크
+- Lerman & Iwata (1995) 소거 폭발 예측 모델 — JABA 28(1),93-94
+- Repp & Dietz (1974) DRO 간격 원칙 (기저선 간격 × 0.5) — JABA 7(2),313-325
+- Carr & Durand (1985) FCT 원저 — JABA 18(2),111-126
 - What Works Clearinghouse (IES) 근거기반 중재 목록
-
+${dbContext ? `\n[DB에서 조회된 참조 데이터 — 이 전략 목록과 매핑을 최우선 참고하세요]\n${dbContext}` : ''}
 중요 규칙:
 1. 반드시 모든 필드를 한국어로 작성하세요 (영어 사용 금지).
 2. pbsGoals는 최소 2개 이상 포함하세요 (대체행동 + 보완행동).
-3. interventions는 최소 2개 이상 포함하세요.
-4. tokenPerOccurrence는 100~500원 범위로 설정하세요 (학교 PBS 토큰경제 기준).
+3. interventions는 최소 2개 이상 포함하세요. DB의 전략 목록에서 선택하세요.
+4. tokenPerOccurrence는 100~500원 범위로 설정하세요.
 5. contract의 rewardAmount는 1000~5000원 범위로 설정하세요.
+6. sensory 기능으로 판단되면 소거(EXT) 절대 제안 금지.
+7. interventions의 evidenceLevel은 DB의 evidence_level 값(strong/moderate/emerging)을 그대로 사용하세요.
 
 반드시 JSON 형식으로만 응답하세요. 마크다운이나 설명 텍스트 없이 순수 JSON만 반환하세요.`
 
@@ -85,7 +145,7 @@ export async function POST(request: Request) {
     {
       "strategyName": "전략명",
       "description": "구체적 적용 방법 (2-3문장)",
-      "evidenceLevel": "evidence-based|promising|emerging",
+      "evidenceLevel": "strong|moderate|emerging 중 하나 (DB 기준)",
       "applicableFunctions": ["attention","escape","sensory","tangible"] 중 해당하는 것들
     }
   ],
@@ -117,6 +177,21 @@ export async function POST(request: Request) {
     }
 
     const plan = JSON.parse(content)
+
+    // 생성 로그 저장 (실패해도 응답은 정상 반환)
+    try {
+      const supabase = await createServerSupabase()
+      await supabase.from('pbs_ai_generation_log').insert({
+        classroom_id: session.classroomId,
+        student_id: studentId ?? null,
+        input_data: { studentName, grade, currentLevel, targetBehavior, antecedents, consequences, environment },
+        ai_output: plan,
+        estimated_function: plan.fba?.estimatedFunction ?? null,
+      })
+    } catch {
+      // 로그 실패는 무시
+    }
+
     return NextResponse.json({ plan })
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err)
