@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getSession } from '@/lib/session'
+import OpenAI from 'openai'
 
 export async function POST(request: Request) {
   try {
@@ -26,7 +27,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: '학생 이름, 현행수준, 표적행동은 필수입니다.' }, { status: 400 })
     }
 
-    const { default: OpenAI } = await import('openai')
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
     const systemPrompt = `당신은 ABA(응용행동분석) 전문가이자 BCBA 수준의 행동 지원 계획 전문가입니다.
@@ -111,8 +111,9 @@ export async function POST(request: Request) {
 
     const plan = JSON.parse(content)
     return NextResponse.json({ plan })
-  } catch (err) {
-    console.error('AI behavior plan error:', err)
-    return NextResponse.json({ error: 'AI 분석 중 오류가 발생했습니다.' }, { status: 500 })
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err)
+    console.error('AI behavior plan error:', msg)
+    return NextResponse.json({ error: `AI 분석 오류: ${msg}` }, { status: 500 })
   }
 }
