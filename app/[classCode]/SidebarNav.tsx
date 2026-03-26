@@ -12,9 +12,14 @@ interface NavItem {
   badge?: string
 }
 
+interface TooltipState {
+  item: NavItem
+  y: number
+}
+
 export default function SidebarNav({ classCode }: { classCode: string }) {
   const pathname = usePathname()
-  const [hoveredHref, setHoveredHref] = useState<string | null>(null)
+  const [tooltip, setTooltip] = useState<TooltipState | null>(null)
 
   const navItems: NavItem[] = [
     {
@@ -111,16 +116,19 @@ export default function SidebarNav({ classCode }: { classCode: string }) {
   ]
 
   return (
-    <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
-      {navItems.map((item) => {
-        const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
-        const isHovered = hoveredHref === item.href
-        return (
-          <div key={item.href} className="relative">
+    <>
+      <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
+        {navItems.map((item) => {
+          const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
+          return (
             <Link
+              key={item.href}
               href={item.href}
-              onMouseEnter={() => setHoveredHref(item.href)}
-              onMouseLeave={() => setHoveredHref(null)}
+              onMouseEnter={(e) => {
+                const rect = e.currentTarget.getBoundingClientRect()
+                setTooltip({ item, y: rect.top })
+              }}
+              onMouseLeave={() => setTooltip(null)}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
                 isActive
                   ? 'bg-blue-50 text-blue-700'
@@ -135,19 +143,24 @@ export default function SidebarNav({ classCode }: { classCode: string }) {
                 </span>
               )}
             </Link>
-            {isHovered && (
-              <div className="absolute left-full top-0 ml-2 z-50 w-48 px-3 py-2 bg-gray-900 text-white text-xs rounded-xl shadow-xl pointer-events-none whitespace-normal leading-relaxed">
-                <p className="font-medium text-gray-200 mb-0.5">{item.label}</p>
-                <p className="text-gray-400">{item.description}</p>
-                {item.badge && (
-                  <p className="text-purple-400 mt-1">✨ {item.badge} AI 분석 지원</p>
-                )}
-                <div className="absolute right-full top-3 border-4 border-transparent border-r-gray-900" />
-              </div>
-            )}
-          </div>
-        )
-      })}
-    </nav>
+          )
+        })}
+      </nav>
+
+      {/* fixed 툴팁 — overflow 잘림 없음 */}
+      {tooltip && (
+        <div
+          style={{ top: tooltip.y, left: 244 }}
+          className="fixed z-[9999] w-52 px-3 py-2.5 bg-gray-900 text-white text-xs rounded-xl shadow-2xl pointer-events-none"
+        >
+          <p className="font-semibold text-white mb-0.5">{tooltip.item.label}</p>
+          <p className="text-gray-400 leading-relaxed">{tooltip.item.description}</p>
+          {tooltip.item.badge && (
+            <p className="text-purple-400 mt-1.5">✨ {tooltip.item.badge} AI 분석 지원</p>
+          )}
+          <div className="absolute right-full top-3 border-4 border-transparent border-r-gray-900" />
+        </div>
+      )}
+    </>
   )
 }

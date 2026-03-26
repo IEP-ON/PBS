@@ -29,6 +29,20 @@ interface PbsRecord {
   pbs_goals: { behavior_name: string; token_per_occurrence: number }
 }
 
+interface ActiveContract {
+  id: string
+  contract_title: string
+  target_behavior: string
+  achievement_criteria: string | null
+  reward_amount: number
+}
+
+interface LibraryStrategy {
+  id: string
+  strategy_name: string
+  evidence_level: string
+}
+
 type GoalFormData = {
   behaviorName: string
   behaviorDefinition: string
@@ -36,7 +50,6 @@ type GoalFormData = {
   strategyType: string
 }
 
-const STRATEGY_OPTIONS = ['DRA', 'DRI', 'DRO', 'DRL', 'FCT', 'NCR', 'BC', 'Shaping', 'SM', 'TA', 'TM-CM']
 const emptyForm: GoalFormData = { behaviorName: '', behaviorDefinition: '', tokenPerOccurrence: '', strategyType: '' }
 
 export default function PbsCheckPage() {
@@ -47,6 +60,8 @@ export default function PbsCheckPage() {
   const [selectedStudent, setSelectedStudent] = useState<string | null>(null)
   const [goals, setGoals] = useState<PbsGoal[]>([])
   const [todayRecords, setTodayRecords] = useState<PbsRecord[]>([])
+  const [activeContracts, setActiveContracts] = useState<ActiveContract[]>([])
+  const [libraryStrategies, setLibraryStrategies] = useState<LibraryStrategy[]>([])
   const [loading, setLoading] = useState(true)
 
   // 모달 상태
@@ -56,29 +71,34 @@ export default function PbsCheckPage() {
   const [formError, setFormError] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
-  // 학생 목록 로드
+  // 학생 목록 + 라이브러리 전략 로드
   useEffect(() => {
-    fetch('/api/students')
-      .then((r) => r.json())
-      .then((data) => {
-        setStudents(data.students || [])
-        if (data.students?.length > 0) {
-          setSelectedStudent(data.students[0].id)
-        }
-        setLoading(false)
-      })
+    Promise.all([
+      fetch('/api/students').then(r => r.json()),
+      fetch('/api/interventions').then(r => r.json()),
+    ]).then(([sData, iData]) => {
+      setStudents(sData.students || [])
+      setLibraryStrategies(iData.strategies || [])
+      if (sData.students?.length > 0) {
+        setSelectedStudent(sData.students[0].id)
+      }
+      setLoading(false)
+    })
   }, [])
 
-  // 선택 학생의 PBS 목표 + 오늘 기록 로드
+  // 선택 학생의 PBS 목표 + 오늘 기록 + 활성 계약서 로드
   const loadStudentData = useCallback(async (studentId: string) => {
-    const [goalsRes, recordsRes] = await Promise.all([
+    const [goalsRes, recordsRes, contractsRes] = await Promise.all([
       fetch(`/api/pbs/goals?studentId=${studentId}`),
       fetch(`/api/pbs/records?studentId=${studentId}`),
+      fetch(`/api/contracts?studentId=${studentId}`),
     ])
     const goalsData = await goalsRes.json()
     const recordsData = await recordsRes.json()
+    const contractsData = await contractsRes.json()
     setGoals(goalsData.goals || [])
     setTodayRecords(recordsData.records || [])
+    setActiveContracts((contractsData.contracts || []).filter((c: ActiveContract & { is_active: boolean }) => c.is_active))
   }, [])
 
   useEffect(() => {
@@ -234,6 +254,33 @@ export default function PbsCheckPage() {
           </button>
         ))}
       </div>
+
+      {/* 활성 행동계약서 요약 배너 */}
+      {activeContracts.length > 0 && (
+        <div className="space-y-2">
+          {activeContracts.map((c) => (
+            <div key={c.id} className="flex items-center gap-3 px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl">
+              <span className="text-lg">📝</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-amber-600 font-medium">진행 중 행동계약서</p>
+                <p className="text-sm font-bold text-gray-900 truncate">{c.contract_title}</p>
+                <p className="text-xs text-gray-500 truncate">표적: {c.target_behavior}{c.achievement_criteria ? ` · 기준: ${c.achievement_criteria}` : ''}</p>
+              </div>
+              {c.reward_amount > 0 && (
+                <span className="text-xs font-bold text-amber-700 bg-amber-100 px-2 py-1 rounded-lg whitespace-nowrap">
+                  달성 +{formatCurrency(c.reward_amount)}
+                </span>
+              )}
+              <a
+                href={`/${classCode}/contracts`}
+                className="text-xs text-amber-500 hover:text-amber-700 whitespace-nowrap"
+              >
+                계약서 →
+              </a>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* PBS 목표 체크 보드 */}
       {goals.length === 0 ? (
@@ -391,17 +438,31 @@ export default function PbsCheckPage() {
             </label>
 
             <label className="block">
-              <span className="text-sm font-medium text-gray-700">중재 전략 (선택)</span>
+              <span className="text-sm font-medium text-gray-700">
+                중재 전략 (선택)
+                {libraryStrategies.length > 0 && (
+                  <span className="ml-1.5 text-xs text-blue-500">— 라이브러리 {libraryStrategies.length}개</span>
+                )}
+              </span>
               <select
                 value={form.strategyType}
                 onChange={(e) => setForm({ ...form, strategyType: e.target.value })}
                 className="mt-1 block w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">선택 안 함</option>
-                {STRATEGY_OPTIONS.map((s) => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
+                {libraryStrategies.length > 0 ? (
+                  libraryStrategies.map((s) => (
+                    <option key={s.id} value={s.strategy_name}>{s.strategy_name}</option>
+                  ))
+                ) : (
+                  ['DRA', 'DRI', 'DRO', 'DRL', 'FCT', 'NCR', 'BC', 'Shaping', 'SM', 'TA', 'TM-CM'].map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))
+                )}
               </select>
+              {libraryStrategies.length === 0 && (
+                <p className="text-xs text-gray-400 mt-1">중재전략 라이브러리에 전략을 등록하면 여기에 표시됩니다.</p>
+              )}
             </label>
 
             {formError && <p className="text-red-500 text-sm">{formError}</p>}

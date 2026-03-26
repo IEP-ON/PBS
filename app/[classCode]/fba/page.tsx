@@ -1,6 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useParams } from 'next/navigation'
+import Link from 'next/link'
 
 interface Student {
   id: string
@@ -19,6 +21,8 @@ interface FbaRecord {
 }
 
 export default function FbaPage() {
+  const params = useParams()
+  const classCode = params.classCode as string
   const [students, setStudents] = useState<Student[]>([])
   const [records, setRecords] = useState<FbaRecord[]>([])
   const [loading, setLoading] = useState(true)
@@ -148,7 +152,7 @@ export default function FbaPage() {
             onChange={e => setRequestAi(e.target.checked)}
             className="w-4 h-4"
           />
-          <span>AI 분석 요청 (Claude 3.5 Sonnet)</span>
+          <span>AI 분석 요청 (GPT-4o)</span>
         </label>
         <button 
           onClick={handleSubmit}
@@ -180,19 +184,27 @@ export default function FbaPage() {
                   </p>
                 </div>
                 {r.estimated_function && (
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full">
-                      추정 기능: {functionLabels[r.estimated_function] || r.estimated_function}
-                    </span>
-                    {r.confidence && (
-                      <span className={`text-xs px-2 py-1 rounded-full ${
-                        r.confidence === 'high' ? 'bg-green-100 text-green-700' :
-                        r.confidence === 'medium' ? 'bg-yellow-100 text-yellow-700' :
-                        'bg-gray-100 text-gray-600'
-                      }`}>
-                        신뢰도: {r.confidence === 'high' ? '높음' : r.confidence === 'medium' ? '중간' : '낮음'}
+                  <div className="space-y-1.5 mb-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full">
+                        추정 기능: {functionLabels[r.estimated_function] || r.estimated_function}
                       </span>
-                    )}
+                      {r.confidence && (
+                        <span className={`text-xs px-2 py-1 rounded-full ${
+                          r.confidence === 'high' ? 'bg-green-100 text-green-700' :
+                          r.confidence === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                          'bg-gray-100 text-gray-600'
+                        }`}>
+                          신뢰도: {r.confidence === 'high' ? '높음' : r.confidence === 'medium' ? '중간' : '낮음'}
+                        </span>
+                      )}
+                    </div>
+                    <Link
+                      href={`/${classCode}/interventions?function=${r.estimated_function}`}
+                      className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors"
+                    >
+                      📚 '{functionLabels[r.estimated_function]}' 행동에 맞는 중재전략 보기 →
+                    </Link>
                   </div>
                 )}
                 {r.gpt_analysis && (

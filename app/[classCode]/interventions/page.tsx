@@ -1,6 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
+import { useParams, useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 
 interface Strategy {
   id: string
@@ -9,10 +11,15 @@ interface Strategy {
   evidence_level: string
 }
 
-export default function InterventionsPage() {
+function InterventionsContent() {
+  const params = useParams()
+  const classCode = params.classCode as string
+  const searchParams = useSearchParams()
+  const fromFbaFunction = searchParams.get('function') || ''
+
   const [strategies, setStrategies] = useState<Strategy[]>([])
   const [loading, setLoading] = useState(true)
-  const [filterFunction, setFilterFunction] = useState('')
+  const [filterFunction, setFilterFunction] = useState(fromFbaFunction)
   const [showAddModal, setShowAddModal] = useState(false)
   const [strategyName, setStrategyName] = useState('')
   const [description, setDescription] = useState('')
@@ -115,6 +122,20 @@ export default function InterventionsPage() {
         <div className="px-4 py-3 bg-gray-50 rounded-xl text-sm text-gray-700">{message}</div>
       )}
 
+      {/* FBA에서 연결된 경우 배너 */}
+      {fromFbaFunction && (
+        <div className="flex items-center gap-3 px-4 py-3 bg-purple-50 border border-purple-200 rounded-xl">
+          <span className="text-lg">🔍</span>
+          <div className="flex-1">
+            <p className="text-xs text-purple-600 font-medium">FBA 분석 연동</p>
+            <p className="text-sm text-gray-700">
+              <strong>'{functions.find(f => f.id === fromFbaFunction)?.label || fromFbaFunction}'</strong> 행동 기능에 추천되는 전략을 필터링 중입니다.
+            </p>
+          </div>
+          <Link href={`/${classCode}/fba`} className="text-xs text-purple-500 hover:text-purple-700 whitespace-nowrap">FBA로 돌아가기</Link>
+        </div>
+      )}
+
       {/* 행동 기능 필터 */}
       <div className="flex gap-2 overflow-x-auto pb-1">
         <button
@@ -158,6 +179,14 @@ export default function InterventionsPage() {
                   </span>
                 </div>
                 <p className="text-sm text-gray-600">{s.description}</p>
+                <div className="mt-3 pt-3 border-t border-gray-50">
+                  <Link
+                    href={`/${classCode}/pbs`}
+                    className="inline-flex items-center gap-1 text-xs text-blue-500 hover:text-blue-700"
+                  >
+                    ✅ 이 전략으로 PBS 목표 설정하기 →
+                  </Link>
+                </div>
               </div>
             ))}
           </div>
@@ -241,5 +270,13 @@ export default function InterventionsPage() {
         </div>
       )}
     </div>
+  )
+}
+
+export default function InterventionsPage() {
+  return (
+    <Suspense fallback={<div className="p-6 flex items-center justify-center min-h-[300px]"><div className="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full" /></div>}>
+      <InterventionsContent />
+    </Suspense>
   )
 }
