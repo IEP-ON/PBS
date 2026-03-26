@@ -73,6 +73,11 @@ export default function PrintableContract({ contract, onClose }: PrintableContra
           }
           .contract-header-inner { padding: 4mm 6mm !important; }
           .contract-body-inner  { padding: 4mm 7mm !important; }
+          * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
+          }
         }
       `}</style>
 
@@ -160,9 +165,9 @@ export default function PrintableContract({ contract, onClose }: PrintableContra
               <div className="flex-1">
                 <div className="text-[11px] text-[#4a3f35] font-bold tracking-[0.5px] mb-0.5">계약 기간</div>
                 <div className="flex items-center gap-3">
-                  <span className="text-[15px] font-bold">{formatDate(contract.contract_start)}</span>
-                  <span className="text-[#c8b99a] text-lg">→</span>
-                  <span className="text-[15px] font-bold">{contract.contract_end ? formatDate(contract.contract_end) : '종료일 미정'}</span>
+                  <span className="text-[15px] font-bold text-[#1a1410]">{formatDate(contract.contract_start)}</span>
+                  <span className="text-[#4a3f35] text-lg">→</span>
+                  <span className="text-[15px] font-bold text-[#1a1410]">{contract.contract_end ? formatDate(contract.contract_end) : '종료일 미정'}</span>
                 </div>
               </div>
             </div>
@@ -208,7 +213,7 @@ export default function PrintableContract({ contract, onClose }: PrintableContra
                     <td className="border border-[#c8b99a] px-3.5 py-3 align-middle">
                       {contract.achievement_criteria || '목표 행동 달성 시'}
                       {contract.measurement_method && (
-                        <div className="text-[11px] text-gray-500 mt-1">
+                        <div className="text-[11px] text-[#1a1410] mt-1">
                           측정: {contract.measurement_method}
                         </div>
                       )}
@@ -217,7 +222,7 @@ export default function PrintableContract({ contract, onClose }: PrintableContra
                       <span className="inline-block bg-[#1a6b3a] text-white px-2.5 py-0.5 rounded-xl text-[13px] font-bold">
                         +{formatCurrency(contract.reward_amount)}
                       </span>
-                      <div className="text-[11px] text-gray-500 mt-1">조건 달성 시</div>
+                      <div className="text-[11px] text-[#1a1410] mt-1">조건 달성 시</div>
                     </td>
                   </tr>
                 </tbody>
@@ -255,11 +260,11 @@ export default function PrintableContract({ contract, onClose }: PrintableContra
               <div className="bg-white border-2 border-[#b8860b] rounded-lg px-5 py-5 mb-2.5">
                 <div className="text-[11px] font-bold text-[#b8860b] tracking-[1.5px] mb-3">🤝 학생의 약속</div>
                 <ul className="space-y-2">
-                  <li className="flex gap-2.5 items-start text-[13px] leading-relaxed">
+                  <li className="flex gap-2.5 items-start text-[13px] leading-relaxed text-[#1a1410]">
                     <span className="text-[#b8860b] text-[10px] mt-1 flex-shrink-0">◆</span>
                     <span>이 계약서에 명시된 목표 행동을 달성하기 위해 최선을 다하겠습니다.</span>
                   </li>
-                  <li className="flex gap-2.5 items-start text-[13px] leading-relaxed">
+                  <li className="flex gap-2.5 items-start text-[13px] leading-relaxed text-[#1a1410]">
                     <span className="text-[#b8860b] text-[10px] mt-1 flex-shrink-0">◆</span>
                     <span>약속한 행동을 지속적으로 실천하겠습니다.</span>
                   </li>
@@ -268,11 +273,11 @@ export default function PrintableContract({ contract, onClose }: PrintableContra
               <div className="bg-white border-2 border-[#1a3a6b] rounded-lg px-5 py-5">
                 <div className="text-[11px] font-bold text-[#1a3a6b] tracking-[1.5px] mb-3">🏫 선생님의 약속</div>
                 <ul className="space-y-2">
-                  <li className="flex gap-2.5 items-start text-[13px] leading-relaxed">
+                  <li className="flex gap-2.5 items-start text-[13px] leading-relaxed text-[#1a1410]">
                     <span className="text-[#1a3a6b] text-[10px] mt-1 flex-shrink-0">◆</span>
                     <span>조건을 달성하면 약속한 금액을 반드시 제때 입금하겠습니다.</span>
                   </li>
-                  <li className="flex gap-2.5 items-start text-[13px] leading-relaxed">
+                  <li className="flex gap-2.5 items-start text-[13px] leading-relaxed text-[#1a1410]">
                     <span className="text-[#1a3a6b] text-[10px] mt-1 flex-shrink-0">◆</span>
                     <span>계약이 잘 진행되도록 매일 함께 확인하겠습니다.</span>
                   </li>
