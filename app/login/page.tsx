@@ -1,8 +1,16 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+
+const STUDENT_SAVED_KEY = 'pbs_student_saved'
+
+interface SavedStudent {
+  classCode: string
+  studentName: string
+  classInfo: { className: string; schoolName: string }
+}
 
 export default function LoginPage() {
   const router = useRouter()
@@ -11,11 +19,28 @@ export default function LoginPage() {
   const [teacherPin, setTeacherPin] = useState('')
   const [studentName, setStudentName] = useState('')
   const [studentPin, setStudentPin] = useState('')
-  const [students, setStudents] = useState<{ id: string; name: string }[]>([])
+  const [savedStudent, setSavedStudent] = useState<SavedStudent | null>(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [step, setStep] = useState<'code' | 'auth'>('code')
   const [classInfo, setClassInfo] = useState<{ className: string; schoolName: string } | null>(null)
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(STUDENT_SAVED_KEY)
+      if (raw) {
+        const parsed: SavedStudent = JSON.parse(raw)
+        setSavedStudent(parsed)
+        setClassCode(parsed.classCode)
+        setStudentName(parsed.studentName)
+        setClassInfo(parsed.classInfo)
+        setMode('student')
+        setStep('auth')
+      }
+    } catch {
+      localStorage.removeItem(STUDENT_SAVED_KEY)
+    }
+  }, [])
 
   const handleClassCodeSubmit = async () => {
     if (!classCode.trim()) {
@@ -91,11 +116,31 @@ export default function LoginPage() {
         return
       }
 
+      if (classInfo) {
+        localStorage.setItem(STUDENT_SAVED_KEY, JSON.stringify({
+          classCode: classCode.toUpperCase(),
+          studentName,
+          classInfo,
+        }))
+      }
+
       router.push(`/s/${data.classCode}/${data.studentId}/home`)
     } catch {
       setError('서버 연결에 실패했습니다.')
       setLoading(false)
     }
+  }
+
+  const handleClearSaved = () => {
+    localStorage.removeItem(STUDENT_SAVED_KEY)
+    setSavedStudent(null)
+    setStudentName('')
+    setStudentPin('')
+    setClassCode('')
+    setClassInfo(null)
+    setStep('code')
+    setMode('teacher')
+    setError('')
   }
 
   return (
@@ -191,16 +236,35 @@ export default function LoginPage() {
                 </>
               ) : (
                 <>
-                  <label className="block">
-                    <span className="text-sm font-medium text-gray-700">이름</span>
-                    <input
-                      type="text"
-                      value={studentName}
-                      onChange={(e) => setStudentName(e.target.value)}
-                      placeholder="이름을 입력하세요"
-                      className="mt-1 block w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-center text-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </label>
+                  {savedStudent ? (
+                    <div className="flex items-center justify-between px-4 py-3 bg-blue-50 border border-blue-200 rounded-xl">
+                      <div className="flex items-center gap-3">
+                        <span className="text-2xl">🔒</span>
+                        <div>
+                          <p className="text-xs text-blue-500 font-medium">저장된 학생</p>
+                          <p className="text-lg font-bold text-gray-900">{savedStudent.studentName}</p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleClearSaved}
+                        className="text-xs text-gray-400 hover:text-red-500 transition-colors"
+                      >
+                        다른 학생
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="block">
+                      <span className="text-sm font-medium text-gray-700">이름</span>
+                      <input
+                        type="text"
+                        value={studentName}
+                        onChange={(e) => setStudentName(e.target.value)}
+                        placeholder="이름을 입력하세요"
+                        className="mt-1 block w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-center text-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </label>
+                  )}
                   <label className="block">
                     <span className="text-sm font-medium text-gray-700">PIN 4자리</span>
                     <input
@@ -208,9 +272,14 @@ export default function LoginPage() {
                       inputMode="numeric"
                       maxLength={4}
                       value={studentPin}
-                      onChange={(e) => setStudentPin(e.target.value.replace(/\D/g, ''))}
+                      onChange={(e) => {
+                        const v = e.target.value.replace(/\D/g, '')
+                        setStudentPin(v)
+                        if (v.length === 4) setTimeout(() => handleStudentLogin(), 100)
+                      }}
                       placeholder="●●●●"
                       className="mt-1 block w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-center text-2xl tracking-[0.5em] text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      autoFocus={!!savedStudent}
                       onKeyDown={(e) => e.key === 'Enter' && handleStudentLogin()}
                     />
                   </label>

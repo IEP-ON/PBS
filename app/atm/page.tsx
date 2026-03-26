@@ -126,7 +126,7 @@ export default function AtmPage() {
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' },
+        video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
       })
       streamRef.current = stream
       setScanning(true)
@@ -347,6 +347,24 @@ export default function AtmPage() {
             <p className="text-sm text-blue-300 font-mono">{savedClassCode}</p>
           </div>
 
+          {/* QR통장 기본 스캔 버튼 */}
+          {!isPassbookScan && (
+            <button
+              type="button"
+              onClick={() => startCamera('passbook')}
+              className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white text-lg font-bold rounded-2xl transition-colors flex items-center justify-center gap-3 shadow-lg"
+            >
+              <span className="text-2xl">📔</span>
+              QR 통장 스캔으로 로그인
+            </button>
+          )}
+
+          <div className="flex items-center gap-3">
+            <div className="flex-1 h-px bg-gray-200" />
+            <span className="text-xs text-gray-400">또는 이름으로 직접 입력</span>
+            <div className="flex-1 h-px bg-gray-200" />
+          </div>
+
           <form onSubmit={handleLogin} className="bg-white rounded-2xl shadow-xl p-6 space-y-4">
             {isPassbookScan ? (
               <div className="flex items-center gap-3 px-4 py-3 bg-blue-50 border border-blue-200 rounded-xl">
@@ -366,24 +384,13 @@ export default function AtmPage() {
             ) : (
               <label className="block">
                 <span className="text-sm font-medium text-gray-700">이름</span>
-                <div className="flex gap-2 mt-1">
-                  <input
-                    type="text"
-                    value={studentName}
-                    onChange={e => setStudentName(e.target.value)}
-                    placeholder="이름 입력"
-                    className="flex-1 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-center text-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => startCamera('passbook')}
-                    title="통장 QR 스캔"
-                    className="px-3 py-3 bg-gray-100 hover:bg-blue-100 text-gray-600 hover:text-blue-600 rounded-xl transition-colors text-xl"
-                  >
-                    📔
-                  </button>
-                </div>
-                <p className="text-xs text-gray-400 mt-1 text-right">또는 📔 버튼으로 통장 QR 스캔</p>
+                <input
+                  type="text"
+                  value={studentName}
+                  onChange={e => setStudentName(e.target.value)}
+                  placeholder="이름 입력"
+                  className="mt-1 block w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-center text-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
               </label>
             )}
 
@@ -394,7 +401,11 @@ export default function AtmPage() {
                 inputMode="numeric"
                 maxLength={4}
                 value={pin}
-                onChange={e => setPin(e.target.value.replace(/\D/g, ''))}
+                onChange={e => {
+                  const v = e.target.value.replace(/\D/g, '')
+                  setPin(v)
+                  if (v.length === 4) setTimeout(() => handleLogin(), 100)
+                }}
                 placeholder="●●●●"
                 className="mt-1 block w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-center text-3xl tracking-[0.5em] text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 autoFocus

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { formatCurrency } from '@/lib/utils'
 import SettleButton from './SettleButton'
 import SalaryButtons from './SalaryButtons'
+import RealtimeNotice from './RealtimeNotice'
 
 export default async function DashboardPage({
   params,
@@ -87,6 +88,7 @@ export default async function DashboardPage({
     .eq('is_active', true)
 
   return (
+    <>
     <div className="p-6 space-y-6">
       {/* 헤더 */}
       <div className="flex items-center justify-between">
@@ -207,5 +209,7 @@ export default async function DashboardPage({
         )}
       </div>
     </div>
+    <RealtimeNotice classroomId={session.classroomId} />
+    </>
   )
 }

@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { getSession } from '@/lib/session'
 import { redirect } from 'next/navigation'
+import SidebarNav from './SidebarNav'
 
 export default async function TeacherLayout({
   children,
@@ -20,24 +21,6 @@ export default async function TeacherLayout({
     redirect('/login')
   }
 
-  const navItems = [
-    { href: `/${classCode}/dashboard`, label: '대시보드', icon: '📊' },
-    { href: `/${classCode}/pbs`, label: 'PBS 체크', icon: '✅' },
-    { href: `/${classCode}/students`, label: '학생 관리', icon: '👨‍🎓' },
-    { href: `/${classCode}/stocks`, label: '주식', icon: '📈' },
-    { href: `/${classCode}/shop`, label: '가게', icon: '🏪' },
-    { href: `/${classCode}/contracts`, label: '행동계약서', icon: '📝' },
-    { href: `/${classCode}/dro`, label: 'DRO 타이머', icon: '⏱️' },
-    { href: `/${classCode}/response-cost`, label: '반응대가', icon: '⚠️' },
-    { href: `/${classCode}/fba`, label: 'FBA 분석', icon: '🔍' },
-    { href: `/${classCode}/interventions`, label: '중재 전략', icon: '📚' },
-    { href: `/${classCode}/extinction-alerts`, label: '소거 알림', icon: '🚨' },
-    { href: `/${classCode}/ethics`, label: '윤리/동의', icon: '📜' },
-    { href: `/${classCode}/qr-tokens`, label: 'QR 토큰', icon: '🪙' },
-    { href: `/${classCode}/class-account`, label: '학급 계좌', icon: '🏫' },
-    { href: `/${classCode}/settings`, label: '설정', icon: '⚙️' },
-  ]
-
   return (
     <div className="min-h-screen bg-gray-50 flex">
       {/* 사이드바 */}
@@ -52,18 +35,7 @@ export default async function TeacherLayout({
           </Link>
         </div>
 
-        <nav className="flex-1 p-3 space-y-1">
-          {navItems.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors text-sm font-medium"
-            >
-              <span className="text-lg">{item.icon}</span>
-              {item.label}
-            </Link>
-          ))}
-        </nav>
+        <SidebarNav classCode={classCode} />
 
         <div className="p-3 border-t border-gray-100">
           <form action="/api/auth/logout" method="POST">
