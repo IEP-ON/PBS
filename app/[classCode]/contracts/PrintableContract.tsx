@@ -61,8 +61,10 @@ export default function PrintableContract({ contract, onClose }: PrintableContra
             padding: 0 !important;
           }
           .print-outer {
-            position: fixed !important;
-            inset: 0 !important;
+            position: absolute !important;
+            top: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
             background: white !important;
             overflow: visible !important;
             z-index: 99999 !important;
@@ -75,11 +77,11 @@ export default function PrintableContract({ contract, onClose }: PrintableContra
           .contract-paper {
             box-shadow: none !important;
             border: none !important;
-            zoom: 0.79;
+            zoom: 0.73;
             margin: 0 auto !important;
           }
-          .contract-header-inner { padding: 4mm 6mm !important; }
-          .contract-body-inner  { padding: 4mm 7mm !important; }
+          .contract-header-inner { padding: 3mm 6mm !important; }
+          .contract-body-inner  { padding: 3mm 7mm !important; }
           * {
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
