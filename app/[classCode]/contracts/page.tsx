@@ -275,14 +275,14 @@ export default function ContractsPage() {
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   {c.behavior_definition && (
                     <div className="bg-gray-50 rounded-lg p-3">
-                      <p className="text-xs text-gray-400">행동 정의</p>
-                      <p className="text-gray-700 text-xs mt-0.5">{c.behavior_definition}</p>
+                      <p className="text-xs text-gray-900 font-medium">행동 정의</p>
+                      <p className="text-gray-900 text-xs mt-0.5">{c.behavior_definition}</p>
                     </div>
                   )}
                   {c.measurement_method && (
                     <div className="bg-gray-50 rounded-lg p-3">
-                      <p className="text-xs text-gray-400">측정 방법</p>
-                      <p className="text-gray-700 text-xs mt-0.5">{c.measurement_method}</p>
+                      <p className="text-xs text-gray-900 font-medium">측정 방법</p>
+                      <p className="text-gray-900 text-xs mt-0.5">{c.measurement_method}</p>
                     </div>
                   )}
                   {c.achievement_criteria && (
