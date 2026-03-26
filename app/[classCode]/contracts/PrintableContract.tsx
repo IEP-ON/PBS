@@ -44,12 +44,25 @@ export default function PrintableContract({ contract, onClose }: PrintableContra
         @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600;700;900&family=Noto+Sans+KR:wght@400;500;700&display=swap');
 
         @media print {
+          @page { size: A4 portrait; margin: 0; }
           .no-print { display: none !important; }
-          body { background: white !important; padding: 0 !important; }
+          body { background: white !important; padding: 0 !important; margin: 0 !important; }
+          .contract {
+            max-width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            height: 100vh !important;
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: center !important;
+          }
           .contract-paper { 
             box-shadow: none !important; 
-            border: 1px solid #ccc !important;
-            page-break-after: always;
+            border: none !important;
+            width: 100% !important;
+            height: 100% !important;
+            page-break-after: avoid;
+            page-break-inside: avoid;
           }
         }
       `}</style>
@@ -136,11 +149,11 @@ export default function PrintableContract({ contract, onClose }: PrintableContra
             <div className="bg-[#f0e9dc] border border-[#c8b99a] rounded-lg px-5 py-3.5 flex items-center gap-4 mb-5">
               <div className="text-2xl">📅</div>
               <div className="flex-1">
-                <div className="text-[11px] text-[#4a3f35] font-bold tracking-[0.5px] mb-0.5">계약 기간</div>
+                <div className="text-[11px] text-black font-bold tracking-[0.5px] mb-0.5">계약 기간</div>
                 <div className="flex items-center gap-3">
-                  <span className="text-[15px] font-bold">{formatDate(contract.contract_start)}</span>
-                  <span className="text-[#c8b99a] text-lg">→</span>
-                  <span className="text-[15px] font-bold">{contract.contract_end ? formatDate(contract.contract_end) : '종료일 미정'}</span>
+                  <span className="text-[15px] text-black font-bold">{formatDate(contract.contract_start)}</span>
+                  <span className="text-black font-bold text-lg">→</span>
+                  <span className="text-[15px] text-black font-bold">{contract.contract_end ? formatDate(contract.contract_end) : '종료일 미정'}</span>
                 </div>
               </div>
             </div>
@@ -183,10 +196,10 @@ export default function PrintableContract({ contract, onClose }: PrintableContra
                 <tbody>
                   <tr>
                     <td className="border border-[#c8b99a] px-3.5 py-3 align-middle">🌟 기본 보상</td>
-                    <td className="border border-[#c8b99a] px-3.5 py-3 align-middle">
+                    <td className="border border-[#c8b99a] px-3.5 py-3 align-middle text-black font-medium">
                       {contract.achievement_criteria || '목표 행동 달성 시'}
                       {contract.measurement_method && (
-                        <div className="text-[11px] text-gray-500 mt-1">
+                        <div className="text-[11px] text-black font-medium mt-1">
                           측정: {contract.measurement_method}
                         </div>
                       )}
@@ -195,7 +208,7 @@ export default function PrintableContract({ contract, onClose }: PrintableContra
                       <span className="inline-block bg-[#1a6b3a] text-white px-2.5 py-0.5 rounded-xl text-[13px] font-bold">
                         +{formatCurrency(contract.reward_amount)}
                       </span>
-                      <div className="text-[11px] text-gray-500 mt-1">조건 달성 시</div>
+                      <div className="text-[11px] text-black font-medium mt-1">조건 달성 시</div>
                     </td>
                   </tr>
                 </tbody>
@@ -261,7 +274,7 @@ export default function PrintableContract({ contract, onClose }: PrintableContra
                   <div className="text-[11px] font-bold text-[#b8860b] tracking-[1px] mb-2 flex items-center gap-1.5">
                     ⚠️ 교사 참고사항
                   </div>
-                  <p className="text-[12px] text-[#4a3f35] leading-relaxed">{contract.teacher_note}</p>
+                  <p className="text-[12px] text-black font-medium leading-relaxed">{contract.teacher_note}</p>
                 </div>
               )}
             </div>
