@@ -29,42 +29,7 @@ interface PrintableContractProps {
 
 export default function PrintableContract({ contract, onClose }: PrintableContractProps) {
   const handlePrint = () => {
-    const paperEl = document.querySelector('.contract-paper') as HTMLElement
-    if (!paperEl) { window.print(); return }
-
-    const win = window.open('', '_blank', 'width=900,height=1300')
-    if (!win) { window.print(); return }
-
-    let styles = ''
-    Array.from(document.styleSheets).forEach(sheet => {
-      try {
-        Array.from(sheet.cssRules || []).forEach(r => { styles += r.cssText + '\n' })
-      } catch {
-        if (sheet.href) styles += `@import url("${sheet.href}");\n`
-      }
-    })
-
-    win.document.write(`<!DOCTYPE html>
-<html lang="ko">
-<head>
-  <meta charset="UTF-8">
-  <style>
-    @page { size: A4 portrait; margin: 8mm 10mm; }
-    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
-    body { margin: 0; padding: 0; background: white; }
-    ${styles}
-  </style>
-</head>
-<body>
-  ${paperEl.outerHTML}
-  <script>
-    window.addEventListener('load', function() {
-      setTimeout(function() { window.print(); window.close(); }, 400);
-    });
-  <\/script>
-</body>
-</html>`)
-    win.document.close()
+    window.print()
   }
 
   const formatDate = (dateStr: string) => {
@@ -117,6 +82,40 @@ export default function PrintableContract({ contract, onClose }: PrintableContra
           }
           .contract-header-inner { padding: 3mm 6mm !important; }
           .contract-body-inner  { padding: 3mm 7mm !important; }
+
+          /* 섹션 간격 압축 */
+          .contract-header-inner .mb-4  { margin-bottom: 1mm !important; }
+          .contract-header-inner .pt-4  { padding-top: 1.5mm !important; }
+          .contract-header-inner .mt-2  { margin-top: 0.5mm !important; }
+
+          .contract-body-inner .mb-7    { margin-bottom: 2mm !important; }
+          .contract-body-inner .mb-6    { margin-bottom: 2mm !important; }
+          .contract-body-inner .mb-5    { margin-bottom: 2mm !important; }
+          .contract-body-inner .mb-4    { margin-bottom: 1.5mm !important; }
+          .contract-body-inner .mb-3    { margin-bottom: 1.5mm !important; }
+          .contract-body-inner .mb-2\.5 { margin-bottom: 1mm !important; }
+          .contract-body-inner .mb-1\.5 { margin-bottom: 0.5mm !important; }
+          .contract-body-inner .mb-3\.5 { margin-bottom: 1.5mm !important; }
+          .contract-body-inner .mt-8    { margin-top: 3mm !important; }
+          .contract-body-inner .pt-6    { padding-top: 2mm !important; }
+          .contract-body-inner .pb-1\.5 { padding-bottom: 0.5mm !important; }
+
+          /* 내부 패딩 압축 */
+          .contract-body-inner .py-5    { padding-top: 2mm !important; padding-bottom: 2mm !important; }
+          .contract-body-inner .py-4    { padding-top: 1.5mm !important; padding-bottom: 1.5mm !important; }
+          .contract-body-inner .py-3    { padding-top: 1.5mm !important; padding-bottom: 1.5mm !important; }
+          .contract-body-inner .py-3\.5 { padding-top: 1.5mm !important; padding-bottom: 1.5mm !important; }
+          .contract-body-inner .py-2\.5 { padding-top: 1mm !important; padding-bottom: 1mm !important; }
+
+          /* 리스트 간격 */
+          .contract-body-inner .space-y-2 > * + * { margin-top: 0.5mm !important; }
+
+          /* 서명란 압축 */
+          .contract-body-inner .min-h-\[70px\] { min-height: 36px !important; }
+          .contract-body-inner .h-9            { height: 20px !important; }
+          .contract-body-inner .min-h-7        { min-height: 16px !important; }
+          .contract-body-inner .gap-4          { gap: 2mm !important; }
+
           * {
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
