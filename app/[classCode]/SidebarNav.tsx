@@ -199,6 +199,18 @@ export default function SidebarNav({ classCode }: { classCode: string }) {
           <span className="flex-1 truncate">TV 순위판</span>
           <span className="text-[9px] text-gray-400">↗</span>
         </a>
+
+        {/* 도움말 */}
+        <a
+          href="/help"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-400 hover:bg-gray-50 hover:text-gray-600 transition-colors"
+        >
+          <span className="text-lg flex-shrink-0">❓</span>
+          <span className="flex-1 truncate">시작 가이드</span>
+          <span className="text-[9px] text-gray-400">↗</span>
+        </a>
       </nav>
 
       {/* fixed 툴팁 — overflow 잘림 없음 */}
