@@ -118,6 +118,35 @@ export default function SidebarNav({ classCode }: { classCode: string }) {
   return (
     <>
       <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
+        {/* 수업 모드 — 최상단 고정 */}
+        <Link
+          href={`/${classCode}/teach`}
+          onMouseEnter={(e) => {
+            const rect = e.currentTarget.getBoundingClientRect()
+            setTooltip({
+              item: {
+                href: `/${classCode}/teach`,
+                label: '수업 모드',
+                icon: '👨‍🏫',
+                description: '6명 동시 체크 · DRO 통합 · 사건 기록 · 수업 종료 정산',
+              },
+              y: rect.top,
+            })
+          }}
+          onMouseLeave={() => setTooltip(null)}
+          className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-colors mb-2 ${
+            pathname === `/${classCode}/teach`
+              ? 'bg-blue-600 text-white'
+              : 'bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200'
+          }`}
+        >
+          <span className="text-lg flex-shrink-0">👨‍🏫</span>
+          <span className="flex-1 truncate">수업 모드</span>
+          <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-200 text-blue-800 rounded-full flex-shrink-0">
+            NEW
+          </span>
+        </Link>
+
         {navItems.map((item) => {
           const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
           return (
@@ -145,6 +174,31 @@ export default function SidebarNav({ classCode }: { classCode: string }) {
             </Link>
           )
         })}
+
+        {/* TV 모드 (새 탭으로 열기) */}
+        <a
+          href={`/tv/${classCode}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors"
+          onMouseEnter={(e) => {
+            const rect = e.currentTarget.getBoundingClientRect()
+            setTooltip({
+              item: {
+                href: `/tv/${classCode}`,
+                label: 'TV 순위판',
+                icon: '📺',
+                description: '교실 화면용 학생 잔액 순위판 (새 탭)',
+              },
+              y: rect.top,
+            })
+          }}
+          onMouseLeave={() => setTooltip(null)}
+        >
+          <span className="text-lg flex-shrink-0">📺</span>
+          <span className="flex-1 truncate">TV 순위판</span>
+          <span className="text-[9px] text-gray-400">↗</span>
+        </a>
       </nav>
 
       {/* fixed 툴팁 — overflow 잘림 없음 */}

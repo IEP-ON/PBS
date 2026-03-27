@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 
 interface Student {
@@ -20,8 +20,16 @@ interface FbaRecord {
   pbs_students?: { name: string }
 }
 
+interface Strategy {
+  id: string
+  strategy_name: string
+  description: string
+  evidence_level: string
+}
+
 export default function FbaPage() {
   const params = useParams()
+  const router = useRouter()
   const classCode = params.classCode as string
   const [students, setStudents] = useState<Student[]>([])
   const [records, setRecords] = useState<FbaRecord[]>([])
@@ -35,6 +43,26 @@ export default function FbaPage() {
   const [message, setMessage] = useState('')
   const [expandedRecord, setExpandedRecord] = useState<string | null>(null)
   const [filterStudent, setFilterStudent] = useState('')
+  // 중재전략 인라인 캐시 (기능별)
+  const [strategiesCache, setStrategiesCache] = useState<Record<string, Strategy[]>>({})
+  const [expandedStrategies, setExpandedStrategies] = useState<string | null>(null)
+  const [loadingStrategies, setLoadingStrategies] = useState(false)
+
+  const fetchStrategies = async (fn: string) => {
+    if (strategiesCache[fn]) {
+      setExpandedStrategies(prev => prev === fn ? null : fn)
+      return
+    }
+    setLoadingStrategies(true)
+    try {
+      const res = await fetch(`/api/interventions?function=${fn}`)
+      const data = await res.json()
+      setStrategiesCache(prev => ({ ...prev, [fn]: data.strategies || [] }))
+      setExpandedStrategies(fn)
+    } finally {
+      setLoadingStrategies(false)
+    }
+  }
 
   const fetchData = async () => {
     const [sRes, fRes] = await Promise.all([
@@ -247,12 +275,66 @@ export default function FbaPage() {
                         </span>
                       )}
                     </div>
-                    <Link
-                      href={`/${classCode}/interventions?function=${r.estimated_function}`}
-                      className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors"
-                    >
-                      📚 '{functionLabels[r.estimated_function]}' 행동에 맞는 중재전략 보기 →
-                    </Link>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <button
+                        onClick={() => fetchStrategies(r.estimated_function!)}
+                        className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors"
+                      >
+                        {loadingStrategies && expandedStrategies === null ? '⏳' : '📚'}
+                        {' '}{expandedStrategies === r.estimated_function ? '중재전략 접기 ▲' : `'${functionLabels[r.estimated_function]}' 중재전략 보기 ▼`}
+                      </button>
+                      <Link
+                        href={`/${classCode}/interventions?function=${r.estimated_function}`}
+                        className="text-xs text-gray-400 hover:text-gray-600 underline"
+                      >
+                        전략 라이브러리 →
+                      </Link>
+                    </div>
+
+                    {/* 중재전략 인라인 표시 */}
+                    {expandedStrategies === r.estimated_function && (
+                      <div className="mt-2 space-y-2">
+                        {(strategiesCache[r.estimated_function] || []).length === 0 ? (
+                          <p className="text-xs text-gray-400 p-2">등록된 전략이 없습니다. 중재전략 라이브러리에서 추가하세요.</p>
+                        ) : (
+                          <>
+                            {(strategiesCache[r.estimated_function] || []).slice(0, 3).map(s => (
+                              <div key={s.id} className="bg-gray-50 rounded-xl p-3 flex items-start gap-3">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 mb-0.5">
+                                    <p className="text-sm font-semibold text-gray-900">{s.strategy_name}</p>
+                                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
+                                      s.evidence_level === 'evidence-based' ? 'bg-green-100 text-green-700' :
+                                      s.evidence_level === 'promising' ? 'bg-blue-100 text-blue-700' :
+                                      'bg-gray-100 text-gray-500'
+                                    }`}>
+                                      {s.evidence_level === 'evidence-based' ? '근거기반' : s.evidence_level === 'promising' ? '유망' : '신규'}
+                                    </span>
+                                  </div>
+                                  {s.description && (
+                                    <p className="text-xs text-gray-500 line-clamp-2">{s.description}</p>
+                                  )}
+                                </div>
+                                <button
+                                  onClick={() => router.push(`/${classCode}/pbs`)}
+                                  className="shrink-0 text-xs text-blue-600 bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded-lg whitespace-nowrap transition-colors"
+                                >
+                                  PBS 목표로 →
+                                </button>
+                              </div>
+                            ))}
+                            {(strategiesCache[r.estimated_function] || []).length > 3 && (
+                              <Link
+                                href={`/${classCode}/interventions?function=${r.estimated_function}`}
+                                className="block text-xs text-center text-blue-500 hover:text-blue-700 py-1"
+                              >
+                                전체 {strategiesCache[r.estimated_function].length}개 전략 보기 →
+                              </Link>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
                 {r.gpt_analysis && (

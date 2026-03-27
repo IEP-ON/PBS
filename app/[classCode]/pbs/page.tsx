@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import { formatCurrency } from '@/lib/utils'
 
@@ -18,6 +18,7 @@ interface PbsGoal {
   token_per_occurrence: number
   strategy_type: string | null
   allow_self_check: boolean
+  daily_target: number | null
 }
 
 interface PbsRecord {
@@ -43,14 +44,37 @@ interface LibraryStrategy {
   evidence_level: string
 }
 
+interface UndoToast {
+  recordId: string
+  goalName: string
+  count: number
+  tokens: number
+  secondsLeft: number
+}
+
+// 일괄 체크 모달용 - 모든 학생의 목표
+interface AllGoal {
+  id: string
+  student_id: string
+  behavior_name: string
+  token_per_occurrence: number
+}
+
 type GoalFormData = {
   behaviorName: string
   behaviorDefinition: string
   tokenPerOccurrence: string
   strategyType: string
+  dailyTarget: string
 }
 
-const emptyForm: GoalFormData = { behaviorName: '', behaviorDefinition: '', tokenPerOccurrence: '', strategyType: '' }
+const emptyForm: GoalFormData = {
+  behaviorName: '',
+  behaviorDefinition: '',
+  tokenPerOccurrence: '',
+  strategyType: '',
+  dailyTarget: '',
+}
 
 export default function PbsCheckPage() {
   const params = useParams()
@@ -64,12 +88,24 @@ export default function PbsCheckPage() {
   const [libraryStrategies, setLibraryStrategies] = useState<LibraryStrategy[]>([])
   const [loading, setLoading] = useState(true)
 
-  // 모달 상태
+  // 목표 추가/편집 모달
   const [showModal, setShowModal] = useState(false)
   const [editingGoal, setEditingGoal] = useState<PbsGoal | null>(null)
   const [form, setForm] = useState<GoalFormData>(emptyForm)
   const [formError, setFormError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+
+  // undo 토스트
+  const [undoToast, setUndoToast] = useState<UndoToast | null>(null)
+  const undoTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  // 일괄 체크 모달
+  const [showBulkModal, setShowBulkModal] = useState(false)
+  const [allGoals, setAllGoals] = useState<AllGoal[]>([])
+  const [bulkBehaviorName, setBulkBehaviorName] = useState('')
+  const [bulkSelectedStudents, setBulkSelectedStudents] = useState<string[]>([])
+  const [bulkCount, setBulkCount] = useState(1)
+  const [bulkSubmitting, setBulkSubmitting] = useState(false)
 
   // 학생 목록 + 라이브러리 전략 로드
   useEffect(() => {
@@ -107,7 +143,29 @@ export default function PbsCheckPage() {
     }
   }, [selectedStudent, loadStudentData])
 
-  const handleCheck = async (goalId: string, count: number) => {
+  // undo 토스트 타이머
+  const startUndoTimer = useCallback((toast: UndoToast) => {
+    if (undoTimerRef.current) clearInterval(undoTimerRef.current)
+    setUndoToast(toast)
+    undoTimerRef.current = setInterval(() => {
+      setUndoToast(prev => {
+        if (!prev) return null
+        if (prev.secondsLeft <= 1) {
+          clearInterval(undoTimerRef.current!)
+          return null
+        }
+        return { ...prev, secondsLeft: prev.secondsLeft - 1 }
+      })
+    }, 1000)
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (undoTimerRef.current) clearInterval(undoTimerRef.current)
+    }
+  }, [])
+
+  const handleCheck = async (goalId: string, count: number, goalName: string) => {
     if (!selectedStudent) return
 
     const res = await fetch('/api/pbs/records', {
@@ -122,8 +180,70 @@ export default function PbsCheckPage() {
     })
 
     if (res.ok) {
+      const data = await res.json()
       loadStudentData(selectedStudent)
+      startUndoTimer({
+        recordId: data.recordId,
+        goalName,
+        count,
+        tokens: data.tokenGranted,
+        secondsLeft: 6,
+      })
     }
+  }
+
+  const handleUndo = async () => {
+    if (!undoToast) return
+    if (undoTimerRef.current) clearInterval(undoTimerRef.current)
+    const id = undoToast.recordId
+    setUndoToast(null)
+    await fetch(`/api/pbs/records/${id}`, { method: 'DELETE' })
+    if (selectedStudent) loadStudentData(selectedStudent)
+  }
+
+  // 일괄 체크 모달 열기
+  const openBulkModal = async () => {
+    const res = await fetch('/api/pbs/goals')
+    const data = await res.json()
+    setAllGoals(data.goals || [])
+    setBulkBehaviorName('')
+    setBulkSelectedStudents([])
+    setBulkCount(1)
+    setShowBulkModal(true)
+  }
+
+  // 일괄 체크에서 선택된 행동명에 해당하는 학생 목록
+  const bulkEligibleStudents = allGoals
+    .filter(g => g.behavior_name === bulkBehaviorName)
+    .map(g => {
+      const student = students.find(s => s.id === g.student_id)
+      return student ? { student, goalId: g.id } : null
+    })
+    .filter(Boolean) as { student: Student; goalId: string }[]
+
+  const handleBulkCheck = async () => {
+    if (!bulkBehaviorName || bulkSelectedStudents.length === 0) return
+    setBulkSubmitting(true)
+
+    const promises = bulkSelectedStudents.map(studentId => {
+      const goal = allGoals.find(g => g.student_id === studentId && g.behavior_name === bulkBehaviorName)
+      if (!goal) return Promise.resolve()
+      return fetch('/api/pbs/records', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          studentId,
+          goalId: goal.id,
+          occurrenceCount: bulkCount,
+          prompted: false,
+        }),
+      })
+    })
+
+    await Promise.all(promises)
+    setBulkSubmitting(false)
+    setShowBulkModal(false)
+    if (selectedStudent) loadStudentData(selectedStudent)
   }
 
   // 목표 추가 모달 열기
@@ -134,7 +254,6 @@ export default function PbsCheckPage() {
     setShowModal(true)
   }
 
-  // 목표 편집 모달 열기
   const openEditModal = (goal: PbsGoal) => {
     setEditingGoal(goal)
     setForm({
@@ -142,12 +261,12 @@ export default function PbsCheckPage() {
       behaviorDefinition: goal.behavior_definition || '',
       tokenPerOccurrence: String(goal.token_per_occurrence),
       strategyType: goal.strategy_type || '',
+      dailyTarget: goal.daily_target ? String(goal.daily_target) : '',
     })
     setFormError('')
     setShowModal(true)
   }
 
-  // 목표 저장 (추가 or 수정)
   const handleSaveGoal = async () => {
     if (!form.behaviorName.trim() || !form.tokenPerOccurrence) {
       setFormError('행동명과 토큰 단가는 필수입니다.')
@@ -158,7 +277,6 @@ export default function PbsCheckPage() {
 
     try {
       if (editingGoal) {
-        // 수정
         const res = await fetch(`/api/pbs/goals/${editingGoal.id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
@@ -167,6 +285,7 @@ export default function PbsCheckPage() {
             behaviorDefinition: form.behaviorDefinition || null,
             tokenPerOccurrence: Number(form.tokenPerOccurrence),
             strategyType: form.strategyType || null,
+            dailyTarget: form.dailyTarget ? Number(form.dailyTarget) : null,
           }),
         })
         if (!res.ok) {
@@ -176,7 +295,6 @@ export default function PbsCheckPage() {
           return
         }
       } else {
-        // 추가
         const res = await fetch('/api/pbs/goals', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -186,6 +304,7 @@ export default function PbsCheckPage() {
             behaviorDefinition: form.behaviorDefinition || null,
             tokenPerOccurrence: Number(form.tokenPerOccurrence),
             strategyType: form.strategyType || null,
+            dailyTarget: form.dailyTarget ? Number(form.dailyTarget) : null,
           }),
         })
         if (!res.ok) {
@@ -204,7 +323,6 @@ export default function PbsCheckPage() {
     }
   }
 
-  // 목표 비활성화
   const handleDeactivateGoal = async (goalId: string) => {
     if (!confirm('이 PBS 목표를 비활성화하시겠습니까?')) return
     const res = await fetch(`/api/pbs/goals/${goalId}`, {
@@ -231,8 +349,12 @@ export default function PbsCheckPage() {
   const checkedGoalCount = goals.filter(g => todayRecords.some(r => r.goal_id === g.id)).length
   const achievementRate = activeGoalCount > 0 ? Math.round((checkedGoalCount / activeGoalCount) * 100) : 0
 
+  // 일괄 체크용 행동명 목록 (중복 제거)
+  const uniqueBehaviorNames = [...new Set(allGoals.map(g => g.behavior_name))]
+
   return (
     <div className="p-6 space-y-6">
+      {/* 헤더 */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">✅ PBS 행동 체크</h1>
@@ -278,7 +400,7 @@ export default function PbsCheckPage() {
         ))}
       </div>
 
-      {/* 활성 행동계약서 요약 배너 */}
+      {/* 활성 행동계약서 배너 */}
       {activeContracts.length > 0 && (
         <div className="space-y-2">
           {activeContracts.map((c) => (
@@ -319,7 +441,13 @@ export default function PbsCheckPage() {
         </div>
       ) : (
         <>
-          <div className="flex justify-end">
+          <div className="flex items-center justify-between">
+            <button
+              onClick={openBulkModal}
+              className="flex items-center gap-1.5 px-4 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-sm font-medium rounded-xl transition-colors"
+            >
+              <span>👥</span> 일괄 체크
+            </button>
             <button
               onClick={openAddModal}
               className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl transition-colors"
@@ -327,19 +455,20 @@ export default function PbsCheckPage() {
               + 목표 추가
             </button>
           </div>
+
           <div className="grid gap-4">
             {goals.map((goal) => {
               const records = todayRecords.filter((r) => r.goal_id === goal.id)
               const todayCount = records.reduce((sum, r) => sum + r.occurrence_count, 0)
               const todayTokens = records.reduce((sum, r) => sum + r.token_granted, 0)
+              const progressPct = goal.daily_target && goal.daily_target > 0
+                ? Math.min(100, Math.round((todayCount / goal.daily_target) * 100))
+                : null
 
               return (
-                <div
-                  key={goal.id}
-                  className="bg-white rounded-2xl border border-gray-100 p-5"
-                >
+                <div key={goal.id} className="bg-white rounded-2xl border border-gray-100 p-5">
                   <div className="flex items-start justify-between mb-3">
-                    <div>
+                    <div className="flex-1 min-w-0">
                       <h3 className="font-bold text-gray-900">{goal.behavior_name}</h3>
                       {goal.behavior_definition && (
                         <p className="text-sm text-gray-500 mt-0.5">{goal.behavior_definition}</p>
@@ -350,12 +479,10 @@ export default function PbsCheckPage() {
                         </span>
                       )}
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 ml-3">
                       <div className="text-right mr-2">
                         <p className="text-sm text-gray-500">1회당</p>
-                        <p className="font-bold text-blue-600">
-                          {formatCurrency(goal.token_per_occurrence)}
-                        </p>
+                        <p className="font-bold text-blue-600">{formatCurrency(goal.token_per_occurrence)}</p>
                       </div>
                       <button
                         onClick={() => openEditModal(goal)}
@@ -370,19 +497,36 @@ export default function PbsCheckPage() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3 mt-4">
+                  {/* 일일 목표 진행바 */}
+                  {progressPct !== null && (
+                    <div className="mb-3 space-y-1">
+                      <div className="flex items-center justify-between text-xs text-gray-500">
+                        <span>일일 목표</span>
+                        <span className={progressPct >= 100 ? 'text-green-600 font-bold' : ''}>
+                          {todayCount} / {goal.daily_target}회 {progressPct >= 100 ? '🎉' : `(${progressPct}%)`}
+                        </span>
+                      </div>
+                      <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all ${progressPct >= 100 ? 'bg-green-500' : 'bg-blue-400'}`}
+                          style={{ width: `${progressPct}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-3">
                     <div className="flex items-center gap-2 bg-gray-50 rounded-xl px-4 py-2">
                       <span className="text-sm text-gray-500">오늘</span>
                       <span className="text-lg font-bold text-gray-900">{todayCount}회</span>
                       <span className="text-sm text-green-600">+{formatCurrency(todayTokens)}</span>
                     </div>
-
                     <div className="flex gap-2 ml-auto">
                       {[1, 2, 3].map((n) => (
                         <button
                           key={n}
-                          onClick={() => handleCheck(goal.id, n)}
-                          className="w-12 h-12 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold rounded-xl transition-colors border border-blue-200"
+                          onClick={() => handleCheck(goal.id, n, goal.behavior_name)}
+                          className="w-12 h-12 bg-blue-50 hover:bg-blue-100 active:bg-blue-200 text-blue-700 font-bold rounded-xl transition-colors border border-blue-200"
                         >
                           +{n}
                         </button>
@@ -404,16 +548,138 @@ export default function PbsCheckPage() {
             {todayRecords.map((record) => (
               <div key={record.id} className="px-5 py-3 flex items-center justify-between">
                 <div>
-                  <p className="font-medium text-gray-900">
-                    {record.pbs_goals?.behavior_name}
-                  </p>
+                  <p className="font-medium text-gray-900">{record.pbs_goals?.behavior_name}</p>
                   <p className="text-sm text-gray-500">{record.occurrence_count}회 체크</p>
                 </div>
-                <p className="font-bold text-green-600">
-                  +{formatCurrency(record.token_granted)}
-                </p>
+                <p className="font-bold text-green-600">+{formatCurrency(record.token_granted)}</p>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* undo 토스트 */}
+      {undoToast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-gray-900 text-white px-5 py-3 rounded-2xl shadow-2xl animate-in slide-in-from-bottom-4">
+          <span className="text-sm">
+            ✅ <strong>{undoToast.goalName}</strong> +{undoToast.count}회 체크 (+{formatCurrency(undoToast.tokens)})
+          </span>
+          <button
+            onClick={handleUndo}
+            className="text-xs font-bold text-yellow-300 hover:text-yellow-200 border border-yellow-400/40 rounded-lg px-3 py-1.5 transition-colors"
+          >
+            실행취소 ({undoToast.secondsLeft}s)
+          </button>
+        </div>
+      )}
+
+      {/* 일괄 체크 모달 */}
+      {showBulkModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-md p-6 space-y-4 shadow-xl">
+            <h2 className="text-lg font-bold text-gray-900">👥 일괄 체크</h2>
+            <p className="text-sm text-gray-500">같은 행동 목표를 여러 학생에게 동시에 체크합니다.</p>
+
+            <label className="block">
+              <span className="text-sm font-medium text-gray-700">행동 목표 선택</span>
+              <select
+                value={bulkBehaviorName}
+                onChange={(e) => {
+                  setBulkBehaviorName(e.target.value)
+                  setBulkSelectedStudents([])
+                }}
+                className="mt-1 block w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">선택하세요</option>
+                {uniqueBehaviorNames.map(name => (
+                  <option key={name} value={name}>{name}</option>
+                ))}
+              </select>
+            </label>
+
+            {bulkBehaviorName && (
+              <>
+                <div>
+                  <p className="text-sm font-medium text-gray-700 mb-2">
+                    해당 목표가 있는 학생 ({bulkEligibleStudents.length}명)
+                  </p>
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {bulkEligibleStudents.length === 0 ? (
+                      <p className="text-sm text-gray-400">해당 목표가 있는 학생이 없습니다.</p>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const all = bulkEligibleStudents.map(e => e.student.id)
+                            setBulkSelectedStudents(
+                              bulkSelectedStudents.length === all.length ? [] : all
+                            )
+                          }}
+                          className="text-xs text-blue-600 hover:underline"
+                        >
+                          {bulkSelectedStudents.length === bulkEligibleStudents.length ? '전체 해제' : '전체 선택'}
+                        </button>
+                        {bulkEligibleStudents.map(({ student }) => (
+                          <label key={student.id} className="flex items-center gap-3 p-2 rounded-xl hover:bg-gray-50 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={bulkSelectedStudents.includes(student.id)}
+                              onChange={(e) => {
+                                setBulkSelectedStudents(prev =>
+                                  e.target.checked
+                                    ? [...prev, student.id]
+                                    : prev.filter(id => id !== student.id)
+                                )
+                              }}
+                              className="w-4 h-4 rounded text-blue-600"
+                            />
+                            <span className="text-sm font-medium text-gray-900">{student.name}</span>
+                            <span className="text-xs text-gray-400">LV.{student.pbs_stage}</span>
+                          </label>
+                        ))}
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-sm font-medium text-gray-700 mb-2">체크 횟수</p>
+                  <div className="flex gap-2">
+                    {[1, 2, 3].map(n => (
+                      <button
+                        key={n}
+                        type="button"
+                        onClick={() => setBulkCount(n)}
+                        className={`flex-1 py-2.5 rounded-xl font-bold text-sm transition-colors ${
+                          bulkCount === n
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
+                      >
+                        +{n}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => setShowBulkModal(false)}
+                className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-xl transition-colors"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleBulkCheck}
+                disabled={bulkSubmitting || !bulkBehaviorName || bulkSelectedStudents.length === 0}
+                className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-300 text-white font-semibold rounded-xl transition-colors"
+              >
+                {bulkSubmitting ? '체크 중...' : `${bulkSelectedStudents.length}명 체크`}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -421,7 +687,7 @@ export default function PbsCheckPage() {
       {/* 목표 추가/편집 모달 */}
       {showModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl w-full max-w-md p-6 space-y-4 shadow-xl">
+          <div className="bg-white rounded-2xl w-full max-w-md p-6 space-y-4 shadow-xl max-h-[90vh] overflow-y-auto">
             <h2 className="text-lg font-bold text-gray-900">
               {editingGoal ? 'PBS 목표 수정' : 'PBS 목표 추가'}
             </h2>
@@ -448,17 +714,30 @@ export default function PbsCheckPage() {
               />
             </label>
 
-            <label className="block">
-              <span className="text-sm font-medium text-gray-700">1회당 토큰 (원) *</span>
-              <input
-                type="number"
-                value={form.tokenPerOccurrence}
-                onChange={(e) => setForm({ ...form, tokenPerOccurrence: e.target.value })}
-                placeholder="예: 100"
-                min={1}
-                className="mt-1 block w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="block">
+                <span className="text-sm font-medium text-gray-700">1회당 토큰 (원) *</span>
+                <input
+                  type="number"
+                  value={form.tokenPerOccurrence}
+                  onChange={(e) => setForm({ ...form, tokenPerOccurrence: e.target.value })}
+                  placeholder="예: 100"
+                  min={1}
+                  className="mt-1 block w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </label>
+              <label className="block">
+                <span className="text-sm font-medium text-gray-700">일일 목표 횟수</span>
+                <input
+                  type="number"
+                  value={form.dailyTarget}
+                  onChange={(e) => setForm({ ...form, dailyTarget: e.target.value })}
+                  placeholder="예: 5"
+                  min={1}
+                  className="mt-1 block w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </label>
+            </div>
 
             <label className="block">
               <span className="text-sm font-medium text-gray-700">
@@ -483,9 +762,6 @@ export default function PbsCheckPage() {
                   ))
                 )}
               </select>
-              {libraryStrategies.length === 0 && (
-                <p className="text-xs text-gray-400 mt-1">중재전략 라이브러리에 전략을 등록하면 여기에 표시됩니다.</p>
-              )}
             </label>
 
             {formError && <p className="text-red-500 text-sm">{formError}</p>}

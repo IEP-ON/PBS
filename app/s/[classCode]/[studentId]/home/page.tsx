@@ -50,6 +50,28 @@ export default async function StudentHomePage({
     .eq('student_id', studentId)
     .gt('quantity', 0)
 
+  // PBS 목표 + 오늘 체크 횟수
+  const { data: pbsGoals } = await supabase
+    .from('pbs_goals')
+    .select('id, behavior_name, daily_target')
+    .eq('student_id', studentId)
+    .eq('is_active', true)
+
+  const goalIds = pbsGoals?.map(g => g.id) || []
+  const { data: todayGoalRecords } = goalIds.length > 0
+    ? await supabase
+        .from('pbs_records')
+        .select('goal_id, occurrence_count')
+        .eq('student_id', studentId)
+        .eq('record_date', today)
+        .in('goal_id', goalIds)
+    : { data: [] }
+
+  const goalCountMap: Record<string, number> = {}
+  for (const rec of todayGoalRecords || []) {
+    goalCountMap[rec.goal_id] = (goalCountMap[rec.goal_id] || 0) + rec.occurrence_count
+  }
+
   // 셀프체크 가능 목표 수
   const { data: selfCheckGoals } = await supabase
     .from('pbs_goals')
@@ -121,6 +143,46 @@ export default async function StudentHomePage({
                 <p className="font-bold text-blue-600">{h.quantity}주</p>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* PBS 목표 진행률 */}
+      {pbsGoals && pbsGoals.length > 0 && (
+        <div>
+          <h2 className="text-lg font-bold text-gray-900 mb-2">🎯 오늘 목표 진행률</h2>
+          <div className="space-y-2">
+            {pbsGoals.map(goal => {
+              const count = goalCountMap[goal.id] || 0
+              const hasTarget = goal.daily_target && goal.daily_target > 0
+              const pct = hasTarget ? Math.min(100, Math.round((count / goal.daily_target!) * 100)) : null
+              const done = pct !== null && pct >= 100
+
+              return (
+                <div key={goal.id} className={`bg-white rounded-2xl border p-4 ${done ? 'border-green-200 bg-green-50' : 'border-gray-100'}`}>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <p className={`text-sm font-semibold ${done ? 'text-green-800' : 'text-gray-800'}`}>
+                      {done && '✅ '}{goal.behavior_name}
+                    </p>
+                    {hasTarget ? (
+                      <p className={`text-xs font-bold ${done ? 'text-green-600' : 'text-gray-500'}`}>
+                        {count} / {goal.daily_target}회{done ? ' 🎉' : ` (${pct}%)`}
+                      </p>
+                    ) : (
+                      <p className="text-xs text-gray-400">{count}회 달성</p>
+                    )}
+                  </div>
+                  {hasTarget && (
+                    <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all ${done ? 'bg-green-500' : 'bg-blue-400'}`}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  )}
+                </div>
+              )
+            })}
           </div>
         </div>
       )}

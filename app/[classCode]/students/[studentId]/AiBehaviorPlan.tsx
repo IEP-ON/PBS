@@ -116,6 +116,9 @@ export default function AiBehaviorPlan({ studentId, studentName, grade, classCod
   const [logId, setLogId] = useState<string | null>(null)
   const [originalPlan, setOriginalPlan] = useState<BehaviorPlan | null>(null)
 
+  // PBS 목표 ↔ 중재전략 매핑 (goalIndex → interventionIndex | -1)
+  const [strategyMapping, setStrategyMapping] = useState<Record<number, number>>({})
+
   // 저장 상태 (섹션별)
   const [saveStatus, setSaveStatus] = useState<Record<string, SaveStatus>>({})
   const [saveMsg, setSaveMsg] = useState<Record<string, string>>({})
@@ -184,6 +187,19 @@ export default function AiBehaviorPlan({ studentId, studentName, grade, classCod
       setEditedPlan(JSON.parse(JSON.stringify(data.plan)))
       setOriginalPlan(JSON.parse(JSON.stringify(data.plan)))
       if (data.logId) setLogId(data.logId)
+
+      // 자동 매핑: pbsGoals[i].strategyType 약어가 intervention 이름에 포함되면 자동 연결
+      const mapping: Record<number, number> = {}
+      const ivs: InterventionDraft[] = data.plan.interventions || []
+      ;(data.plan.pbsGoals || []).forEach((goal: PbsGoalDraft, i: number) => {
+        const abbr = (goal.strategyType || '').toUpperCase()
+        const matchIdx = ivs.findIndex(iv =>
+          iv.strategyName.toUpperCase().includes(abbr) ||
+          iv.description?.toUpperCase().includes(abbr)
+        )
+        mapping[i] = matchIdx
+      })
+      setStrategyMapping(mapping)
     } catch (e: unknown) {
       setGenError(e instanceof Error ? e.message : '오류가 발생했습니다.')
     } finally {
@@ -291,8 +307,26 @@ export default function AiBehaviorPlan({ studentId, studentName, grade, classCod
   }
 
   const saveAll = async () => {
-    await Promise.all([saveFba(), savePbsGoals(), saveContract(), saveInterventions()])
-    // 피드백 루프: 저장 완료 후 교사 수정 여부 기록
+    if (!editedPlan) return
+
+    // 1단계: 중재전략 먼저 저장 (PBS 목표가 참조해야 하므로)
+    await saveInterventions()
+
+    // 2단계: PBS 목표 strategyType을 선택된 중재전략명으로 업데이트 후 저장
+    const updatedGoals = editedPlan.pbsGoals.map((goal, i) => {
+      const ivIdx = strategyMapping[i] ?? -1
+      if (ivIdx >= 0 && editedPlan.interventions[ivIdx]) {
+        return { ...goal, strategyType: editedPlan.interventions[ivIdx].strategyName }
+      }
+      return goal
+    })
+    const planWithLinkedGoals = { ...editedPlan, pbsGoals: updatedGoals }
+    setEditedPlan(planWithLinkedGoals)
+
+    // 3단계: FBA + PBS 목표 + 행동계약서 병렬 저장
+    await Promise.all([saveFba(), savePbsGoals(), saveContract()])
+
+    // 피드백 루프
     if (logId && editedPlan) {
       const teacherModified = JSON.stringify(editedPlan) !== JSON.stringify(originalPlan)
       fetch('/api/ai/behavior-plan-feedback', {
@@ -302,7 +336,7 @@ export default function AiBehaviorPlan({ studentId, studentName, grade, classCod
           logId,
           accepted: true,
           teacherModified,
-          finalSaved: editedPlan,
+          finalSaved: planWithLinkedGoals,
         }),
       }).catch(() => {})
     }
@@ -546,12 +580,30 @@ export default function AiBehaviorPlan({ studentId, studentName, grade, classCod
                           type="number"
                           value={goal.tokenPerOccurrence}
                           onChange={e => updateGoal(i, 'tokenPerOccurrence', Number(e.target.value))}
-                          className="w-24 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                          className="w-20 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400"
                         />
                         <span className="text-xs text-gray-400 self-center">원/회</span>
-                        <span className="ml-1 text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded-full self-center">{goal.strategyType}</span>
                       </div>
                     </div>
+                    {/* 중재전략 연동 드롭다운 */}
+                    {editedPlan.interventions.length > 0 && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-500 shrink-0">적용 전략:</span>
+                        <select
+                          value={strategyMapping[i] ?? -1}
+                          onChange={e => setStrategyMapping(prev => ({ ...prev, [i]: Number(e.target.value) }))}
+                          className="flex-1 px-2 py-1.5 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-800 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                        >
+                          <option value={-1}>— 전략 없음 (기존 약어 "{goal.strategyType}" 사용)</option>
+                          {editedPlan.interventions.map((iv, j) => (
+                            <option key={j} value={j}>{iv.strategyName}</option>
+                          ))}
+                        </select>
+                        {(strategyMapping[i] ?? -1) >= 0 && (
+                          <span className="text-xs text-green-600 shrink-0">✓ 연동됨</span>
+                        )}
+                      </div>
+                    )}
                     <textarea
                       value={goal.behaviorDefinition}
                       onChange={e => updateGoal(i, 'behaviorDefinition', e.target.value)}
