@@ -94,9 +94,10 @@ export default function LoginPage() {
     }
   }
 
-  const handleStudentLogin = async () => {
+  const handleStudentLogin = async (pinOverride?: string) => {
     setError('')
     setLoading(true)
+    const pinToSubmit = pinOverride ?? studentPin
 
     try {
       const res = await fetch('/api/auth/student', {
@@ -105,7 +106,7 @@ export default function LoginPage() {
         body: JSON.stringify({
           classCode: classCode.toUpperCase(),
           studentName,
-          studentPin,
+          studentPin: pinToSubmit,
         }),
       })
       const data = await res.json()
@@ -275,7 +276,7 @@ export default function LoginPage() {
                       onChange={(e) => {
                         const v = e.target.value.replace(/\D/g, '')
                         setStudentPin(v)
-                        if (v.length === 4) setTimeout(() => handleStudentLogin(), 100)
+                        if (v.length === 4) void handleStudentLogin(v)
                       }}
                       placeholder="●●●●"
                       className="mt-1 block w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-center text-2xl tracking-[0.5em] text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -285,7 +286,7 @@ export default function LoginPage() {
                   </label>
                   {error && <p className="text-red-500 text-sm text-center">{error}</p>}
                   <button
-                    onClick={handleStudentLogin}
+                    onClick={() => void handleStudentLogin()}
                     disabled={loading || !studentName || studentPin.length !== 4}
                     className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white font-semibold rounded-xl transition-colors min-h-[56px] text-lg"
                   >

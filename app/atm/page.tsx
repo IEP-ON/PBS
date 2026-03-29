@@ -278,11 +278,12 @@ export default function AtmPage() {
   }
 
   // 학생 로그인
-  const handleLogin = async (e?: React.FormEvent) => {
+  const handleLogin = async (e?: React.FormEvent, pinOverride?: string) => {
     if (e) e.preventDefault()
     if (!savedClassCode) return
     setLoginError('')
     setLoginLoading(true)
+    const pinToSubmit = pinOverride ?? pin
 
     const isPassbookScan = studentName.startsWith('통장QR:')
     const passbookQrCode = isPassbookScan ? studentName.replace('통장QR:', '') : undefined
@@ -295,7 +296,7 @@ export default function AtmPage() {
         body: JSON.stringify({
           classCode: savedClassCode,
           studentName: nameToSend,
-          studentPin: pin,
+          studentPin: pinToSubmit,
           passbookQrCode,
         }),
       })
@@ -592,7 +593,7 @@ export default function AtmPage() {
                 onChange={e => {
                   const v = e.target.value.replace(/\D/g, '')
                   setPin(v)
-                  if (v.length === 4) setTimeout(() => handleLogin(), 100)
+                  if (v.length === 4) void handleLogin(undefined, v)
                 }}
                 placeholder="●●●●"
                 className="mt-1 block w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-center text-3xl tracking-[0.5em] text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
