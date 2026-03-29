@@ -1,31 +1,18 @@
 'use client'
 
-import { useParams, useRouter, useSearchParams } from 'next/navigation'
-import { useEffect } from 'react'
+import { useParams } from 'next/navigation'
 import Link from 'next/link'
-
-type TabType = 'fba' | 'interventions' | 'contracts' | 'dro'
 
 export default function BehaviorAnalysisPage() {
   const params = useParams()
-  const router = useRouter()
-  const searchParams = useSearchParams()
   const classCode = params.classCode as string
-  const activeTab = (searchParams.get('tab') || 'fba') as TabType
 
   const tabs = [
-    { id: 'fba' as TabType, label: 'FBA 분석', icon: '🔍', description: '기능행동분석 기록 및 AI 자동 분석', href: `/${classCode}/fba`, badge: 'GPT-4o' },
-    { id: 'interventions' as TabType, label: '중재 전략', icon: '📚', description: 'PBS 중재 계획 수립 및 전략 관리', href: `/${classCode}/interventions` },
-    { id: 'contracts' as TabType, label: '행동계약서', icon: '📝', description: '학생과 행동 목표 계약서 작성', href: `/${classCode}/contracts` },
-    { id: 'dro' as TabType, label: 'DRO 히스토리', icon: '⏱️', description: 'DRO 타이머 이력 및 통계', href: `/${classCode}/dro` },
+    { id: 'fba', label: 'FBA 분석', icon: '🔍', description: '기능행동분석 기록 및 AI 자동 분석', href: `/${classCode}/fba`, badge: 'GPT-4o' },
+    { id: 'interventions', label: '중재 전략', icon: '📚', description: 'PBS 중재 계획 수립 및 전략 관리', href: `/${classCode}/interventions` },
+    { id: 'contracts', label: '행동계약서', icon: '📝', description: '학생과 행동 목표 계약서 작성', href: `/${classCode}/contracts` },
+    { id: 'dro', label: 'DRO 히스토리', icon: '⏱️', description: 'DRO 타이머 이력 및 통계', href: `/${classCode}/dro` },
   ]
-
-  // 첫 진입 시 FBA 페이지로 리다이렉트
-  useEffect(() => {
-    if (!searchParams.get('tab')) {
-      router.replace(`/${classCode}/fba`)
-    }
-  }, [classCode, router, searchParams])
 
   return (
     <div className="p-6 space-y-6">
@@ -86,7 +73,7 @@ export default function BehaviorAnalysisPage() {
       <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
         <p className="text-sm text-blue-900 font-medium mb-2">💡 AI 행동 지원 계획</p>
         <p className="text-sm text-blue-700 mb-3">
-          학생 상세 페이지에서 "AI 행동 지원 계획"을 요청하면, 위 4가지 요소를 한 번에 생성합니다.
+          학생 상세 페이지에서 &quot;AI 행동 지원 계획&quot;을 요청하면, 위 4가지 요소를 한 번에 생성합니다.
         </p>
         <Link
           href={`/${classCode}/students`}

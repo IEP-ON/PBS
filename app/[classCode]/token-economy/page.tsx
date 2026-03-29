@@ -1,31 +1,18 @@
 'use client'
 
-import { useParams, useRouter, useSearchParams } from 'next/navigation'
-import { useEffect } from 'react'
+import { useParams } from 'next/navigation'
 import Link from 'next/link'
-
-type TabType = 'shop' | 'stocks' | 'qr-tokens' | 'class-account'
 
 export default function TokenEconomyPage() {
   const params = useParams()
-  const router = useRouter()
-  const searchParams = useSearchParams()
   const classCode = params.classCode as string
-  const activeTab = (searchParams.get('tab') || 'shop') as TabType
 
   const tabs = [
-    { id: 'shop' as TabType, label: '가게', icon: '🏪', description: '상점 아이템 관리', href: `/${classCode}/shop` },
-    { id: 'stocks' as TabType, label: '주식', icon: '📈', description: '모의 주식 시장', href: `/${classCode}/stocks` },
-    { id: 'qr-tokens' as TabType, label: 'QR 토큰', icon: '🪙', description: '실물 코인 QR', href: `/${classCode}/qr-tokens` },
-    { id: 'class-account' as TabType, label: '학급 계좌', icon: '🏫', description: '공동 적립금', href: `/${classCode}/class-account` },
+    { id: 'shop', label: '가게', icon: '🏪', description: '상점 아이템 관리', href: `/${classCode}/shop` },
+    { id: 'stocks', label: '주식', icon: '📈', description: '모의 주식 시장', href: `/${classCode}/stocks` },
+    { id: 'qr-tokens', label: 'QR 토큰', icon: '🪙', description: '실물 코인 QR', href: `/${classCode}/qr-tokens` },
+    { id: 'class-account', label: '학급 계좌', icon: '🏫', description: '공동 적립금', href: `/${classCode}/class-account` },
   ]
-
-  // 첫 진입 시 가게 페이지로 리다이렉트
-  useEffect(() => {
-    if (!searchParams.get('tab')) {
-      router.replace(`/${classCode}/shop`)
-    }
-  }, [classCode, router, searchParams])
 
   return (
     <div className="p-6 space-y-6">
@@ -39,7 +26,7 @@ export default function TokenEconomyPage() {
       <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
         <p className="text-sm text-blue-900 font-medium mb-2">📌 토큰 경제 통합 페이지</p>
         <p className="text-sm text-blue-700">
-          가게, 주식, QR 토큰, 학급 계좌 기능이 하나의 "토큰 경제" 카테고리로 통합되었습니다.
+          가게, 주식, QR 토큰, 학급 계좌 기능이 하나의 &quot;토큰 경제&quot; 카테고리로 통합되었습니다.
           아래 버튼을 클릭하여 각 기능으로 이동하세요.
         </p>
       </div>
