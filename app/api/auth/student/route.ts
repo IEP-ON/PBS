@@ -6,7 +6,10 @@ import bcrypt from 'bcryptjs'
 // POST /api/auth/student — 학생 로그인
 export async function POST(request: Request) {
   try {
-    const { classCode, studentName, studentPin } = await request.json()
+    const body = await request.json()
+    const classCode = body.classCode?.trim()
+    const studentName = body.studentName?.trim()
+    const studentPin = body.studentPin?.toString().trim()
 
     if (!classCode || !studentName || !studentPin) {
       return NextResponse.json({ error: '모든 항목을 입력해주세요.' }, { status: 400 })

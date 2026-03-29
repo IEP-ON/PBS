@@ -8,7 +8,12 @@ import bcrypt from 'bcryptjs'
 // studentName+PIN 방식: 직접 인증
 export async function POST(request: Request) {
   try {
-    const { code, classCode, studentId, studentName, studentPin } = await request.json()
+    const body = await request.json()
+    const code = body.code?.trim()
+    const classCode = body.classCode?.trim()
+    const studentId = body.studentId?.trim()
+    const studentName = body.studentName?.trim()
+    const studentPin = body.studentPin?.toString().trim()
 
     if (!code || !classCode) {
       return NextResponse.json({ error: '필수 항목이 누락되었습니다.' }, { status: 400 })

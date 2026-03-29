@@ -16,6 +16,8 @@ const TYPE_EMOJI: Record<string, string> = {
   stock_sell: '📉',
   qr_token: '🪙',
   response_cost: '⚠️',
+  gift_sent: '🎁',
+  gift_received: '🎁',
 }
 
 export default function RealtimeNotice({ classroomId }: { classroomId: string }) {
@@ -42,6 +44,14 @@ export default function RealtimeNotice({ classroomId }: { classroomId: string })
             student_id: string
           }
 
+          // 학생 이름 조회
+          const { data: student } = await supabase
+            .from('pbs_students')
+            .select('name')
+            .eq('id', tx.student_id)
+            .single()
+
+          const studentName = student?.name || '학생'
           const emoji = TYPE_EMOJI[tx.type] || '💰'
           const amountStr = tx.amount < 0
             ? `${tx.amount.toLocaleString()}원`
@@ -49,7 +59,7 @@ export default function RealtimeNotice({ classroomId }: { classroomId: string })
 
           const notice: Notice = {
             id: tx.id,
-            message: `${emoji} ${tx.description} (${amountStr})`,
+            message: `${emoji} [${studentName}] ${tx.description} (${amountStr})`,
             type: tx.type.startsWith('stock') ? 'stock' : tx.type === 'purchase' ? 'purchase' : 'other',
             createdAt: Date.now(),
           }

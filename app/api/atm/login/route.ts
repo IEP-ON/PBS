@@ -6,7 +6,12 @@ import bcrypt from 'bcryptjs'
 // 이름+PIN 방식 또는 통장QR+PIN 방식
 export async function POST(request: Request) {
   try {
-    const { classCode, studentName, studentPin, passbookQrCode, easyLogin } = await request.json()
+    const body = await request.json()
+    const classCode = body.classCode?.trim()
+    const studentName = body.studentName?.trim()
+    const studentPin = body.studentPin?.toString().trim()
+    const passbookQrCode = body.passbookQrCode?.trim()
+    const easyLogin = body.easyLogin
 
     // easyLogin 모드: 통장 QR만으로 PIN 없이 로그인
     const isEasyLogin = easyLogin === true && !!passbookQrCode
