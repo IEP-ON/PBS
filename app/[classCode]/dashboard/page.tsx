@@ -87,9 +87,55 @@ export default async function DashboardPage({
     .eq('class_code_id', session.classroomId)
     .eq('is_active', true)
 
+  // 활성 소거 알림 조회
+  const { data: extinctionAlerts } = await supabase
+    .from('pbs_extinction_alerts')
+    .select('*, pbs_students(name), pbs_goals(behavior_name)')
+    .eq('is_resolved', false)
+    .order('created_at', { ascending: false })
+    .limit(3)
+
   return (
     <>
     <div className="p-6 space-y-6">
+      {/* 소거 알림 배너 */}
+      {extinctionAlerts && extinctionAlerts.length > 0 && (
+        <div className="bg-red-50 border-2 border-red-200 rounded-2xl p-4">
+          <div className="flex items-start justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <span className="text-2xl">🚨</span>
+              <div>
+                <p className="font-bold text-red-900">소거 위험 알림 ({extinctionAlerts.length}건)</p>
+                <p className="text-xs text-red-600">소거 폭발(Extinction Burst) 패턴이 감지되었습니다</p>
+              </div>
+            </div>
+            <Link
+              href={`/${classCode}/behavior-analysis`}
+              className="text-xs text-red-600 hover:text-red-800 underline whitespace-nowrap"
+            >
+              전체 보기 →
+            </Link>
+          </div>
+          <div className="space-y-2">
+            {extinctionAlerts.map(alert => (
+              <div key={alert.id} className="bg-white rounded-lg p-3 text-sm">
+                <p className="font-medium text-gray-900">
+                  {alert.pbs_students?.name} · {alert.pbs_goals?.behavior_name}
+                </p>
+                <p className="text-gray-600 text-xs mt-1">{alert.description}</p>
+                <span className={`inline-block mt-2 text-xs px-2 py-0.5 rounded-full ${
+                  alert.risk_level === 'high' ? 'bg-red-100 text-red-700' :
+                  alert.risk_level === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                  'bg-blue-100 text-blue-700'
+                }`}>
+                  위험도: {alert.risk_level === 'high' ? '높음' : alert.risk_level === 'medium' ? '중간' : '낮음'}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* 헤더 */}
       <div className="flex items-center justify-between">
         <div>

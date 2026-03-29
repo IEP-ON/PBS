@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useParams } from 'next/navigation'
 
 interface Settings {
   currency_unit: number
@@ -20,6 +21,8 @@ interface SalaryRule {
 }
 
 export default function SettingsPage() {
+  const params = useParams()
+  const classCode = params.classCode as string
   const [settings, setSettings] = useState<Settings | null>(null)
   const [salaryRules, setSalaryRules] = useState<SalaryRule[]>([])
   const [loading, setLoading] = useState(true)
@@ -181,6 +184,46 @@ export default function SettingsPage() {
           />
           <span className="text-sm font-medium text-gray-700">잔액 이월 허용</span>
         </label>
+      </div>
+
+      {/* 윤리/동의 설정 */}
+      <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="font-bold text-gray-900">📜 PBS 윤리 및 동의서 관리</h2>
+            <p className="text-sm text-gray-500 mt-1">학기초 1회 설정 후 거의 변경하지 않는 항목</p>
+          </div>
+          <a
+            href={`/${classCode}/ethics`}
+            className="text-sm text-blue-600 hover:text-blue-700 underline whitespace-nowrap"
+          >
+            상세 관리 →
+          </a>
+        </div>
+        
+        <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">
+          <p className="text-sm text-purple-900 font-medium mb-2">윤리 가이드라인 및 동의서 템플릿</p>
+          <p className="text-sm text-purple-700 mb-3">
+            PBS 시스템 운영 시 필요한 윤리 가이드라인과 학부모 동의서 템플릿을 관리합니다.
+          </p>
+          <ul className="text-sm text-purple-600 space-y-1">
+            <li>• 최소 제한 원칙 (Least Restrictive Intervention)</li>
+            <li>• 행동계약서 학부모 동의서</li>
+            <li>• 반응대가 동의서</li>
+            <li>• FBA 동의서</li>
+            <li>• 개인정보 동의서</li>
+          </ul>
+        </div>
+
+        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+          <span className="text-sm text-gray-600">윤리 가이드라인 및 동의서 템플릿은 별도 페이지에서 관리됩니다</span>
+          <a
+            href={`/${classCode}/ethics`}
+            className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-lg transition-colors"
+          >
+            윤리/동의 관리 →
+          </a>
+        </div>
       </div>
     </div>
   )

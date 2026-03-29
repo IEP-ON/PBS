@@ -8,6 +8,7 @@ interface Student {
   id: string
   name: string
   pbs_stage: number
+  response_cost_enabled: boolean
 }
 
 interface PbsGoal {
@@ -811,6 +812,57 @@ export default function PbsCheckPage() {
           </div>
         </div>
       )}
+
+      {/* 반응대가 섹션 */}
+      <div className="mt-8 pt-8 border-t-2 border-gray-200">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-xl font-bold text-gray-900">⚠️ 반응대가 (Response Cost)</h2>
+            <p className="text-sm text-gray-500 mt-1">문제 행동 발생 시 토큰 차감</p>
+          </div>
+          <a
+            href={`/${classCode}/behavior-analysis`}
+            className="text-sm text-blue-600 hover:text-blue-700 underline"
+          >
+            행동 분석 탭에서 상세 관리 →
+          </a>
+        </div>
+
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-4">
+          <p className="text-sm text-red-800 mb-3">
+            <strong>반응대가</strong>는 문제 행동 발생 시 즉시 토큰을 차감하는 절차입니다. 
+            학생 관리 페이지에서 개별 학생의 반응대가를 활성화한 후 사용하세요.
+          </p>
+          <div className="flex items-center gap-2 text-xs text-red-600">
+            <span className="bg-red-100 px-2 py-1 rounded-full">최저잔액 500원 보호</span>
+            <span>·</span>
+            <span>즉시 차감 (정산 불필요)</span>
+          </div>
+        </div>
+
+        <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+          {students
+            .filter(s => s.response_cost_enabled)
+            .map(student => (
+              <div key={student.id} className="bg-white border border-red-100 rounded-xl p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="font-bold text-gray-900">{student.name}</p>
+                  <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full">반응대가 활성</span>
+                </div>
+                <p className="text-sm text-gray-500">
+                  행동 분석 탭에서 차감 기록을 관리할 수 있습니다.
+                </p>
+              </div>
+            ))}
+        </div>
+
+        {students.filter(s => s.response_cost_enabled).length === 0 && (
+          <div className="mt-4 bg-white border border-gray-200 rounded-xl p-6 text-center">
+            <p className="text-gray-400 text-sm">반응대가가 활성화된 학생이 없습니다.</p>
+            <p className="text-xs text-gray-400 mt-1">학생 관리에서 개별 학생의 반응대가를 활성화할 수 있습니다.</p>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
