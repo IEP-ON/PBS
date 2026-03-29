@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { formatCurrency } from '@/lib/utils'
 
-type Mode = 'setup' | 'login' | 'dashboard' | 'scan_token' | 'scan_passbook'
+type Mode = 'setup' | 'login' | 'dashboard' | 'scan_token' | 'scan_passbook' | 'shop' | 'stocks'
 type ScanTarget = 'passbook' | 'token' | null
 
 interface StudentSession {
@@ -14,11 +14,34 @@ interface StudentSession {
   balance: number
 }
 
+interface ShopItem {
+  id: string
+  name: string
+  emoji: string
+  price: number
+  stock: number | null
+}
+
+interface StockItem {
+  id: string
+  name: string
+  emoji: string
+  current_price: number
+}
+
+interface Holding {
+  stock_name: string
+  quantity: number
+  avg_buy_price: number
+}
+
 const ATM_CLASS_CODE_KEY = 'atm_class_code'
+const ATM_EASY_LOGIN_KEY = 'atm_easy_login'
 
 export default function AtmPage() {
   const [mode, setMode] = useState<Mode>('login')
   const [savedClassCode, setSavedClassCode] = useState<string | null>(null)
+  const [easyLogin, setEasyLogin] = useState(false)
 
   // 설정 모드 상태
   const [setupCode, setSetupCode] = useState('')
@@ -45,9 +68,24 @@ export default function AtmPage() {
   const [redeemLoading, setRedeemLoading] = useState(false)
   const [redeemResult, setRedeemResult] = useState<{ amount: number; balanceAfter: number } | null>(null)
 
+  // 상점 상태
+  const [shopItems, setShopItems] = useState<ShopItem[]>([])
+  const [shopLoading, setShopLoading] = useState(false)
+  const [shopMessage, setShopMessage] = useState('')
+  const [purchasingId, setPurchasingId] = useState<string | null>(null)
+
+  // 주식 상태
+  const [stocks, setStocks] = useState<StockItem[]>([])
+  const [holdings, setHoldings] = useState<Holding[]>([])
+  const [stocksLoading, setStocksLoading] = useState(false)
+  const [stockMessage, setStockMessage] = useState('')
+  const [tradingId, setTradingId] = useState<string | null>(null)
+
   // 초기화: localStorage에서 학급코드 불러오기
   useEffect(() => {
     const stored = localStorage.getItem(ATM_CLASS_CODE_KEY)
+    const easy = localStorage.getItem(ATM_EASY_LOGIN_KEY)
+    if (easy === 'true') setEasyLogin(true)
     if (stored) {
       setSavedClassCode(stored)
       setMode('login')
@@ -71,16 +109,47 @@ export default function AtmPage() {
     stopCamera()
 
     if (data.startsWith('PB:')) {
-      // 통장 QR → 이름 자동 채우기
-      const parts = data.split(':')
-      if (parts.length >= 2) {
-        const passbookQrCode = data
-        setScanTarget(null)
+      // 통장 QR → easyLogin이면 자동 로그인, 아니면 이름 필드에 채우기
+      const passbookQrCode = data
+      setScanTarget(null)
+
+      if (easyLogin && savedClassCode) {
+        // PIN 없이 자동 로그인
+        setLoginLoading(true)
         setMode('login')
-        // 통장 QR을 통한 로그인: 이름 필드에 QR 코드 저장 (숨김 처리)
-        // 실제로는 로그인 폼에서 passbookQrCode를 같이 전송
-        // state로 관리
-        setStudentName('\uD1B5\uC7A5QR:' + passbookQrCode)
+        try {
+          const res = await fetch('/api/atm/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              classCode: savedClassCode,
+              passbookQrCode,
+              pin: '0000',
+              easyLogin: true,
+            }),
+          })
+          const result = await res.json()
+          if (res.ok) {
+            setSession({
+              studentId: result.studentId,
+              studentName: result.studentName,
+              classCode: savedClassCode,
+              balance: result.balance,
+            })
+            setMode('dashboard')
+          } else {
+            setLoginError(result.error || '자동 로그인 실패')
+            setStudentName('통장QR:' + passbookQrCode)
+          }
+        } catch {
+          setLoginError('서버 연결에 실패했습니다.')
+          setStudentName('통장QR:' + passbookQrCode)
+        } finally {
+          setLoginLoading(false)
+        }
+      } else {
+        setMode('login')
+        setStudentName('통장QR:' + passbookQrCode)
       }
     } else if (data.startsWith('PT:')) {
       // 토큰 코인 QR → 충전
@@ -255,8 +324,108 @@ export default function AtmPage() {
     setStudentName('')
     setScanError('')
     setRedeemResult(null)
+    setShopItems([])
+    setShopMessage('')
+    setStocks([])
+    setHoldings([])
+    setStockMessage('')
     stopCamera()
     setMode('login')
+  }
+
+  // 상점 아이템 로드
+  const loadShopItems = async () => {
+    if (!session) return
+    setShopLoading(true)
+    setShopMessage('')
+    try {
+      const res = await fetch(`/api/atm/shop?classCode=${session.classCode}`)
+      const data = await res.json()
+      if (res.ok) setShopItems(data.items || [])
+    } catch { /* ignore */ } finally {
+      setShopLoading(false)
+    }
+  }
+
+  // 상점 구매 (1개 즉시)
+  const handlePurchase = async (item: ShopItem) => {
+    if (!session) return
+    setPurchasingId(item.id)
+    setShopMessage('')
+    try {
+      const res = await fetch('/api/atm/shop/purchase', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          classCode: session.classCode,
+          studentId: session.studentId,
+          itemId: item.id,
+        }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setShopMessage(`${data.emoji || '🎉'} ${data.item} 구매 완료! 남은 잔액: ${formatCurrency(data.balanceAfter)}`)
+        setSession(prev => prev ? { ...prev, balance: data.balanceAfter } : prev)
+        loadShopItems()
+      } else {
+        setShopMessage(data.error || '구매 실패')
+      }
+    } catch {
+      setShopMessage('서버 오류')
+    } finally {
+      setPurchasingId(null)
+    }
+  }
+
+  // 주식 목록 + 보유현황 로드
+  const loadStocks = async () => {
+    if (!session) return
+    setStocksLoading(true)
+    setStockMessage('')
+    try {
+      const res = await fetch(`/api/atm/stocks?classCode=${session.classCode}&studentId=${session.studentId}`)
+      const data = await res.json()
+      if (res.ok) {
+        setStocks(data.stocks || [])
+        setHoldings(data.holdings || [])
+      }
+    } catch { /* ignore */ } finally {
+      setStocksLoading(false)
+    }
+  }
+
+  // 주식 매수/매도 (1주)
+  const handleTrade = async (stock: StockItem, action: 'buy' | 'sell') => {
+    if (!session) return
+    setTradingId(stock.id)
+    setStockMessage('')
+    try {
+      const res = await fetch('/api/atm/stocks/trade', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          classCode: session.classCode,
+          studentId: session.studentId,
+          stockId: stock.id,
+          stockName: stock.name,
+          action,
+          quantity: 1,
+        }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        const actionText = action === 'buy' ? '매수' : '매도'
+        setStockMessage(`${stock.emoji} ${stock.name} 1주 ${actionText} 완료! 잔액: ${formatCurrency(data.balanceAfter)}`)
+        setSession(prev => prev ? { ...prev, balance: data.balanceAfter } : prev)
+        loadStocks()
+      } else {
+        setStockMessage(data.error || '거래 실패')
+      }
+    } catch {
+      setStockMessage('서버 오류')
+    } finally {
+      setTradingId(null)
+    }
   }
 
   // ── 렌더 ──────────────────────────────────────────────
@@ -281,6 +450,25 @@ export default function AtmPage() {
                 placeholder="예: NDG-2026-001"
                 className="mt-1 block w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-center font-mono tracking-wider text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-400"
               />
+            </label>
+            <label className="flex items-center justify-between px-3 py-2 bg-white/5 border border-white/10 rounded-xl cursor-pointer">
+              <div>
+                <span className="text-sm font-medium text-slate-200">간편 로그인 (PIN 생략)</span>
+                <p className="text-xs text-slate-400 mt-0.5">QR 통장 스캔만으로 즉시 로그인</p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={easyLogin}
+                onClick={() => {
+                  const next = !easyLogin
+                  setEasyLogin(next)
+                  localStorage.setItem(ATM_EASY_LOGIN_KEY, String(next))
+                }}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${easyLogin ? 'bg-green-500' : 'bg-gray-600'}`}
+              >
+                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${easyLogin ? 'translate-x-6' : 'translate-x-1'}`} />
+              </button>
             </label>
             {setupError && <p className="text-red-400 text-sm text-center">{setupError}</p>}
             <button
@@ -434,6 +622,174 @@ export default function AtmPage() {
     )
   }
 
+  // 상점 화면
+  if (mode === 'shop') {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-emerald-800 to-slate-900 flex flex-col items-center p-4">
+        <div className="max-w-md w-full space-y-4">
+          {/* 헤더 */}
+          <div className="flex items-center justify-between">
+            <button
+              onClick={() => setMode('dashboard')}
+              className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl text-lg transition-colors"
+            >
+              ← 돌아가기
+            </button>
+            <div className="text-right">
+              <p className="text-sm text-emerald-300">{session?.studentName}</p>
+              <p className="text-lg font-bold text-white">{session ? formatCurrency(session.balance) : '—'}</p>
+            </div>
+          </div>
+
+          <div className="text-center">
+            <div className="text-5xl mb-1">🛒</div>
+            <h2 className="text-2xl font-bold text-white">상점</h2>
+            <p className="text-sm text-emerald-200">사고 싶은 물건을 터치하세요!</p>
+          </div>
+
+          {/* 메시지 */}
+          {shopMessage && (
+            <div className={`rounded-2xl p-4 text-center text-white ${shopMessage.includes('완료') ? 'bg-green-500' : 'bg-red-500'}`}>
+              <p className="text-lg font-bold">{shopMessage}</p>
+            </div>
+          )}
+
+          {/* 아이템 목록 */}
+          {shopLoading ? (
+            <div className="text-center py-8">
+              <div className="inline-block animate-spin w-8 h-8 border-4 border-white border-t-transparent rounded-full" />
+              <p className="text-white mt-2">불러오는 중...</p>
+            </div>
+          ) : shopItems.length === 0 ? (
+            <div className="text-center py-8 text-white/60">
+              <p className="text-4xl mb-2">📭</p>
+              <p>등록된 상품이 없습니다</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              {shopItems.map(item => {
+                const soldOut = item.stock != null && item.stock <= 0
+                const tooExpensive = session ? item.price > session.balance : true
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => !soldOut && !tooExpensive && handlePurchase(item)}
+                    disabled={purchasingId === item.id || soldOut || tooExpensive}
+                    className={`flex flex-col items-center p-5 rounded-2xl text-center transition-all transform active:scale-95 ${
+                      soldOut
+                        ? 'bg-gray-700 opacity-50 cursor-not-allowed'
+                        : tooExpensive
+                        ? 'bg-white/5 border-2 border-red-400/30 opacity-70'
+                        : 'bg-white/10 hover:bg-white/20 border-2 border-white/20 hover:border-emerald-400'
+                    }`}
+                  >
+                    <span className="text-5xl mb-2">{item.emoji || '🎁'}</span>
+                    <span className="text-white font-bold text-base">{item.name}</span>
+                    <span className="text-emerald-300 font-bold text-lg mt-1">{formatCurrency(item.price)}</span>
+                    {soldOut && <span className="text-red-400 text-xs mt-1">품절</span>}
+                    {tooExpensive && !soldOut && <span className="text-red-300 text-xs mt-1">잔액 부족</span>}
+                    {purchasingId === item.id && (
+                      <div className="mt-1 animate-spin w-5 h-5 border-2 border-white border-t-transparent rounded-full" />
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  // 주식 화면
+  if (mode === 'stocks') {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-purple-900 to-slate-900 flex flex-col items-center p-4">
+        <div className="max-w-md w-full space-y-4">
+          {/* 헤더 */}
+          <div className="flex items-center justify-between">
+            <button
+              onClick={() => setMode('dashboard')}
+              className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl text-lg transition-colors"
+            >
+              ← 돌아가기
+            </button>
+            <div className="text-right">
+              <p className="text-sm text-purple-300">{session?.studentName}</p>
+              <p className="text-lg font-bold text-white">{session ? formatCurrency(session.balance) : '—'}</p>
+            </div>
+          </div>
+
+          <div className="text-center">
+            <div className="text-5xl mb-1">📈</div>
+            <h2 className="text-2xl font-bold text-white">주식</h2>
+            <p className="text-sm text-purple-200">1주씩 사고 팔 수 있어요!</p>
+          </div>
+
+          {/* 메시지 */}
+          {stockMessage && (
+            <div className={`rounded-2xl p-4 text-center text-white ${stockMessage.includes('완료') ? 'bg-green-500' : 'bg-red-500'}`}>
+              <p className="text-lg font-bold">{stockMessage}</p>
+            </div>
+          )}
+
+          {/* 주식 목록 */}
+          {stocksLoading ? (
+            <div className="text-center py-8">
+              <div className="inline-block animate-spin w-8 h-8 border-4 border-white border-t-transparent rounded-full" />
+              <p className="text-white mt-2">불러오는 중...</p>
+            </div>
+          ) : stocks.length === 0 ? (
+            <div className="text-center py-8 text-white/60">
+              <p className="text-4xl mb-2">📭</p>
+              <p>등록된 종목이 없습니다</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {stocks.map(stock => {
+                const holding = holdings.find(h => h.stock_name === stock.name)
+                const qty = holding?.quantity || 0
+                const canBuy = session ? stock.current_price <= session.balance : false
+                return (
+                  <div key={stock.id} className="bg-white/10 rounded-2xl p-4 space-y-3">
+                    <div className="flex items-center gap-3">
+                      <span className="text-4xl">{stock.emoji || '🎲'}</span>
+                      <div className="flex-1">
+                        <p className="text-white font-bold text-lg">{stock.name}</p>
+                        <p className="text-purple-300 font-bold">{formatCurrency(stock.current_price)} / 주</p>
+                      </div>
+                      {qty > 0 && (
+                        <div className="bg-purple-500/30 px-3 py-1 rounded-full">
+                          <span className="text-white font-bold">{qty}주 보유</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleTrade(stock, 'buy')}
+                        disabled={tradingId === stock.id || !canBuy}
+                        className="flex-1 py-3 bg-blue-500 hover:bg-blue-400 disabled:bg-gray-600 disabled:opacity-50 text-white font-bold text-lg rounded-xl transition-colors active:scale-95 transform"
+                      >
+                        {tradingId === stock.id ? '...' : '📥 1주 사기'}
+                      </button>
+                      <button
+                        onClick={() => handleTrade(stock, 'sell')}
+                        disabled={tradingId === stock.id || qty <= 0}
+                        className="flex-1 py-3 bg-red-500 hover:bg-red-400 disabled:bg-gray-600 disabled:opacity-50 text-white font-bold text-lg rounded-xl transition-colors active:scale-95 transform"
+                      >
+                        {tradingId === stock.id ? '...' : '📤 1주 팔기'}
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
   // 대시보드 (로그인 후)
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-900 to-slate-900 flex flex-col items-center justify-center p-6">
@@ -445,7 +801,7 @@ export default function AtmPage() {
 
         {/* 잔액 카드 */}
         <div className="bg-white rounded-2xl shadow-xl p-6 text-center space-y-2">
-          <p className="text-sm text-gray-500">{session?.studentName}님의 잔액</p>
+          <p className="text-lg text-gray-500">환영합니다, <strong className="text-gray-900">{session?.studentName}</strong>님!</p>
           <p className="text-5xl font-bold text-blue-600">
             {session ? formatCurrency(session.balance) : '—'}
           </p>
@@ -454,8 +810,8 @@ export default function AtmPage() {
 
         {/* 충전 결과 */}
         {redeemResult && (
-          <div className="bg-green-500 rounded-2xl p-4 text-center text-white">
-            <p className="text-2xl font-bold">+{formatCurrency(redeemResult.amount)} 충전!</p>
+          <div className="bg-green-500 rounded-2xl p-4 text-center text-white animate-bounce">
+            <p className="text-3xl font-bold">🪙 +{formatCurrency(redeemResult.amount)} 충전!</p>
             <p className="text-sm opacity-80">잔액: {formatCurrency(redeemResult.balanceAfter)}</p>
           </div>
         )}
@@ -470,20 +826,36 @@ export default function AtmPage() {
         {/* 충전 로딩 */}
         {redeemLoading && (
           <div className="bg-white/10 rounded-2xl p-4 text-center">
-            <div className="inline-block animate-spin w-6 h-6 border-4 border-white border-t-transparent rounded-full" />
+            <div className="inline-block animate-spin w-8 h-8 border-4 border-white border-t-transparent rounded-full" />
             <p className="text-white text-sm mt-2">충전 중...</p>
           </div>
         )}
 
-        {/* 액션 버튼 */}
+        {/* 메인 액션 버튼들 (큰 터치 영역) */}
         <div className="grid grid-cols-1 gap-3">
           <button
             onClick={() => { setScanError(''); setRedeemResult(null); startCamera('token') }}
             disabled={redeemLoading}
-            className="w-full py-4 bg-yellow-500 hover:bg-yellow-400 disabled:opacity-50 text-white text-lg font-bold rounded-2xl transition-colors flex items-center justify-center gap-3"
+            className="w-full py-5 bg-yellow-500 hover:bg-yellow-400 disabled:opacity-50 text-white text-xl font-bold rounded-2xl transition-all transform active:scale-95 flex items-center justify-center gap-3 shadow-lg"
           >
-            <span className="text-2xl">🪙</span>
-            토큰 코인 스캔 (충전)
+            <span className="text-3xl">🪙</span>
+            토큰 충전하기
+          </button>
+
+          <button
+            onClick={() => { loadShopItems(); setMode('shop') }}
+            className="w-full py-5 bg-emerald-500 hover:bg-emerald-400 text-white text-xl font-bold rounded-2xl transition-all transform active:scale-95 flex items-center justify-center gap-3 shadow-lg"
+          >
+            <span className="text-3xl">🛒</span>
+            상점 가기
+          </button>
+
+          <button
+            onClick={() => { loadStocks(); setMode('stocks') }}
+            className="w-full py-5 bg-purple-500 hover:bg-purple-400 text-white text-xl font-bold rounded-2xl transition-all transform active:scale-95 flex items-center justify-center gap-3 shadow-lg"
+          >
+            <span className="text-3xl">📈</span>
+            주식 투자
           </button>
         </div>
 

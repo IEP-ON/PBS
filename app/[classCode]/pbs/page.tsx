@@ -66,6 +66,7 @@ type GoalFormData = {
   tokenPerOccurrence: string
   strategyType: string
   dailyTarget: string
+  allowSelfCheck: boolean
 }
 
 const emptyForm: GoalFormData = {
@@ -74,6 +75,7 @@ const emptyForm: GoalFormData = {
   tokenPerOccurrence: '',
   strategyType: '',
   dailyTarget: '',
+  allowSelfCheck: false,
 }
 
 export default function PbsCheckPage() {
@@ -262,6 +264,7 @@ export default function PbsCheckPage() {
       tokenPerOccurrence: String(goal.token_per_occurrence),
       strategyType: goal.strategy_type || '',
       dailyTarget: goal.daily_target ? String(goal.daily_target) : '',
+      allowSelfCheck: goal.allow_self_check,
     })
     setFormError('')
     setShowModal(true)
@@ -286,6 +289,7 @@ export default function PbsCheckPage() {
             tokenPerOccurrence: Number(form.tokenPerOccurrence),
             strategyType: form.strategyType || null,
             dailyTarget: form.dailyTarget ? Number(form.dailyTarget) : null,
+            allowSelfCheck: form.allowSelfCheck,
           }),
         })
         if (!res.ok) {
@@ -305,6 +309,7 @@ export default function PbsCheckPage() {
             tokenPerOccurrence: Number(form.tokenPerOccurrence),
             strategyType: form.strategyType || null,
             dailyTarget: form.dailyTarget ? Number(form.dailyTarget) : null,
+            allowSelfCheck: form.allowSelfCheck,
           }),
         })
         if (!res.ok) {
@@ -762,6 +767,28 @@ export default function PbsCheckPage() {
                   ))
                 )}
               </select>
+            </label>
+
+            <label className="flex items-center justify-between px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl cursor-pointer">
+              <div>
+                <span className="text-sm font-medium text-gray-700">학생 셀프체크 허용</span>
+                <p className="text-xs text-gray-400 mt-0.5">학생이 직접 이 목표를 체크할 수 있습니다</p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={form.allowSelfCheck}
+                onClick={() => setForm({ ...form, allowSelfCheck: !form.allowSelfCheck })}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  form.allowSelfCheck ? 'bg-green-500' : 'bg-gray-300'
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    form.allowSelfCheck ? 'translate-x-6' : 'translate-x-1'
+                  }`}
+                />
+              </button>
             </label>
 
             {formError && <p className="text-red-500 text-sm">{formError}</p>}

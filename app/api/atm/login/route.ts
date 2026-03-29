@@ -6,10 +6,16 @@ import bcrypt from 'bcryptjs'
 // 이름+PIN 방식 또는 통장QR+PIN 방식
 export async function POST(request: Request) {
   try {
-    const { classCode, studentName, studentPin, passbookQrCode } = await request.json()
+    const { classCode, studentName, studentPin, passbookQrCode, easyLogin } = await request.json()
 
-    if (!classCode || !studentPin) {
+    // easyLogin 모드: 통장 QR만으로 PIN 없이 로그인
+    const isEasyLogin = easyLogin === true && !!passbookQrCode
+
+    if (!classCode) {
       return NextResponse.json({ error: '필수 항목이 누락되었습니다.' }, { status: 400 })
+    }
+    if (!isEasyLogin && !studentPin) {
+      return NextResponse.json({ error: 'PIN이 필요합니다.' }, { status: 400 })
     }
     if (!studentName && !passbookQrCode) {
       return NextResponse.json({ error: '이름 또는 통장 QR이 필요합니다.' }, { status: 400 })
@@ -48,10 +54,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: '학생 정보를 확인해주세요.' }, { status: 401 })
     }
 
-    // PIN 검증
-    const pinMatch = await bcrypt.compare(studentPin, student.pin_hash)
-    if (!pinMatch) {
-      return NextResponse.json({ error: 'PIN이 올바르지 않습니다.' }, { status: 401 })
+    // PIN 검증 (easyLogin 모드에서는 생략)
+    if (!isEasyLogin) {
+      const pinMatch = await bcrypt.compare(studentPin, student.pin_hash)
+      if (!pinMatch) {
+        return NextResponse.json({ error: 'PIN이 올바르지 않습니다.' }, { status: 401 })
+      }
     }
 
     // 잔액 조회
