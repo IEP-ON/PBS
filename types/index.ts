@@ -15,6 +15,7 @@ export type TransactionType =
   | 'contract_bonus'    // 계약 달성 보너스
   | 'level_up_bonus'    // 행동형성 레벨업 보너스
   | 'class_reward'      // 학급 공동 보상
+  | 'speech_diary_reward' // 말 일기장 작성 보상
 
 export type BehaviorFunction = 'attention' | 'escape' | 'automatic' | 'access'
 export type PbsStage = 1 | 2 | 3
@@ -195,4 +196,36 @@ export interface SystemSettings {
   data_retention_months: number
   weather_location: string
   updated_at: string
+}
+
+export interface SpeechDiary {
+  id: string
+  student_id: string
+  raw_transcript: string | null
+  corrected_text: string | null
+  audio_url: string | null
+  image_url: string | null
+  sentiment: 'positive' | 'negative' | 'neutral' | null
+  keywords: string[] | null
+  teacher_note: string | null
+  created_at: string
+}
+
+export interface SpeechContext {
+  id: string
+  class_code_id: string
+  date: string
+  lunch_menu: string | null
+  event: string | null
+  memo: string | null
+}
+
+export interface SpeechDiaryStatus {
+  student_id: string
+  student_name: string
+  has_today_diary: boolean
+  diary_count_today: number
+  reward_granted_today: boolean
+  latest_diary_at: string | null
+  latest_sentiment: 'positive' | 'negative' | 'neutral' | null
 }

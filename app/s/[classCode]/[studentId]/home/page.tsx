@@ -2,6 +2,11 @@ import { getSession } from '@/lib/session'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { formatCurrency } from '@/lib/utils'
+import {
+  getKstDateRange,
+  getKstToday,
+  SPEECH_DIARY_REWARD_TYPE,
+} from '@/lib/speech-diary'
 
 export default async function StudentHomePage({
   params,
@@ -24,6 +29,8 @@ export default async function StudentHomePage({
   if (!student) redirect('/login')
 
   const account = Array.isArray(student.pbs_accounts) ? student.pbs_accounts[0] : student.pbs_accounts
+  const todayKst = getKstToday()
+  const { startIso, endIso } = getKstDateRange(todayKst)
 
   // 최근 거래내역 5건
   const { data: recentTx } = await supabase
@@ -42,6 +49,28 @@ export default async function StudentHomePage({
     .eq('record_date', today)
 
   const todayEarned = todayRecords?.reduce((sum, r) => sum + r.token_granted, 0) || 0
+
+  const { data: todayDiaries } = await supabase
+    .from('pbs_speech_diaries')
+    .select('created_at, sentiment')
+    .eq('student_id', studentId)
+    .gte('created_at', startIso)
+    .lt('created_at', endIso)
+    .order('created_at', { ascending: false })
+
+  const { data: diaryReward } = await supabase
+    .from('pbs_transactions')
+    .select('id')
+    .eq('student_id', studentId)
+    .eq('type', SPEECH_DIARY_REWARD_TYPE)
+    .gte('created_at', startIso)
+    .lt('created_at', endIso)
+    .maybeSingle()
+
+  const hasTodayDiary = Boolean(todayDiaries && todayDiaries.length > 0)
+  const todayDiaryCount = todayDiaries?.length || 0
+  const latestDiarySentiment = todayDiaries?.[0]?.sentiment || null
+  const diaryRewardGranted = Boolean(diaryReward)
 
   // 보유 주식
   const { data: holdings } = await supabase
@@ -102,6 +131,7 @@ export default async function StudentHomePage({
     contract_bonus: '📝',
     level_up_bonus: '🆙',
     class_reward: '🏫',
+    speech_diary_reward: '🎙️',
   }
 
   return (
@@ -126,6 +156,33 @@ export default async function StudentHomePage({
         <div className="bg-white rounded-2xl border border-gray-100 p-4 text-center">
           <p className="text-xs text-gray-500">총 지출</p>
           <p className="text-lg font-bold text-red-500">{formatCurrency(account?.total_spent || 0)}</p>
+        </div>
+      </div>
+
+      <div className={`rounded-2xl border p-4 ${hasTodayDiary ? 'border-emerald-200 bg-emerald-50' : 'border-amber-200 bg-amber-50'}`}>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-sm font-bold text-gray-900">🎙️ 오늘 말 일기</p>
+            {hasTodayDiary ? (
+              <>
+                <p className="mt-2 text-sm text-gray-700">
+                  오늘 {todayDiaryCount}건 작성했어요.
+                  {latestDiarySentiment && ` 지금 분위기는 ${latestDiarySentiment === 'positive' ? '긍정' : latestDiarySentiment === 'negative' ? '부정' : '중립'}으로 기록됐어요.`}
+                </p>
+                <p className="mt-1 text-xs text-emerald-700">
+                  {diaryRewardGranted ? '선생님이 오늘 말 일기 보상도 반영했어요.' : '선생님이 확인하면 말 일기 보상이 통장에 들어올 수 있어요.'}
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="mt-2 text-sm text-gray-700">아직 오늘 작성한 말 일기가 없어요.</p>
+                <p className="mt-1 text-xs text-amber-700">키오스크에서 QR 카드를 찍고 오늘 이야기를 남겨보세요.</p>
+              </>
+            )}
+          </div>
+          <div className={`rounded-xl px-3 py-2 text-xs font-bold ${hasTodayDiary ? 'bg-white text-emerald-700' : 'bg-white text-amber-700'}`}>
+            {hasTodayDiary ? '작성 완료' : '미작성'}
+          </div>
         </div>
       </div>
 

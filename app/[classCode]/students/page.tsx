@@ -99,12 +99,20 @@ export default function StudentsPage() {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900">👨‍🎓 학생 관리</h1>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl transition-colors"
-        >
-          {showForm ? '취소' : '+ 학생 등록'}
-        </button>
+        <div className="flex items-center gap-2">
+          <Link
+            href={`/${classCode}/students/qr-cards`}
+            className="px-4 py-2 bg-gray-900 hover:bg-black text-white text-sm font-medium rounded-xl transition-colors"
+          >
+            🪪 QR 일괄 출력
+          </Link>
+          <button
+            onClick={() => setShowForm(!showForm)}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl transition-colors"
+          >
+            {showForm ? '취소' : '+ 학생 등록'}
+          </button>
+        </div>
       </div>
 
       {/* 학생 등록 폼 */}

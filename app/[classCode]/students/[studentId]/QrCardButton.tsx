@@ -49,7 +49,7 @@ export default function QrCardButton({ studentId }: Props) {
         disabled={loading}
         className="px-4 py-2 bg-gray-800 hover:bg-gray-900 disabled:bg-gray-400 text-white text-sm font-medium rounded-xl transition-colors"
       >
-        {loading ? '로딩...' : '🪪 QR 통장카드'}
+        {loading ? '로딩...' : '🪪 QR 카드'}
       </button>
 
       {showCard && data && (
@@ -79,7 +79,7 @@ export default function QrCardButton({ studentId }: Props) {
                   <div className="animate-spin w-6 h-6 border-4 border-gray-400 border-t-transparent rounded-full" />
                 </div>
               )}
-              <p className="text-xs text-gray-400">📔 ATM에서 이 QR을 스캔하세요</p>
+              <p className="text-xs text-gray-400">🪪 ATM에서 이 QR 카드를 스캔하세요</p>
             </div>
 
             <div className="flex gap-3 p-4 border-t border-gray-100">

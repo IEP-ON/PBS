@@ -47,6 +47,13 @@ export default function SidebarNav({ classCode }: { classCode: string }) {
       description: '가게·주식·QR토큰·학급계좌 통합',
     },
     {
+      href: `/${classCode}/speech-diary`,
+      label: '말 일기장',
+      icon: '🎙️',
+      description: 'QR 카드로 음성 녹음·누적 일기 관리',
+      badge: 'Whisper',
+    },
+    {
       href: `/${classCode}/behavior-analysis`,
       label: '행동 분석',
       icon: '�',

@@ -18,7 +18,7 @@ export async function GET(
 
     const { data: student } = await supabase
       .from('pbs_students')
-      .select('name, passbook_qr_code, grade, pbs_accounts(balance)')
+      .select('name, qr_code, grade, pbs_accounts(balance)')
       .eq('id', studentId)
       .eq('class_code_id', session.classroomId)
       .single()
@@ -38,7 +38,7 @@ export async function GET(
       student: {
         name: student.name,
         grade: student.grade,
-        qrCode: student.passbook_qr_code || ('PB:' + studentId),
+        qrCode: student.qr_code,
       },
       classroom: {
         code: classroom?.code,

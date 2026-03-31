@@ -1,11 +1,12 @@
 'use client'
 
+import type { FormEvent } from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { formatCurrency } from '@/lib/utils'
 
-type Mode = 'setup' | 'login' | 'dashboard' | 'scan_token' | 'scan_passbook' | 'shop' | 'stocks'
-type ScanTarget = 'passbook' | 'token' | null
+type Mode = 'setup' | 'login' | 'dashboard' | 'scan_token' | 'scan_student' | 'shop' | 'stocks'
+type ScanTarget = 'student' | 'token' | null
 
 interface StudentSession {
   studentId: string
@@ -36,12 +37,9 @@ interface Holding {
 }
 
 const ATM_CLASS_CODE_KEY = 'atm_class_code'
-const ATM_EASY_LOGIN_KEY = 'atm_easy_login'
-
 export default function AtmPage() {
   const [mode, setMode] = useState<Mode>('login')
   const [savedClassCode, setSavedClassCode] = useState<string | null>(null)
-  const [easyLogin, setEasyLogin] = useState(false)
 
   // 설정 모드 상태
   const [setupCode, setSetupCode] = useState('')
@@ -56,7 +54,6 @@ export default function AtmPage() {
 
   // 로그인된 학생 세션
   const [session, setSession] = useState<StudentSession | null>(null)
-  const [scanTarget, setScanTarget] = useState<ScanTarget>(null)
 
   // QR 스캐너
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -64,7 +61,6 @@ export default function AtmPage() {
   const streamRef = useRef<MediaStream | null>(null)
   const scanningRef = useRef(false)
   const [scanError, setScanError] = useState('')
-  const [scanning, setScanning] = useState(false)
   const [redeemLoading, setRedeemLoading] = useState(false)
   const [redeemResult, setRedeemResult] = useState<{ amount: number; balanceAfter: number } | null>(null)
 
@@ -84,8 +80,6 @@ export default function AtmPage() {
   // 초기화: localStorage에서 학급코드 불러오기
   useEffect(() => {
     const stored = localStorage.getItem(ATM_CLASS_CODE_KEY)
-    const easy = localStorage.getItem(ATM_EASY_LOGIN_KEY)
-    if (easy === 'true') setEasyLogin(true)
     if (stored) {
       setSavedClassCode(stored)
       setMode('login')
@@ -101,64 +95,19 @@ export default function AtmPage() {
       streamRef.current.getTracks().forEach(t => t.stop())
       streamRef.current = null
     }
-    setScanning(false)
   }, [])
 
   // QR 스캔 처리
   const handleQrData = useCallback(async (data: string) => {
     stopCamera()
 
-    if (data.startsWith('PB:')) {
-      // 통장 QR → easyLogin이면 자동 로그인, 아니면 이름 필드에 채우기
-      const passbookQrCode = data
-      setScanTarget(null)
-
-      if (easyLogin && savedClassCode) {
-        // PIN 없이 자동 로그인
-        setLoginLoading(true)
-        setMode('login')
-        try {
-          const res = await fetch('/api/atm/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              classCode: savedClassCode,
-              passbookQrCode,
-              pin: '0000',
-              easyLogin: true,
-            }),
-          })
-          const result = await res.json()
-          if (res.ok) {
-            setSession({
-              studentId: result.studentId,
-              studentName: result.studentName,
-              classCode: savedClassCode,
-              balance: result.balance,
-            })
-            setMode('dashboard')
-          } else {
-            setLoginError(result.error || '자동 로그인 실패')
-            setStudentName('통장QR:' + passbookQrCode)
-          }
-        } catch {
-          setLoginError('서버 연결에 실패했습니다.')
-          setStudentName('통장QR:' + passbookQrCode)
-        } finally {
-          setLoginLoading(false)
-        }
-      } else {
-        setMode('login')
-        setStudentName('통장QR:' + passbookQrCode)
-      }
-    } else if (data.startsWith('PT:')) {
+    if (data.startsWith('PT:')) {
       // 토큰 코인 QR → 충전
       if (!session) {
         setScanError('먼저 로그인이 필요합니다.')
         setMode('dashboard')
         return
       }
-      setScanTarget(null)
       setRedeemLoading(true)
       setMode('dashboard')
       try {
@@ -182,14 +131,50 @@ export default function AtmPage() {
         setRedeemLoading(false)
       }
     } else {
-      setScanError('인식할 수 없는 QR 코드입니다.')
-      setMode(session ? 'dashboard' : 'login')
+      if (!savedClassCode) {
+        setScanError('먼저 학급 설정이 필요합니다.')
+        setMode('setup')
+        return
+      }
+
+      setLoginLoading(true)
+      setLoginError('')
+      setMode('login')
+
+      try {
+        const res = await fetch('/api/atm/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            classCode: savedClassCode,
+            qrCode: data,
+          }),
+        })
+        const result = await res.json()
+
+        if (res.ok) {
+          setSession({
+            studentId: result.studentId,
+            studentName: result.studentName,
+            classCode: savedClassCode,
+            balance: result.balance,
+          })
+          setMode('dashboard')
+          setStudentName('')
+          setPin('')
+        } else {
+          setLoginError(result.error || 'QR 로그인에 실패했습니다.')
+        }
+      } catch {
+        setLoginError('서버 연결에 실패했습니다.')
+      } finally {
+        setLoginLoading(false)
+      }
     }
-  }, [session, pin, stopCamera])
+  }, [savedClassCode, session, stopCamera])
 
   // 카메라 시작 + jsqr 스캔 루프
   const startCamera = useCallback(async (target: ScanTarget) => {
-    setScanTarget(target)
     setScanError('')
     setRedeemResult(null)
 
@@ -198,8 +183,7 @@ export default function AtmPage() {
         video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
       })
       streamRef.current = stream
-      setScanning(true)
-      setMode(target === 'token' ? 'scan_token' : 'scan_passbook')
+      setMode(target === 'token' ? 'scan_token' : 'scan_student')
 
       setTimeout(() => {
         if (videoRef.current) {
@@ -247,16 +231,13 @@ export default function AtmPage() {
     setSetupLoading(true)
     setSetupError('')
     try {
-      const res = await fetch('/api/atm/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ classCode: setupCode, studentName: '_test_', studentPin: '0000' }),
-      })
+      const normalizedCode = setupCode.toUpperCase()
+      const res = await fetch(`/api/classroom/${normalizedCode}`)
       const data = await res.json()
-      // 학급코드 유효성 확인 (401이 아니면 학급 존재)
-      if (res.status !== 401 || data.error !== '학급코드가 올바르지 않습니다.') {
-        localStorage.setItem(ATM_CLASS_CODE_KEY, setupCode.toUpperCase())
-        setSavedClassCode(setupCode.toUpperCase())
+
+      if (res.ok && data.isActive !== false) {
+        localStorage.setItem(ATM_CLASS_CODE_KEY, normalizedCode)
+        setSavedClassCode(normalizedCode)
         setMode('login')
       } else {
         setSetupError('학급코드가 올바르지 않습니다.')
@@ -278,16 +259,12 @@ export default function AtmPage() {
   }
 
   // 학생 로그인
-  const handleLogin = async (e?: React.FormEvent, pinOverride?: string) => {
+  const handleLogin = async (e?: FormEvent, pinOverride?: string) => {
     if (e) e.preventDefault()
     if (!savedClassCode) return
     setLoginError('')
     setLoginLoading(true)
     const pinToSubmit = pinOverride ?? pin
-
-    const isPassbookScan = studentName.startsWith('통장QR:')
-    const passbookQrCode = isPassbookScan ? studentName.replace('통장QR:', '') : undefined
-    const nameToSend = isPassbookScan ? undefined : studentName
 
     try {
       const res = await fetch('/api/atm/login', {
@@ -295,9 +272,8 @@ export default function AtmPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           classCode: savedClassCode,
-          studentName: nameToSend,
+          studentName,
           studentPin: pinToSubmit,
-          passbookQrCode,
         }),
       })
       const data = await res.json()
@@ -452,25 +428,9 @@ export default function AtmPage() {
                 className="mt-1 block w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-center font-mono tracking-wider text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-400"
               />
             </label>
-            <label className="flex items-center justify-between px-3 py-2 bg-white/5 border border-white/10 rounded-xl cursor-pointer">
-              <div>
-                <span className="text-sm font-medium text-slate-200">간편 로그인 (PIN 생략)</span>
-                <p className="text-xs text-slate-400 mt-0.5">QR 통장 스캔만으로 즉시 로그인</p>
-              </div>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={easyLogin}
-                onClick={() => {
-                  const next = !easyLogin
-                  setEasyLogin(next)
-                  localStorage.setItem(ATM_EASY_LOGIN_KEY, String(next))
-                }}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${easyLogin ? 'bg-green-500' : 'bg-gray-600'}`}
-              >
-                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${easyLogin ? 'translate-x-6' : 'translate-x-1'}`} />
-              </button>
-            </label>
+            <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300">
+              학생 QR 카드는 PIN 없이 바로 로그인되고, 이름 입력 로그인만 PIN 4자리를 사용합니다.
+            </div>
             {setupError && <p className="text-red-400 text-sm text-center">{setupError}</p>}
             <button
               onClick={handleSetupSave}
@@ -489,7 +449,7 @@ export default function AtmPage() {
   }
 
   // QR 스캔 화면 (통장 또는 토큰)
-  if (mode === 'scan_token' || mode === 'scan_passbook') {
+  if (mode === 'scan_token' || mode === 'scan_student') {
     const isToken = mode === 'scan_token'
     return (
       <div className="min-h-screen bg-black flex flex-col items-center justify-center">
@@ -508,10 +468,10 @@ export default function AtmPage() {
         </div>
         <div className="mt-6 text-center space-y-2">
           <p className="text-white font-semibold text-lg">
-            {isToken ? '🪙 토큰 QR 코드를 카메라에 비춰주세요' : '📔 통장 QR 코드를 카메라에 비춰주세요'}
+            {isToken ? '🪙 토큰 QR 코드를 카메라에 비춰주세요' : '🪪 학생 QR 카드를 카메라에 비춰주세요'}
           </p>
           <p className="text-gray-400 text-sm">
-            {isToken ? '실물 동전의 QR을 인식시키면 자동으로 충전됩니다' : '통장 QR을 인식하면 이름이 자동으로 입력됩니다'}
+            {isToken ? '실물 동전의 QR을 인식시키면 자동으로 충전됩니다' : '학생 QR을 인식하면 PIN 없이 바로 로그인됩니다'}
           </p>
           <button
             onClick={() => { stopCamera(); setMode(session ? 'dashboard' : 'login') }}
@@ -526,7 +486,6 @@ export default function AtmPage() {
 
   // 로그인 화면
   if (mode === 'login') {
-    const isPassbookScan = studentName.startsWith('통장QR:')
     return (
       <div className="min-h-screen bg-gradient-to-b from-blue-900 to-slate-900 flex flex-col items-center justify-center p-6">
         <div className="max-w-sm w-full space-y-6">
@@ -536,17 +495,14 @@ export default function AtmPage() {
             <p className="text-sm text-blue-300 font-mono">{savedClassCode}</p>
           </div>
 
-          {/* QR통장 기본 스캔 버튼 */}
-          {!isPassbookScan && (
-            <button
-              type="button"
-              onClick={() => startCamera('passbook')}
-              className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white text-lg font-bold rounded-2xl transition-colors flex items-center justify-center gap-3 shadow-lg"
-            >
-              <span className="text-2xl">📔</span>
-              QR 통장 스캔으로 로그인
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => startCamera('student')}
+            className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white text-lg font-bold rounded-2xl transition-colors flex items-center justify-center gap-3 shadow-lg"
+          >
+            <span className="text-2xl">🪪</span>
+            QR 카드 스캔으로 바로 로그인
+          </button>
 
           <div className="flex items-center gap-3">
             <div className="flex-1 h-px bg-gray-200" />
@@ -555,33 +511,16 @@ export default function AtmPage() {
           </div>
 
           <form onSubmit={handleLogin} className="bg-white rounded-2xl shadow-xl p-6 space-y-4">
-            {isPassbookScan ? (
-              <div className="flex items-center gap-3 px-4 py-3 bg-blue-50 border border-blue-200 rounded-xl">
-                <span className="text-2xl">📔</span>
-                <div>
-                  <p className="text-xs text-blue-600 font-medium">통장 QR 인식됨</p>
-                  <p className="text-sm text-gray-700">PIN을 입력해주세요</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setStudentName('')}
-                  className="ml-auto text-gray-400 hover:text-gray-600 text-sm"
-                >
-                  ✕
-                </button>
-              </div>
-            ) : (
-              <label className="block">
-                <span className="text-sm font-medium text-gray-700">이름</span>
-                <input
-                  type="text"
-                  value={studentName}
-                  onChange={e => setStudentName(e.target.value)}
-                  placeholder="이름 입력"
-                  className="mt-1 block w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-center text-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </label>
-            )}
+            <label className="block">
+              <span className="text-sm font-medium text-gray-700">이름</span>
+              <input
+                type="text"
+                value={studentName}
+                onChange={e => setStudentName(e.target.value)}
+                placeholder="이름 입력"
+                className="mt-1 block w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-center text-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </label>
 
             <label className="block">
               <span className="text-sm font-medium text-gray-700">PIN 4자리</span>
@@ -605,7 +544,7 @@ export default function AtmPage() {
 
             <button
               type="submit"
-              disabled={loginLoading || (!isPassbookScan && !studentName) || pin.length !== 4}
+              disabled={loginLoading || !studentName || pin.length !== 4}
               className="w-full py-4 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white text-lg font-bold rounded-xl transition-colors"
             >
               {loginLoading ? '확인 중...' : '로그인'}

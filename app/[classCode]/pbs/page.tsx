@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import { formatCurrency } from '@/lib/utils'
+import type { SpeechDiaryStatus } from '@/types'
 
 interface Student {
   id: string
@@ -53,6 +54,10 @@ interface UndoToast {
   secondsLeft: number
 }
 
+interface SpeechDiaryStatusMap {
+  [studentId: string]: SpeechDiaryStatus
+}
+
 // 일괄 체크 모달용 - 모든 학생의 목표
 interface AllGoal {
   id: string
@@ -89,7 +94,10 @@ export default function PbsCheckPage() {
   const [todayRecords, setTodayRecords] = useState<PbsRecord[]>([])
   const [activeContracts, setActiveContracts] = useState<ActiveContract[]>([])
   const [libraryStrategies, setLibraryStrategies] = useState<LibraryStrategy[]>([])
+  const [speechDiaryStatuses, setSpeechDiaryStatuses] = useState<SpeechDiaryStatusMap>({})
   const [loading, setLoading] = useState(true)
+  const [rewardingDiary, setRewardingDiary] = useState(false)
+  const [pageMessage, setPageMessage] = useState('')
 
   // 목표 추가/편집 모달
   const [showModal, setShowModal] = useState(false)
@@ -115,14 +123,36 @@ export default function PbsCheckPage() {
     Promise.all([
       fetch('/api/students').then(r => r.json()),
       fetch('/api/interventions').then(r => r.json()),
-    ]).then(([sData, iData]) => {
+      fetch('/api/speech-diary/status').then(r => r.json()),
+    ]).then(([sData, iData, dData]) => {
       setStudents(sData.students || [])
       setLibraryStrategies(iData.strategies || [])
+      const diaryStatuses = Object.fromEntries(
+        (dData.statuses || []).map((status: SpeechDiaryStatus) => [status.student_id, status])
+      ) as SpeechDiaryStatusMap
+      setSpeechDiaryStatuses(diaryStatuses)
       if (sData.students?.length > 0) {
         setSelectedStudent(sData.students[0].id)
       }
       setLoading(false)
+    }).catch(() => {
+      setLoading(false)
     })
+  }, [])
+
+  const loadDiaryStatuses = useCallback(async () => {
+    try {
+      const res = await fetch('/api/speech-diary/status')
+      const data = await res.json()
+      if (!res.ok) return
+
+      const nextMap = Object.fromEntries(
+        (data.statuses || []).map((status: SpeechDiaryStatus) => [status.student_id, status])
+      ) as SpeechDiaryStatusMap
+      setSpeechDiaryStatuses(nextMap)
+    } catch {
+      // 상태 카드 실패는 PBS 핵심 흐름을 막지 않음
+    }
   }, [])
 
   // 선택 학생의 PBS 목표 + 오늘 기록 + 활성 계약서 로드
@@ -192,6 +222,36 @@ export default function PbsCheckPage() {
         tokens: data.tokenGranted,
         secondsLeft: 6,
       })
+    }
+  }
+
+  const handleSpeechDiaryReward = async () => {
+    if (!selectedStudent) return
+
+    setRewardingDiary(true)
+    setPageMessage('')
+
+    try {
+      const res = await fetch('/api/speech-diary/reward', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ studentId: selectedStudent }),
+      })
+      const data = await res.json()
+
+      if (!res.ok) {
+        setPageMessage(data.error || '말 일기 보상 지급에 실패했습니다.')
+      } else {
+        setPageMessage(`${data.studentName} 학생에게 말 일기 보상 +${formatCurrency(data.amount)}을 지급했습니다.`)
+        await Promise.all([
+          loadDiaryStatuses(),
+          loadStudentData(selectedStudent),
+        ])
+      }
+    } catch {
+      setPageMessage('말 일기 보상 지급 중 오류가 발생했습니다.')
+    } finally {
+      setRewardingDiary(false)
     }
   }
 
@@ -354,6 +414,7 @@ export default function PbsCheckPage() {
   const activeGoalCount = goals.length
   const checkedGoalCount = goals.filter(g => todayRecords.some(r => r.goal_id === g.id)).length
   const achievementRate = activeGoalCount > 0 ? Math.round((checkedGoalCount / activeGoalCount) * 100) : 0
+  const selectedDiaryStatus = selectedStudent ? speechDiaryStatuses[selectedStudent] : null
 
   // 일괄 체크용 행동명 목록 (중복 제거)
   const uniqueBehaviorNames = [...new Set(allGoals.map(g => g.behavior_name))]
@@ -371,6 +432,12 @@ export default function PbsCheckPage() {
           <p className="text-xl font-bold text-green-600">{formatCurrency(todayTotal)}</p>
         </div>
       </div>
+
+      {pageMessage && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          {pageMessage}
+        </div>
+      )}
 
       {/* 오늘 달성률 */}
       {selectedStudent && activeGoalCount > 0 && (
@@ -402,9 +469,52 @@ export default function PbsCheckPage() {
           >
             {student.name}
             <span className="ml-1 text-xs opacity-70">LV.{student.pbs_stage}</span>
+            {speechDiaryStatuses[student.id]?.has_today_diary && (
+              <span className="ml-2 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+                일기
+              </span>
+            )}
           </button>
         ))}
       </div>
+
+      {selectedStudent && selectedDiaryStatus && (
+        <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-emerald-900">오늘 말 일기 연결 상태</p>
+              {selectedDiaryStatus.has_today_diary ? (
+                <div className="mt-2 space-y-1 text-sm text-emerald-900">
+                  <p>
+                    작성 완료 · 오늘 {selectedDiaryStatus.diary_count_today}건
+                    {selectedDiaryStatus.latest_sentiment && ` · ${selectedDiaryStatus.latest_sentiment === 'positive' ? '긍정' : selectedDiaryStatus.latest_sentiment === 'negative' ? '부정' : '중립'}`}
+                  </p>
+                  <p className="text-xs text-emerald-700">
+                    {selectedDiaryStatus.reward_granted_today ? '오늘 보상 지급 완료' : '보상을 주면 학생 통장에 바로 반영됩니다.'}
+                  </p>
+                </div>
+              ) : (
+                <p className="mt-2 text-sm text-emerald-800">아직 오늘 작성한 말 일기가 없습니다.</p>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <a
+                href={`/${classCode}/speech-diary`}
+                className="rounded-xl border border-emerald-200 bg-white px-4 py-2 text-sm font-medium text-emerald-700 transition-colors hover:bg-emerald-100"
+              >
+                일기 보기
+              </a>
+              <button
+                onClick={() => void handleSpeechDiaryReward()}
+                disabled={!selectedDiaryStatus.has_today_diary || selectedDiaryStatus.reward_granted_today || rewardingDiary}
+                className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-emerald-300"
+              >
+                {selectedDiaryStatus.reward_granted_today ? '오늘 보상 완료' : rewardingDiary ? '지급 중...' : '말 일기 보상 +1'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 활성 행동계약서 배너 */}
       {activeContracts.length > 0 && (

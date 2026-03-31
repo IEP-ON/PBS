@@ -3,27 +3,23 @@ import { createServerSupabase } from '@/lib/supabase/server'
 import bcrypt from 'bcryptjs'
 
 // POST /api/atm/login — ATM: 학생 인증 (세션 없이)
-// 이름+PIN 방식 또는 통장QR+PIN 방식
+// 문서 스펙 기준: QR 스캔은 PIN 없이 즉시 로그인, 이름 입력은 PIN 필요
 export async function POST(request: Request) {
   try {
     const body = await request.json()
     const classCode = body.classCode?.trim()
     const studentName = body.studentName?.trim()
     const studentPin = body.studentPin?.toString().trim()
-    const passbookQrCode = body.passbookQrCode?.trim()
-    const easyLogin = body.easyLogin
-
-    // easyLogin 모드: 통장 QR만으로 PIN 없이 로그인
-    const isEasyLogin = easyLogin === true && !!passbookQrCode
+    const qrCode = body.qrCode?.trim() || body.passbookQrCode?.trim()
 
     if (!classCode) {
       return NextResponse.json({ error: '필수 항목이 누락되었습니다.' }, { status: 400 })
     }
-    if (!isEasyLogin && !studentPin) {
-      return NextResponse.json({ error: 'PIN이 필요합니다.' }, { status: 400 })
+    if (!studentName && !qrCode) {
+      return NextResponse.json({ error: '이름 또는 QR 코드가 필요합니다.' }, { status: 400 })
     }
-    if (!studentName && !passbookQrCode) {
-      return NextResponse.json({ error: '이름 또는 통장 QR이 필요합니다.' }, { status: 400 })
+    if (studentName && !studentPin) {
+      return NextResponse.json({ error: 'PIN이 필요합니다.' }, { status: 400 })
     }
 
     const supabase = await createServerSupabase()
@@ -47,8 +43,8 @@ export async function POST(request: Request) {
       .eq('class_code_id', classroom.id)
       .eq('is_active', true)
 
-    if (passbookQrCode) {
-      studentQuery = studentQuery.eq('passbook_qr_code', passbookQrCode)
+    if (qrCode) {
+      studentQuery = studentQuery.eq('qr_code', qrCode)
     } else {
       studentQuery = studentQuery.eq('name', studentName)
     }
@@ -59,8 +55,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: '학생 정보를 확인해주세요.' }, { status: 401 })
     }
 
-    // PIN 검증 (easyLogin 모드에서는 생략)
-    if (!isEasyLogin) {
+    // 이름 입력 로그인일 때만 PIN 검증
+    if (!qrCode) {
       const pinMatch = await bcrypt.compare(studentPin, student.pin_hash)
       if (!pinMatch) {
         return NextResponse.json({ error: 'PIN이 올바르지 않습니다.' }, { status: 401 })
