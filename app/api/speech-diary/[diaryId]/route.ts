@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { getSession } from '@/lib/session'
-import { getKstDateRange, getStoragePath } from '@/lib/speech-diary'
+import { getStoragePath } from '@/lib/speech-diary'
 
 export const runtime = 'nodejs'
 
@@ -78,7 +78,7 @@ export async function DELETE(
 
     const { data: targetDiary } = await supabase
       .from('pbs_speech_diaries')
-      .select('id, student_id, created_at')
+      .select('id, student_id, created_at, audio_url, image_url')
       .eq('id', diaryId)
       .single()
 
@@ -97,43 +97,28 @@ export async function DELETE(
       return NextResponse.json({ error: '접근 권한이 없습니다.' }, { status: 403 })
     }
 
-    const { startIso, endIso } = getKstDateRange(targetDiary.created_at)
+    const storagePaths = [
+      getStoragePath(targetDiary.audio_url),
+      getStoragePath(targetDiary.image_url),
+    ].filter((path): path is string => Boolean(path))
 
-    const { data: diariesToDelete, error: fetchError } = await supabase
+    const { error: deleteError } = await supabase
       .from('pbs_speech_diaries')
-      .select('id, audio_url, image_url')
-      .eq('student_id', targetDiary.student_id)
-      .gte('created_at', startIso)
-      .lt('created_at', endIso)
+      .delete()
+      .eq('id', diaryId)
 
-    if (fetchError) {
-      return NextResponse.json({ error: '삭제 대상 조회에 실패했습니다.' }, { status: 500 })
-    }
-
-    const diaryIds = (diariesToDelete || []).map((diary) => diary.id)
-    const storagePaths = (diariesToDelete || [])
-      .flatMap((diary) => [getStoragePath(diary.audio_url), getStoragePath(diary.image_url)])
-      .filter((path): path is string => Boolean(path))
-
-    if (diaryIds.length > 0) {
-      const { error: deleteError } = await supabase
-        .from('pbs_speech_diaries')
-        .delete()
-        .in('id', diaryIds)
-
-      if (deleteError) {
-        return NextResponse.json({ error: '일기 삭제에 실패했습니다.' }, { status: 500 })
-      }
+    if (deleteError) {
+      return NextResponse.json({ error: '일기 삭제에 실패했습니다.' }, { status: 500 })
     }
 
     if (storagePaths.length > 0) {
-      await supabase.storage.from('audio-diaries').remove(Array.from(new Set(storagePaths)))
+      await supabase.storage.from('audio-diaries').remove(storagePaths)
     }
 
     return NextResponse.json({
       ok: true,
-      deletedDiaryIds: diaryIds,
-      deletedCount: diaryIds.length,
+      deletedDiaryIds: [diaryId],
+      deletedCount: 1,
     })
   } catch {
     return NextResponse.json({ error: '서버 오류가 발생했습니다.' }, { status: 500 })

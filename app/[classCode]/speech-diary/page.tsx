@@ -98,7 +98,7 @@ export default function SpeechDiaryPage() {
   }
 
   const deleteDiary = async (diary: Diary) => {
-    if (!confirm(`${diary.student_name} 학생의 ${formatDate(diary.created_at)} 기록을 날짜 단위로 삭제할까요?`)) {
+    if (!confirm(`${diary.student_name} 학생의 ${formatDate(diary.created_at)} 기록 1건을 삭제할까요?`)) {
       return
     }
 
@@ -113,7 +113,7 @@ export default function SpeechDiaryPage() {
       if (!res.ok) {
         setMessage(data.error || '삭제에 실패했습니다.')
       } else {
-        setMessage(`같은 날짜 기록 ${data.deletedCount ?? 0}건을 삭제했습니다.`)
+        setMessage('기록 1건을 삭제했습니다.')
         await loadData(selectedStudentId)
       }
     } catch {
