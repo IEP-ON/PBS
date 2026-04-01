@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pbs-v1'
+const CACHE_NAME = 'pbs-v2'
 const PRECACHE = ['/login', '/atm', '/register']
 
 self.addEventListener('install', (event) => {
@@ -24,6 +24,25 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url)
   if (url.pathname.startsWith('/api/')) return
   if (url.pathname.startsWith('/_next/')) return
+
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request)
+        .then((res) => {
+          if (res && res.ok && res.type === 'basic') {
+            const clone = res.clone()
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone))
+          }
+          return res
+        })
+        .catch(() =>
+          caches.match(event.request).then(
+            (cached) => cached || new Response('오프라인 상태입니다.', { status: 503 })
+          )
+        )
+    )
+    return
+  }
 
   event.respondWith(
     caches.match(event.request).then((cached) => {

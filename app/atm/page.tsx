@@ -7,6 +7,7 @@ import { formatCurrency } from '@/lib/utils'
 
 type Mode = 'setup' | 'login' | 'dashboard' | 'scan_token' | 'scan_student' | 'shop' | 'stocks'
 type ScanTarget = 'student' | 'token' | null
+type CameraPermissionState = 'unknown' | 'prompt' | 'granted' | 'denied' | 'unsupported'
 
 interface StudentSession {
   studentId: string
@@ -61,6 +62,8 @@ export default function AtmPage() {
   const streamRef = useRef<MediaStream | null>(null)
   const scanningRef = useRef(false)
   const [scanError, setScanError] = useState('')
+  const [requestingCamera, setRequestingCamera] = useState(false)
+  const [cameraPermission, setCameraPermission] = useState<CameraPermissionState>('unknown')
   const [redeemLoading, setRedeemLoading] = useState(false)
   const [redeemResult, setRedeemResult] = useState<{ amount: number; balanceAfter: number } | null>(null)
 
@@ -86,6 +89,25 @@ export default function AtmPage() {
     } else {
       setMode('setup')
     }
+  }, [])
+
+  useEffect(() => {
+    const updatePermission = async () => {
+      if (!navigator.permissions?.query) {
+        setCameraPermission('unsupported')
+        return
+      }
+
+      try {
+        const status = await navigator.permissions.query({ name: 'camera' as PermissionName })
+        setCameraPermission(status.state as CameraPermissionState)
+        status.onchange = () => setCameraPermission(status.state as CameraPermissionState)
+      } catch {
+        setCameraPermission('unsupported')
+      }
+    }
+
+    void updatePermission()
   }, [])
 
   // 카메라 정지
@@ -177,13 +199,15 @@ export default function AtmPage() {
   const startCamera = useCallback(async (target: ScanTarget) => {
     setScanError('')
     setRedeemResult(null)
+    setRequestingCamera(true)
+    setMode(target === 'token' ? 'scan_token' : 'scan_student')
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
       })
+      setCameraPermission('granted')
       streamRef.current = stream
-      setMode(target === 'token' ? 'scan_token' : 'scan_student')
 
       setTimeout(() => {
         if (videoRef.current) {
@@ -220,8 +244,11 @@ export default function AtmPage() {
       }
       requestAnimationFrame(tick)
     } catch {
+      setCameraPermission('denied')
       setScanError('카메라에 접근할 수 없습니다. 권한을 확인해주세요.')
       setMode(session ? 'dashboard' : 'login')
+    } finally {
+      setRequestingCamera(false)
     }
   }, [session, handleQrData])
 
@@ -461,10 +488,15 @@ export default function AtmPage() {
             muted
           />
           <canvas ref={canvasRef} className="hidden" />
-          {/* 스캔 가이드 오버레이 */}
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className="h-56 w-56 rounded-[2rem] border-4 border-white/70 lg:h-72 lg:w-72" />
-          </div>
+          {requestingCamera ? (
+            <div className="absolute inset-0 flex items-center justify-center bg-slate-950/55">
+              <div className="h-12 w-12 animate-spin rounded-full border-4 border-white border-t-transparent" />
+            </div>
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div className="h-56 w-56 rounded-[2rem] border-4 border-white/70 lg:h-72 lg:w-72" />
+            </div>
+          )}
         </div>
         <div className="mt-6 text-center space-y-2">
           <p className="text-white font-semibold text-lg">
@@ -479,6 +511,18 @@ export default function AtmPage() {
           >
             취소
           </button>
+          {scanError && (
+            <div className="mx-auto mt-3 max-w-xl rounded-2xl bg-rose-50 px-5 py-4 text-sm font-bold text-rose-600">
+              {scanError}
+            </div>
+          )}
+          {(cameraPermission === 'denied' || cameraPermission === 'unsupported') && (
+            <div className="mx-auto max-w-xl rounded-2xl bg-white/10 px-5 py-4 text-sm text-white/85">
+              {cameraPermission === 'denied'
+                ? '카메라 권한이 거부되어 있어요. 갤럭시탭 앱 설정 또는 사이트 권한에서 카메라를 허용한 뒤 다시 시도해주세요.'
+                : '이 환경에서는 권한 상태를 읽지 못해요. 버튼을 다시 누르거나 브라우저 권한 설정을 확인해주세요.'}
+            </div>
+          )}
         </div>
       </div>
     )

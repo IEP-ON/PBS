@@ -7,6 +7,9 @@ export default function PwaRegister() {
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker
         .register('/sw.js', { scope: '/' })
+        .then((registration) => {
+          void registration.update()
+        })
         .catch((err) => console.warn('SW 등록 실패:', err))
     }
   }, [])
