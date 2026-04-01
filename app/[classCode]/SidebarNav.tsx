@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useState } from 'react'
+import { type MouseEvent, useState } from 'react'
 
 interface NavItem {
   href: string
@@ -15,11 +15,26 @@ interface NavItem {
 interface TooltipState {
   item: NavItem
   y: number
+  x: number
 }
 
-export default function SidebarNav({ classCode }: { classCode: string }) {
+export default function SidebarNav({
+  classCode,
+  collapsed = false,
+  onNavigate,
+}: {
+  classCode: string
+  collapsed?: boolean
+  onNavigate?: () => void
+}) {
   const pathname = usePathname()
   const [tooltip, setTooltip] = useState<TooltipState | null>(null)
+
+  const showTooltip = (event: MouseEvent<HTMLElement>, item: NavItem) => {
+    if (!collapsed) return
+    const rect = event.currentTarget.getBoundingClientRect()
+    setTooltip({ item, y: rect.top, x: rect.right + 14 })
+  }
 
   const navItems: NavItem[] = [
     {
@@ -56,7 +71,7 @@ export default function SidebarNav({ classCode }: { classCode: string }) {
     {
       href: `/${classCode}/behavior-analysis`,
       label: '행동 분석',
-      icon: '�',
+      icon: '🧠',
       description: 'FBA·중재전략·행동계약서·DRO 통합',
       badge: 'GPT-4o',
     },
@@ -70,34 +85,37 @@ export default function SidebarNav({ classCode }: { classCode: string }) {
 
   return (
     <>
-      <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
+      <nav className={`flex-1 space-y-1 overflow-y-auto p-3 ${collapsed ? 'px-2' : ''}`}>
         {/* 수업 모드 — 최상단 고정 */}
         <Link
           href={`/${classCode}/teach`}
-          onMouseEnter={(e) => {
-            const rect = e.currentTarget.getBoundingClientRect()
-            setTooltip({
-              item: {
-                href: `/${classCode}/teach`,
-                label: '수업 모드',
-                icon: '👨‍🏫',
-                description: '6명 동시 체크 · DRO 통합 · 사건 기록 · 수업 종료 정산',
-              },
-              y: rect.top,
+          onMouseEnter={(e) =>
+            showTooltip(e, {
+              href: `/${classCode}/teach`,
+              label: '수업 모드',
+              icon: '👨‍🏫',
+              description: '6명 동시 체크 · DRO 통합 · 사건 기록 · 수업 종료 정산',
             })
-          }}
+          }
           onMouseLeave={() => setTooltip(null)}
-          className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-colors mb-2 ${
+          onClick={onNavigate}
+          className={`mb-2 flex items-center rounded-2xl px-3 py-3 text-sm font-bold transition-colors ${
+            collapsed ? 'justify-center' : 'gap-3'
+          } ${
             pathname === `/${classCode}/teach`
               ? 'bg-blue-600 text-white'
               : 'bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200'
           }`}
         >
           <span className="text-lg flex-shrink-0">👨‍🏫</span>
-          <span className="flex-1 truncate">수업 모드</span>
-          <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-200 text-blue-800 rounded-full flex-shrink-0">
-            NEW
-          </span>
+          {!collapsed && (
+            <>
+              <span className="flex-1 truncate">수업 모드</span>
+              <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-200 text-blue-800 rounded-full flex-shrink-0">
+                NEW
+              </span>
+            </>
+          )}
         </Link>
 
         {navItems.map((item) => {
@@ -106,23 +124,27 @@ export default function SidebarNav({ classCode }: { classCode: string }) {
             <Link
               key={item.href}
               href={item.href}
-              onMouseEnter={(e) => {
-                const rect = e.currentTarget.getBoundingClientRect()
-                setTooltip({ item, y: rect.top })
-              }}
+              onMouseEnter={(e) => showTooltip(e, item)}
               onMouseLeave={() => setTooltip(null)}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+              onClick={onNavigate}
+              className={`flex items-center rounded-2xl px-3 py-3 text-sm font-medium transition-colors ${
+                collapsed ? 'justify-center' : 'gap-3'
+              } ${
                 isActive
                   ? 'bg-blue-50 text-blue-700'
                   : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
               }`}
             >
               <span className="text-lg flex-shrink-0">{item.icon}</span>
-              <span className="flex-1 truncate">{item.label}</span>
-              {item.badge && (
-                <span className="text-[9px] font-bold px-1.5 py-0.5 bg-purple-100 text-purple-600 rounded-full flex-shrink-0">
-                  AI
-                </span>
+              {!collapsed && (
+                <>
+                  <span className="flex-1 truncate">{item.label}</span>
+                  {item.badge && (
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 bg-purple-100 text-purple-600 rounded-full flex-shrink-0">
+                      AI
+                    </span>
+                  )}
+                </>
               )}
             </Link>
           )
@@ -133,24 +155,26 @@ export default function SidebarNav({ classCode }: { classCode: string }) {
           href={`/tv/${classCode}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors"
-          onMouseEnter={(e) => {
-            const rect = e.currentTarget.getBoundingClientRect()
-            setTooltip({
-              item: {
-                href: `/tv/${classCode}`,
-                label: 'TV 순위판',
-                icon: '📺',
-                description: '교실 화면용 학생 잔액 순위판 (새 탭)',
-              },
-              y: rect.top,
+          className={`flex items-center rounded-2xl px-3 py-3 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 hover:text-gray-900 ${
+            collapsed ? 'justify-center' : 'gap-3'
+          }`}
+          onMouseEnter={(e) =>
+            showTooltip(e, {
+              href: `/tv/${classCode}`,
+              label: 'TV 순위판',
+              icon: '📺',
+              description: '교실 화면용 학생 잔액 순위판 (새 탭)',
             })
-          }}
+          }
           onMouseLeave={() => setTooltip(null)}
         >
           <span className="text-lg flex-shrink-0">📺</span>
-          <span className="flex-1 truncate">TV 순위판</span>
-          <span className="text-[9px] text-gray-400">↗</span>
+          {!collapsed && (
+            <>
+              <span className="flex-1 truncate">TV 순위판</span>
+              <span className="text-[9px] text-gray-400">↗</span>
+            </>
+          )}
         </a>
 
         {/* 도움말 */}
@@ -158,18 +182,33 @@ export default function SidebarNav({ classCode }: { classCode: string }) {
           href="/help"
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-400 hover:bg-gray-50 hover:text-gray-600 transition-colors"
+          className={`flex items-center rounded-2xl px-3 py-3 text-sm font-medium text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-700 ${
+            collapsed ? 'justify-center' : 'gap-3'
+          }`}
+          onMouseEnter={(e) =>
+            showTooltip(e, {
+              href: '/help',
+              label: '시작 가이드',
+              icon: '❓',
+              description: 'PBS 구조와 사용 흐름을 보는 도움말',
+            })
+          }
+          onMouseLeave={() => setTooltip(null)}
         >
           <span className="text-lg flex-shrink-0">❓</span>
-          <span className="flex-1 truncate">시작 가이드</span>
-          <span className="text-[9px] text-gray-400">↗</span>
+          {!collapsed && (
+            <>
+              <span className="flex-1 truncate">시작 가이드</span>
+              <span className="text-[9px] text-gray-400">↗</span>
+            </>
+          )}
         </a>
       </nav>
 
       {/* fixed 툴팁 — overflow 잘림 없음 */}
       {tooltip && (
         <div
-          style={{ top: tooltip.y, left: 244 }}
+          style={{ top: tooltip.y, left: tooltip.x }}
           className="fixed z-[9999] w-52 px-3 py-2.5 bg-gray-900 text-white text-xs rounded-xl shadow-2xl pointer-events-none"
         >
           <p className="font-semibold text-white mb-0.5">{tooltip.item.label}</p>

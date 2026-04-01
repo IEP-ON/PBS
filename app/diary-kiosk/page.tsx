@@ -109,16 +109,20 @@ export default function DiaryKioskPage() {
   }, [startCamera, stopCamera])
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_#fff6d8_0%,_#ffedd5_30%,_#e0f2fe_68%,_#f8fafc_100%)] px-4 py-6">
-      <div className="mx-auto flex min-h-[calc(100vh-3rem)] max-w-2xl flex-col items-center justify-center gap-6">
+    <div className="min-h-[100dvh] bg-[radial-gradient(circle_at_top,_#fff6d8_0%,_#ffedd5_30%,_#e0f2fe_68%,_#f8fafc_100%)] px-4 py-6">
+      <div className="mx-auto flex min-h-[calc(100dvh-3rem)] max-w-5xl flex-col items-center justify-center gap-6 lg:grid lg:grid-cols-[minmax(0,0.9fr)_minmax(360px,0.8fr)] lg:items-center">
         <Link href="/" className="text-sm font-medium text-slate-500 hover:text-slate-700">
           ← 처음으로
         </Link>
 
-        <div className="text-center">
+        <div className="text-center lg:text-left">
           <p className="text-sm font-black uppercase tracking-[0.28em] text-amber-600/70">Speech Diary</p>
           <h1 className="mt-2 text-4xl font-black tracking-tight text-slate-900 sm:text-5xl">말 일기장</h1>
           <p className="mt-3 text-lg text-slate-600">학생 QR 카드를 보여주면 녹음이 자동으로 시작돼요.</p>
+          <div className="mt-5 rounded-[1.75rem] bg-white/80 px-6 py-5 text-center shadow-sm ring-1 ring-white/80 lg:text-left">
+            <p className="text-lg font-black text-slate-900">네모 안에 QR 카드만 보여주세요</p>
+            <p className="mt-2 text-sm text-slate-500">인식되면 5초 카운트다운 뒤 15초 녹음이 자동 시작됩니다.</p>
+          </div>
         </div>
 
         <div className="w-full rounded-[2.5rem] border border-white/80 bg-white/85 p-4 shadow-[0_24px_80px_rgba(15,23,42,0.16)] backdrop-blur">
@@ -155,10 +159,6 @@ export default function DiaryKioskPage() {
           </div>
         )}
 
-        <div className="rounded-[1.75rem] bg-white/80 px-6 py-5 text-center shadow-sm ring-1 ring-white/80">
-          <p className="text-lg font-black text-slate-900">네모 안에 QR 카드만 보여주세요</p>
-          <p className="mt-2 text-sm text-slate-500">인식되면 5초 카운트다운 뒤 15초 녹음이 자동 시작됩니다.</p>
-        </div>
       </div>
     </div>
   )

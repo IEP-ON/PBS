@@ -234,12 +234,16 @@ export default function DiaryRecordPage() {
   }, [cameraReady, countdown])
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_#fff7d6_0%,_#fef3c7_35%,_#e0f2fe_72%,_#f8fafc_100%)] px-4 py-5">
-      <div className="mx-auto flex min-h-[calc(100vh-2.5rem)] max-w-lg flex-col items-center justify-center gap-6">
-        <div className="w-full text-center">
+    <div className="min-h-[100dvh] bg-[radial-gradient(circle_at_top,_#fff7d6_0%,_#fef3c7_35%,_#e0f2fe_72%,_#f8fafc_100%)] px-4 py-5">
+      <div className="mx-auto flex min-h-[calc(100dvh-2.5rem)] max-w-6xl flex-col items-center justify-center gap-6 lg:grid lg:grid-cols-[minmax(0,0.9fr)_minmax(360px,0.8fr)] lg:items-center">
+        <div className="w-full text-center lg:text-left">
           <p className="text-sm font-black uppercase tracking-[0.3em] text-amber-600/80">Recording Booth</p>
           <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-900">{studentName}</h1>
           <p className="mt-2 text-base text-slate-600">카운트다운이 끝나면 바로 말해보세요.</p>
+          <div className="mt-5 w-full rounded-[1.8rem] bg-white/80 px-6 py-5 text-center shadow-sm ring-1 ring-white/90 lg:text-left">
+            <p className="text-lg font-black text-slate-900">오늘 있었던 일을 짧게 말해보세요</p>
+            <p className="mt-2 text-sm text-slate-500">학교, 집, 급식, 친구, 주말 이야기 모두 괜찮아요.</p>
+          </div>
         </div>
 
         <div className="w-full rounded-[2.25rem] border border-white/80 bg-white/85 p-4 shadow-[0_24px_80px_rgba(15,23,42,0.15)]">
@@ -291,10 +295,6 @@ export default function DiaryRecordPage() {
           </div>
         )}
 
-        <div className="w-full rounded-[1.8rem] bg-white/80 px-6 py-5 text-center shadow-sm ring-1 ring-white/90">
-          <p className="text-lg font-black text-slate-900">오늘 있었던 일을 짧게 말해보세요</p>
-          <p className="mt-2 text-sm text-slate-500">학교, 집, 급식, 친구, 주말 이야기 모두 괜찮아요.</p>
-        </div>
       </div>
     </div>
   )

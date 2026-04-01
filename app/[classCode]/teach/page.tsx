@@ -236,15 +236,15 @@ export default function TeachPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-24">
+    <div className="tablet-page min-h-[calc(100dvh-7rem)] bg-gray-50 pb-28">
 
       {/* ── 상단 바 ──────────────────────────────────────────────────────────── */}
-      <div className="sticky top-0 z-30 bg-white border-b border-gray-200 px-4 py-3">
-        <div className="flex items-center justify-between gap-3">
+      <div className="sticky top-0 z-30 rounded-[1.6rem] border border-gray-200 bg-white/95 px-4 py-3 shadow-sm backdrop-blur">
+        <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
           {/* 교시 선택 */}
-          <div className="flex items-center gap-2">
+          <div className="flex min-w-0 items-center gap-2">
             <span className="text-sm font-semibold text-gray-600">교시:</span>
-            <div className="flex gap-1 overflow-x-auto">
+            <div className="flex min-w-0 gap-1 overflow-x-auto pb-1">
               {PERIODS.map((p, i) => (
                 <button
                   key={p}
@@ -262,7 +262,7 @@ export default function TeachPage() {
           </div>
 
           {/* 세션 정보 */}
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
             {sessionElapsed !== null && (
               <span className="text-xs text-gray-400">
                 {sessionElapsed}분 경과
@@ -310,7 +310,7 @@ export default function TeachPage() {
       )}
 
       {/* ── 학생 그리드 ──────────────────────────────────────────────────────── */}
-      <div className="p-3 grid grid-cols-2 gap-3">
+      <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
         {students.map(student => {
           const dro = calcDro(student, now)
           const isPrompted = promptedStudent === student.id
@@ -321,7 +321,7 @@ export default function TeachPage() {
           return (
             <div
               key={student.id}
-              className={`bg-white rounded-2xl border transition-all ${
+              className={`bg-white rounded-[1.7rem] border transition-all ${
                 dro?.completed
                   ? 'border-green-400 ring-2 ring-green-300 shadow-green-100 shadow-lg'
                   : 'border-gray-200 shadow-sm'
@@ -540,7 +540,7 @@ export default function TeachPage() {
       )}
 
       {/* ── 하단 FAB ─────────────────────────────────────────────────────────── */}
-      <div className="fixed bottom-6 right-4 flex flex-col items-end gap-2 z-40">
+      <div className="fixed bottom-6 right-4 z-40 flex flex-col items-end gap-2 lg:right-6">
         <button
           onClick={() => openIncident()}
           className="w-12 h-12 bg-red-500 hover:bg-red-600 text-white rounded-full shadow-xl flex items-center justify-center text-xl transition-all"
@@ -559,8 +559,8 @@ export default function TeachPage() {
 
       {/* ── 사건 기록 모달 ───────────────────────────────────────────────────── */}
       {showIncident && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-end">
-          <div className="w-full bg-white rounded-t-3xl p-5 space-y-4 animate-in slide-in-from-bottom-4">
+        <div className="fixed inset-0 z-50 flex items-end bg-black/50 lg:items-center lg:justify-center lg:p-6">
+          <div className="w-full bg-white rounded-t-3xl p-5 space-y-4 animate-in slide-in-from-bottom-4 lg:max-h-[85dvh] lg:max-w-3xl lg:overflow-y-auto lg:rounded-[2rem]">
             <div className="w-12 h-1 bg-gray-300 rounded-full mx-auto mb-2" />
             <h2 className="text-lg font-bold text-gray-900">⚠️ 행동 사건 기록</h2>
             <p className="text-xs text-gray-400">수업 중 즉시 기록 — FBA 탭에 자동 저장됩니다.</p>
@@ -581,7 +581,7 @@ export default function TeachPage() {
             </div>
 
             {/* 행동 유형 선택 */}
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               {INCIDENT_TYPES.map(t => (
                 <button
                   key={t.label}
@@ -648,8 +648,8 @@ export default function TeachPage() {
 
       {/* ── 수업 종료 모달 ───────────────────────────────────────────────────── */}
       {showEndModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-end">
-          <div className="w-full bg-white rounded-t-3xl p-5 space-y-4 animate-in slide-in-from-bottom-4">
+        <div className="fixed inset-0 z-50 flex items-end bg-black/50 lg:items-center lg:justify-center lg:p-6">
+          <div className="w-full bg-white rounded-t-3xl p-5 space-y-4 animate-in slide-in-from-bottom-4 lg:max-h-[85dvh] lg:max-w-2xl lg:overflow-y-auto lg:rounded-[2rem]">
             <div className="w-12 h-1 bg-gray-300 rounded-full mx-auto mb-2" />
             <h2 className="text-lg font-bold text-gray-900">
               🏁 {currentPeriod > 0 ? PERIODS[currentPeriod - 1] : '수업'} 종료

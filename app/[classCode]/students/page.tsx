@@ -98,10 +98,13 @@ export default function StudentsPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">👨‍🎓 학생 관리</h1>
-        <div className="flex items-center gap-2">
+    <div className="tablet-page space-y-6">
+      <div className="flex flex-col gap-4 rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">👨‍🎓 학생 관리</h1>
+          <p className="mt-1 text-sm text-slate-500">갤럭시탭 가로에서도 학생 요약과 액션 버튼이 눌리지 않게 정리했습니다.</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
           <Link
             href={`/${classCode}/students/qr-cards`}
             className="px-4 py-2 bg-gray-900 hover:bg-black text-white text-sm font-medium rounded-xl transition-colors"
@@ -122,7 +125,7 @@ export default function StudentsPage() {
         <div className="bg-white rounded-2xl border border-gray-100 p-6 space-y-4">
           <h2 className="font-bold text-gray-900">새 학생 등록</h2>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <label className="block">
               <span className="text-sm font-medium text-gray-700">이름 *</span>
               <input
@@ -147,7 +150,7 @@ export default function StudentsPage() {
             </label>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <label className="block">
               <span className="text-sm font-medium text-gray-700">PIN 4자리 *</span>
               <input
@@ -199,14 +202,14 @@ export default function StudentsPage() {
           </button>
         </div>
       ) : (
-        <div className="bg-white rounded-2xl border border-gray-100 divide-y divide-gray-50">
+        <div className="overflow-hidden rounded-[1.75rem] border border-gray-100 bg-white divide-y divide-gray-50">
           {students.map((student) => {
             const account = Array.isArray(student.pbs_accounts) ? student.pbs_accounts[0] : student.pbs_accounts
             return (
               <Link
                 key={student.id}
                 href={`/${classCode}/students/${student.id}`}
-                className="flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition-colors"
+                className="flex flex-col gap-4 px-5 py-4 transition-colors hover:bg-gray-50 md:flex-row md:items-center md:justify-between"
               >
                 <div className="flex items-center gap-4">
                   <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-700 font-bold">
@@ -227,7 +230,7 @@ export default function StudentsPage() {
                     )}
                   </div>
                 </div>
-                <div className="text-right">
+                <div className="text-left md:text-right">
                   <p className="font-bold text-blue-600">{formatCurrency(account?.balance || 0)}</p>
                   <p className="text-xs text-gray-400">잔액</p>
                 </div>

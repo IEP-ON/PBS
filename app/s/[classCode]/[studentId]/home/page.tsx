@@ -140,9 +140,9 @@ export default async function StudentHomePage({
   }
 
   return (
-    <div className="p-4 space-y-6">
+    <div className="space-y-6">
       {/* 잔액 카드 */}
-      <div className="bg-gradient-to-br from-blue-500 to-blue-700 rounded-3xl p-6 text-white shadow-xl shadow-blue-200">
+      <div className="rounded-3xl bg-gradient-to-br from-blue-500 to-blue-700 p-6 text-white shadow-xl shadow-blue-200 lg:p-7">
         <p className="text-blue-100 text-sm">{student.name}의 잔액</p>
         <p className="text-4xl font-bold mt-2">{formatCurrency(account?.balance || 0)}</p>
         {todayEarned > 0 && (
@@ -153,7 +153,7 @@ export default async function StudentHomePage({
       </div>
 
       {/* 요약 카드 */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         <div className="bg-white rounded-2xl border border-gray-100 p-4 text-center">
           <p className="text-xs text-gray-500">총 수입</p>
           <p className="text-lg font-bold text-green-600">{formatCurrency(account?.total_earned || 0)}</p>
@@ -161,6 +161,14 @@ export default async function StudentHomePage({
         <div className="bg-white rounded-2xl border border-gray-100 p-4 text-center">
           <p className="text-xs text-gray-500">총 지출</p>
           <p className="text-lg font-bold text-red-500">{formatCurrency(account?.total_spent || 0)}</p>
+        </div>
+        <div className="bg-white rounded-2xl border border-gray-100 p-4 text-center">
+          <p className="text-xs text-gray-500">오늘 획득</p>
+          <p className="text-lg font-bold text-amber-600">{formatCurrency(todayEarned)}</p>
+        </div>
+        <div className="bg-white rounded-2xl border border-gray-100 p-4 text-center">
+          <p className="text-xs text-gray-500">오늘 말 일기</p>
+          <p className="text-lg font-bold text-blue-600">{todayDiaryCount}건</p>
         </div>
       </div>
 
@@ -271,7 +279,7 @@ export default async function StudentHomePage({
       )}
 
       {/* 셀프체크 + 계약서 퀵카드 */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {selfCheckGoals && selfCheckGoals.length > 0 && (
           <div className="bg-green-50 rounded-2xl border border-green-100 p-4 text-center">
             <p className="text-2xl mb-1">✅</p>

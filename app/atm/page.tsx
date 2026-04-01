@@ -410,14 +410,14 @@ export default function AtmPage() {
   // 교사 설정 화면
   if (mode === 'setup') {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-slate-800 to-slate-900 flex flex-col items-center justify-center p-6">
-        <div className="max-w-sm w-full space-y-6">
+      <div className="min-h-[100dvh] bg-gradient-to-b from-slate-800 to-slate-900 flex flex-col items-center justify-center p-6">
+        <div className="w-full max-w-3xl space-y-6">
           <div className="text-center space-y-2">
             <div className="text-6xl">🏧</div>
             <h1 className="text-2xl font-bold text-white">ATM 기기 설정</h1>
             <p className="text-sm text-slate-400">교사만 접근 가능합니다</p>
           </div>
-          <div className="bg-white/10 backdrop-blur rounded-2xl p-6 space-y-4">
+          <div className="rounded-[2rem] bg-white/10 p-6 backdrop-blur lg:p-8 space-y-4">
             <label className="block">
               <span className="text-sm font-medium text-slate-300">학급코드</span>
               <input
@@ -452,18 +452,18 @@ export default function AtmPage() {
   if (mode === 'scan_token' || mode === 'scan_student') {
     const isToken = mode === 'scan_token'
     return (
-      <div className="min-h-screen bg-black flex flex-col items-center justify-center">
-        <div className="relative w-full max-w-sm">
+      <div className="min-h-[100dvh] bg-black flex flex-col items-center justify-center px-4 py-6">
+        <div className="relative w-full max-w-5xl">
           <video
             ref={videoRef}
-            className="w-full rounded-2xl"
+            className="aspect-[16/10] w-full rounded-[2rem] object-cover"
             playsInline
             muted
           />
           <canvas ref={canvasRef} className="hidden" />
           {/* 스캔 가이드 오버레이 */}
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className="w-48 h-48 border-4 border-white/70 rounded-2xl" />
+            <div className="h-56 w-56 rounded-[2rem] border-4 border-white/70 lg:h-72 lg:w-72" />
           </div>
         </div>
         <div className="mt-6 text-center space-y-2">
@@ -487,8 +487,8 @@ export default function AtmPage() {
   // 로그인 화면
   if (mode === 'login') {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-blue-900 to-slate-900 flex flex-col items-center justify-center p-6">
-        <div className="max-w-sm w-full space-y-6">
+      <div className="min-h-[100dvh] bg-gradient-to-b from-blue-900 to-slate-900 flex flex-col items-center justify-center p-6">
+        <div className="w-full max-w-3xl space-y-6">
           <div className="text-center space-y-1">
             <div className="text-6xl">🏧</div>
             <h1 className="text-3xl font-bold text-white">행복은행 ATM</h1>
@@ -510,7 +510,7 @@ export default function AtmPage() {
             <div className="flex-1 h-px bg-gray-200" />
           </div>
 
-          <form onSubmit={handleLogin} className="bg-white rounded-2xl shadow-xl p-6 space-y-4">
+          <form onSubmit={handleLogin} className="rounded-[2rem] bg-white p-6 shadow-xl lg:p-8 space-y-4">
             <label className="block">
               <span className="text-sm font-medium text-gray-700">이름</span>
               <input
@@ -565,8 +565,8 @@ export default function AtmPage() {
   // 상점 화면
   if (mode === 'shop') {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-emerald-800 to-slate-900 flex flex-col items-center p-4">
-        <div className="max-w-md w-full space-y-4">
+      <div className="min-h-[100dvh] bg-gradient-to-b from-emerald-800 to-slate-900 flex flex-col items-center p-4 lg:p-6">
+        <div className="w-full max-w-5xl space-y-4">
           {/* 헤더 */}
           <div className="flex items-center justify-between">
             <button
@@ -606,7 +606,7 @@ export default function AtmPage() {
               <p>등록된 상품이 없습니다</p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-3 xl:grid-cols-3">
               {shopItems.map(item => {
                 const soldOut = item.stock != null && item.stock <= 0
                 const tooExpensive = session ? item.price > session.balance : true
@@ -644,8 +644,8 @@ export default function AtmPage() {
   // 주식 화면
   if (mode === 'stocks') {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-purple-900 to-slate-900 flex flex-col items-center p-4">
-        <div className="max-w-md w-full space-y-4">
+      <div className="min-h-[100dvh] bg-gradient-to-b from-purple-900 to-slate-900 flex flex-col items-center p-4 lg:p-6">
+        <div className="w-full max-w-5xl space-y-4">
           {/* 헤더 */}
           <div className="flex items-center justify-between">
             <button
@@ -685,7 +685,7 @@ export default function AtmPage() {
               <p>등록된 종목이 없습니다</p>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="grid gap-3 xl:grid-cols-2">
               {stocks.map(stock => {
                 const holding = holdings.find(h => h.stock_name === stock.name)
                 const qty = holding?.quantity || 0
@@ -732,15 +732,15 @@ export default function AtmPage() {
 
   // 대시보드 (로그인 후)
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-900 to-slate-900 flex flex-col items-center justify-center p-6">
-      <div className="max-w-sm w-full space-y-4">
+    <div className="min-h-[100dvh] bg-gradient-to-b from-blue-900 to-slate-900 flex flex-col items-center justify-center p-6">
+      <div className="w-full max-w-3xl space-y-4">
         <div className="text-center space-y-1">
           <div className="text-5xl">🏧</div>
           <p className="text-sm text-blue-300 font-mono">{session?.classCode}</p>
         </div>
 
         {/* 잔액 카드 */}
-        <div className="bg-white rounded-2xl shadow-xl p-6 text-center space-y-2">
+        <div className="rounded-[2rem] bg-white p-6 text-center shadow-xl space-y-2 lg:p-8">
           <p className="text-lg text-gray-500">환영합니다, <strong className="text-gray-900">{session?.studentName}</strong>님!</p>
           <p className="text-5xl font-bold text-blue-600">
             {session ? formatCurrency(session.balance) : '—'}

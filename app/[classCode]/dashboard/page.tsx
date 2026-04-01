@@ -97,7 +97,7 @@ export default async function DashboardPage({
 
   return (
     <>
-    <div className="p-6 space-y-6">
+    <div className="tablet-page space-y-6">
       {/* 소거 알림 배너 */}
       {extinctionAlerts && extinctionAlerts.length > 0 && (
         <div className="bg-red-50 border-2 border-red-200 rounded-2xl p-4">
@@ -137,7 +137,7 @@ export default async function DashboardPage({
       )}
 
       {/* 헤더 */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 rounded-[1.8rem] border border-slate-200 bg-white p-5 shadow-sm xl:flex-row xl:items-center xl:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">
             {classroom?.class_name || '대시보드'}
@@ -146,7 +146,7 @@ export default async function DashboardPage({
             {classroom?.school_name} · {classroom?.teacher_name} 선생님
           </p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
           <SettleButton
             pendingAmount={pendingAmount}
             studentNames={Object.fromEntries(students?.map(s => [s.id, s.name]) || [])}
@@ -161,7 +161,7 @@ export default async function DashboardPage({
       </div>
 
       {/* 요약 카드 */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <div className="bg-white rounded-2xl border border-gray-100 p-5">
           <p className="text-sm text-gray-500">등록 학생</p>
           <p className="text-3xl font-bold text-gray-900 mt-1">{students?.length || 0}명</p>
@@ -177,7 +177,7 @@ export default async function DashboardPage({
       </div>
 
       {/* 퀵링크 네비 */}
-      <div className="grid grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-5">
         <Link href={`/${classCode}/contracts`} className="bg-white rounded-2xl border border-gray-100 p-4 text-center hover:shadow-md transition-shadow">
           <p className="text-2xl">📝</p>
           <p className="text-xs font-medium text-gray-700 mt-1">행동계약서</p>
@@ -224,7 +224,7 @@ export default async function DashboardPage({
             </Link>
           </div>
         ) : (
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
             {students.map((student) => {
               const account = Array.isArray(student.pbs_accounts) ? student.pbs_accounts[0] : student.pbs_accounts
               const todayAmount = todayEarnings[student.id] || 0

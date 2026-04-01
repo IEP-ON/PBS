@@ -29,10 +29,10 @@ export default function HelpPage() {
   const pct = Math.round((visited.size / SECTIONS.length) * 100)
 
   return (
-    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", background: '#f8fafc', color: '#1e293b' }}>
+    <div style={{ display: 'flex', minHeight: '100dvh', overflow: 'hidden', fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", background: '#f8fafc', color: '#1e293b' }}>
 
       {/* ── 사이드바 ─────────────────────────────────────── */}
-      <aside style={{ width: 220, minWidth: 220, background: '#fff', borderRight: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
+      <aside style={{ width: 'clamp(220px, 22vw, 280px)', minWidth: 220, background: '#fff', borderRight: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
         <div style={{ padding: '20px 16px 12px', borderBottom: '1px solid #f1f5f9' }}>
           <p style={{ fontSize: 15, fontWeight: 800, color: '#1d4ed8' }}>🏫 PBS 시작 가이드</p>
           <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>특수학급 행동 지원 플랫폼</p>
@@ -76,7 +76,7 @@ export default function HelpPage() {
       </aside>
 
       {/* ── 메인 ─────────────────────────────────────────── */}
-      <main style={{ flex: 1, overflowY: 'auto', padding: '32px 36px' }}>
+      <main style={{ flex: 1, overflowY: 'auto', padding: 'clamp(20px, 2.8vw, 36px)' }}>
         {current === 0 && <Sec0 goto={goto} />}
         {current === 1 && <Sec1 goto={goto} />}
         {current === 2 && <Sec2 goto={goto} />}
@@ -144,7 +144,7 @@ function Steps({ items }: { items: { title: string; desc: string }[] }) {
 }
 
 function Grid2({ children }: { children: React.ReactNode }) {
-  return <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 16 }}>{children}</div>
+  return <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 14, marginBottom: 16 }}>{children}</div>
 }
 
 function FeatureCard({ icon, title, desc }: { icon: string; title: string; desc: string }) {
@@ -181,7 +181,7 @@ function Sec0({ goto }: { goto: (n: number) => void }) {
         desc="본 플랫폼은 특수학급에서 긍정적 행동지원(PBS)을 체계적으로 운영하기 위한 디지털 교육자료입니다. 학생별 목표행동 설정, 즉시 강화, 사건기록, 기능 기반 행동분석(FBA), 행동지원계획 수립 기능을 한 흐름으로 연결합니다."
       />
       <Card title="🏛 서비스 정체성">
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 14 }}>
           <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 12, padding: 16 }}>
             <p style={{ fontSize: 11, fontWeight: 800, color: '#6366f1', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>상위 이념</p>
             <p style={{ fontSize: 13, lineHeight: 1.7, color: '#334155', margin: 0 }}>
@@ -199,7 +199,7 @@ function Sec0({ goto }: { goto: (n: number) => void }) {
         </div>
       </Card>
       <Card title="🧭 원리 · 이념 · 계층">
-        <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
           <div>
             <p style={{ fontSize: 12, fontWeight: 700, color: '#0f172a', marginBottom: 8 }}>핵심 원리</p>
             <ul style={{ paddingLeft: 18, margin: 0 }}>

@@ -91,7 +91,7 @@ export default async function StudentDetailPage({
     .eq('is_active', true)
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="tablet-page space-y-6">
       {/* 헤더 */}
       <div className="flex items-center gap-4">
         <Link
@@ -103,8 +103,8 @@ export default async function StudentDetailPage({
       </div>
 
       {/* 학생 프로필 카드 */}
-      <div className="bg-white rounded-2xl border border-gray-100 p-6">
-        <div className="flex items-center justify-between">
+      <div className="rounded-[1.9rem] border border-gray-100 bg-white p-6 shadow-sm">
+        <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 bg-blue-100 rounded-full flex items-center justify-center text-blue-700 text-xl font-bold">
               {student.name.charAt(0)}
@@ -119,12 +119,12 @@ export default async function StudentDetailPage({
               </p>
             </div>
           </div>
-          <div className="text-right">
+          <div className="text-left xl:text-right">
             <p className="text-sm text-gray-500">현재 잔액</p>
             <p className="text-3xl font-bold text-blue-600">{formatCurrency(account?.balance || 0)}</p>
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-gray-100">
+        <div className="mt-4 grid grid-cols-1 gap-3 border-t border-gray-100 pt-4 lg:grid-cols-2">
           <EditStudentButton
             studentId={studentId}
             classCode={classCode}
@@ -158,7 +158,7 @@ export default async function StudentDetailPage({
       </div>
 
       {/* 요약 카드 */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <div className="bg-white rounded-2xl border border-gray-100 p-4 text-center">
           <p className="text-xs text-gray-500">총 수입</p>
           <p className="text-lg font-bold text-green-600">{formatCurrency(account?.total_earned || 0)}</p>
@@ -189,7 +189,7 @@ export default async function StudentDetailPage({
         ) : (
           <div className="grid gap-3">
             {goals.map((goal) => (
-              <div key={goal.id} className="bg-white rounded-2xl border border-gray-100 p-4 flex items-center justify-between gap-4">
+              <div key={goal.id} className="bg-white rounded-2xl border border-gray-100 p-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <div>
                   <p className="font-bold text-gray-900">{goal.behavior_name}</p>
                   {goal.strategy_type && (
@@ -198,7 +198,7 @@ export default async function StudentDetailPage({
                     </span>
                   )}
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 self-start md:self-auto">
                   <p className="font-bold text-blue-600">{formatCurrency(goal.token_per_occurrence)}/회</p>
                   <GoalDeleteButton goalId={goal.id} goalName={goal.behavior_name} />
                 </div>
@@ -215,9 +215,9 @@ export default async function StudentDetailPage({
             <p className="text-gray-400 text-sm">학생에게 연결된 중재 전략이 없습니다.</p>
           </div>
         ) : (
-          <div className="grid gap-3">
+          <div className="grid gap-3 xl:grid-cols-2">
             {interventions.map((intervention) => (
-              <div key={intervention.id} className="bg-white rounded-2xl border border-gray-100 p-4 flex items-center justify-between gap-4">
+              <div key={intervention.id} className="bg-white rounded-2xl border border-gray-100 p-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <div>
                   <p className="font-bold text-gray-900">{intervention.name_ko}</p>
                   <p className="mt-1 text-xs text-gray-500">

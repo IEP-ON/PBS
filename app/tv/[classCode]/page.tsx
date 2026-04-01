@@ -57,16 +57,16 @@ export default function TvModePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-indigo-900 to-blue-900 flex items-center justify-center">
+      <div className="min-h-[100dvh] bg-gradient-to-br from-indigo-900 to-blue-900 flex items-center justify-center">
         <p className="text-white text-2xl">로딩 중...</p>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-blue-900 to-blue-800 p-6 flex flex-col">
+    <div className="min-h-[100dvh] bg-gradient-to-br from-indigo-900 via-blue-900 to-blue-800 p-6 flex flex-col">
       {/* 헤더 */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="mb-8 flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div>
           <h1 className="text-3xl font-black text-white">
             {className || classCode} 🏆 순위판
@@ -75,7 +75,7 @@ export default function TvModePage() {
             {lastUpdated.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })} 기준 · 30초마다 자동 갱신
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button
             onClick={() => setSortMode('today')}
             className={`px-5 py-2 rounded-xl font-bold text-sm transition-all ${
@@ -108,7 +108,7 @@ export default function TvModePage() {
 
       {/* TOP 3 */}
       {top.length > 0 && (
-        <div className="grid grid-cols-3 gap-4 mb-6">
+        <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
           {/* 2등 (가운데를 높게) */}
           {[top[1], top[0], top[2]].map((student, idx) => {
             if (!student) return <div key={idx} />
@@ -151,7 +151,7 @@ export default function TvModePage() {
 
       {/* 4등 이하 */}
       {rest.length > 0 && (
-        <div className="grid grid-cols-2 gap-3 flex-1">
+        <div className="grid flex-1 grid-cols-1 gap-3 xl:grid-cols-2">
           {rest.map((student, idx) => {
             const value = sortMode === 'today' ? student.todayEarned : student.balance
             return (

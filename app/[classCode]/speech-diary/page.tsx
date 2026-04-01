@@ -124,13 +124,13 @@ export default function SpeechDiaryPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-start justify-between gap-4">
+    <div className="tablet-page space-y-6">
+      <div className="flex flex-col gap-4 rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm xl:flex-row xl:items-start xl:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">🎙️ 말 일기장</h1>
           <p className="text-sm text-gray-500 mt-1">QR 카드로 녹음된 학생 일기를 확인하고 수정할 수 있습니다.</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
           <Link
             href="/diary-kiosk"
             target="_blank"
@@ -185,7 +185,7 @@ export default function SpeechDiaryPage() {
         <div className="space-y-4">
           {diaries.map((diary) => (
             <div key={diary.id} className="bg-white rounded-2xl border border-gray-100 p-5 space-y-4">
-              <div className="flex items-start justify-between gap-4">
+              <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                 <div>
                   <p className="font-bold text-gray-900">{diary.student_name}</p>
                   <p className="text-xs text-gray-400 mt-1">

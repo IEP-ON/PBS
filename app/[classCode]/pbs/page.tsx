@@ -420,14 +420,14 @@ export default function PbsCheckPage() {
   const uniqueBehaviorNames = [...new Set(allGoals.map(g => g.behavior_name))]
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="tablet-page space-y-6">
       {/* 헤더 */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm xl:flex-row xl:items-center xl:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">✅ PBS 행동 체크</h1>
           <p className="text-xs text-gray-400 mt-0.5">Positive Behavior Support · Cooper et al. (2020) 토큰 강화 기반</p>
         </div>
-        <div className="text-right">
+        <div className="text-left xl:text-right">
           <p className="text-sm text-gray-500">오늘 정산 예정</p>
           <p className="text-xl font-bold text-green-600">{formatCurrency(todayTotal)}</p>
         </div>
@@ -631,13 +631,13 @@ export default function PbsCheckPage() {
                     </div>
                   )}
 
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
                     <div className="flex items-center gap-2 bg-gray-50 rounded-xl px-4 py-2">
                       <span className="text-sm text-gray-500">오늘</span>
                       <span className="text-lg font-bold text-gray-900">{todayCount}회</span>
                       <span className="text-sm text-green-600">+{formatCurrency(todayTokens)}</span>
                     </div>
-                    <div className="flex gap-2 ml-auto">
+                    <div className="flex gap-2 xl:ml-auto">
                       {[1, 2, 3].map((n) => (
                         <button
                           key={n}
@@ -691,8 +691,8 @@ export default function PbsCheckPage() {
 
       {/* 일괄 체크 모달 */}
       {showBulkModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl w-full max-w-md p-6 space-y-4 shadow-xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-2xl rounded-[2rem] bg-white p-6 shadow-xl space-y-4">
             <h2 className="text-lg font-bold text-gray-900">👥 일괄 체크</h2>
             <p className="text-sm text-gray-500">같은 행동 목표를 여러 학생에게 동시에 체크합니다.</p>
 
@@ -802,8 +802,8 @@ export default function PbsCheckPage() {
 
       {/* 목표 추가/편집 모달 */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl w-full max-w-md p-6 space-y-4 shadow-xl max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="max-h-[90dvh] w-full max-w-2xl overflow-y-auto rounded-[2rem] bg-white p-6 shadow-xl space-y-4">
             <h2 className="text-lg font-bold text-gray-900">
               {editingGoal ? 'PBS 목표 수정' : 'PBS 목표 추가'}
             </h2>
@@ -830,7 +830,7 @@ export default function PbsCheckPage() {
               />
             </label>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               <label className="block">
                 <span className="text-sm font-medium text-gray-700">1회당 토큰 (원) *</span>
                 <input
