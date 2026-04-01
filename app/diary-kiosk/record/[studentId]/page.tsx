@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 
 type RecordingState = 'idle' | 'recording' | 'processing'
+type MediaPermissionState = 'unknown' | 'prompt' | 'granted' | 'denied' | 'unsupported'
 
 export default function DiaryRecordPage() {
   const AUTO_START_COUNTDOWN = 5
@@ -21,6 +22,9 @@ export default function DiaryRecordPage() {
   const [cameraReady, setCameraReady] = useState(false)
   const [snapshotCaptured, setSnapshotCaptured] = useState(false)
   const [error, setError] = useState('')
+  const [requestingMedia, setRequestingMedia] = useState(false)
+  const [cameraPermission, setCameraPermission] = useState<MediaPermissionState>('unknown')
+  const [microphonePermission, setMicrophonePermission] = useState<MediaPermissionState>('unknown')
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
@@ -32,10 +36,14 @@ export default function DiaryRecordPage() {
   const snapshotBlobRef = useRef<Blob | null>(null)
   const startRecordingRef = useRef<() => void>(() => {})
 
+  const setupMedia = useRef<() => Promise<void>>(async () => {})
+
   useEffect(() => {
     let mounted = true
 
-    const setupMedia = async () => {
+    setupMedia.current = async () => {
+      setRequestingMedia(true)
+      setError('')
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
           video: {
@@ -54,6 +62,8 @@ export default function DiaryRecordPage() {
           return
         }
 
+        setCameraPermission('granted')
+        setMicrophonePermission('granted')
         streamRef.current = stream
         if (videoRef.current) {
           videoRef.current.srcObject = stream
@@ -63,11 +73,41 @@ export default function DiaryRecordPage() {
         setCameraReady(true)
         setCountdown(AUTO_START_COUNTDOWN)
       } catch {
+        setCameraPermission('denied')
+        setMicrophonePermission('denied')
         setError('카메라와 마이크 권한을 확인해주세요.')
+      } finally {
+        if (mounted) {
+          setRequestingMedia(false)
+        }
       }
     }
 
-    void setupMedia()
+    const updatePermissions = async () => {
+      if (!navigator.permissions?.query) {
+        setCameraPermission('unsupported')
+        setMicrophonePermission('unsupported')
+        return
+      }
+
+      try {
+        const cameraStatus = await navigator.permissions.query({ name: 'camera' as PermissionName })
+        setCameraPermission(cameraStatus.state as MediaPermissionState)
+        cameraStatus.onchange = () => setCameraPermission(cameraStatus.state as MediaPermissionState)
+      } catch {
+        setCameraPermission('unsupported')
+      }
+
+      try {
+        const microphoneStatus = await navigator.permissions.query({ name: 'microphone' as PermissionName })
+        setMicrophonePermission(microphoneStatus.state as MediaPermissionState)
+        microphoneStatus.onchange = () => setMicrophonePermission(microphoneStatus.state as MediaPermissionState)
+      } catch {
+        setMicrophonePermission('unsupported')
+      }
+    }
+
+    void updatePermissions()
 
     return () => {
       mounted = false
@@ -286,12 +326,42 @@ export default function DiaryRecordPage() {
                 <p className="mt-4 text-lg font-bold text-white">일기를 정리하는 중...</p>
               </div>
             )}
+
+            {!cameraReady && state === 'idle' && countdown === null && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/70 px-6 text-center">
+                {requestingMedia ? (
+                  <div className="h-12 w-12 animate-spin rounded-full border-4 border-white border-t-transparent" />
+                ) : (
+                  <>
+                    <p className="text-lg font-black text-white">카메라와 마이크 권한이 필요해요</p>
+                    <p className="mt-2 text-sm text-white/70">버튼을 누르면 녹음 준비를 위해 권한 요청이 나타납니다.</p>
+                    <button
+                      type="button"
+                      onClick={() => void setupMedia.current()}
+                      className="mt-4 rounded-2xl bg-amber-300 px-5 py-3 text-sm font-black text-slate-900 shadow-lg transition hover:bg-amber-200"
+                    >
+                      🎤 권한 요청 및 녹음 준비
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
         {error && (
           <div className="w-full rounded-2xl bg-rose-50 px-5 py-4 text-center text-sm font-bold text-rose-600">
             {error}
+          </div>
+        )}
+
+        {!cameraReady && (
+          <div className="w-full rounded-2xl bg-white/80 px-5 py-4 text-center shadow-sm ring-1 ring-white/90">
+            <p className="text-sm font-bold text-slate-900">
+              {cameraPermission === 'denied' || microphonePermission === 'denied'
+                ? '권한이 거부되어 있어요. 앱 또는 브라우저 설정에서 카메라와 마이크를 허용해주세요.'
+                : '권한을 허용하면 5초 카운트다운 뒤 자동 녹음이 시작됩니다.'}
+            </p>
           </div>
         )}
 
