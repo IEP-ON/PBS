@@ -7,6 +7,8 @@ import QrCardButton from './QrCardButton'
 import EditStudentButton from './EditStudentButton'
 import LevelUpButton from './LevelUpButton'
 import AiBehaviorPlan from './AiBehaviorPlan'
+import GoalDeleteButton from './GoalDeleteButton'
+import InterventionDeleteButton from './InterventionDeleteButton'
 
 export default async function StudentDetailPage({
   params,
@@ -37,6 +39,15 @@ export default async function StudentDetailPage({
     .eq('student_id', studentId)
     .eq('is_active', true)
     .order('created_at', { ascending: false })
+
+  const strategyNames = [...new Set((goals || []).map((goal) => goal.strategy_type).filter(Boolean))]
+  const { data: interventions } = strategyNames.length > 0
+    ? await supabase
+        .from('pbs_intervention_library')
+        .select('id, name_ko, evidence_level, abbreviation')
+        .in('name_ko', strategyNames)
+        .order('name_ko')
+    : { data: [] }
 
   // 최근 거래내역 10건
   const { data: transactions } = await supabase
@@ -107,6 +118,7 @@ export default async function StudentDetailPage({
         <div className="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-gray-100">
           <EditStudentButton
             studentId={studentId}
+            classCode={classCode}
             initialData={{
               name: student.name,
               grade: student.grade,
@@ -150,7 +162,7 @@ export default async function StudentDetailPage({
         ) : (
           <div className="grid gap-3">
             {goals.map((goal) => (
-              <div key={goal.id} className="bg-white rounded-2xl border border-gray-100 p-4 flex items-center justify-between">
+              <div key={goal.id} className="bg-white rounded-2xl border border-gray-100 p-4 flex items-center justify-between gap-4">
                 <div>
                   <p className="font-bold text-gray-900">{goal.behavior_name}</p>
                   {goal.strategy_type && (
@@ -159,7 +171,37 @@ export default async function StudentDetailPage({
                     </span>
                   )}
                 </div>
-                <p className="font-bold text-blue-600">{formatCurrency(goal.token_per_occurrence)}/회</p>
+                <div className="flex items-center gap-3">
+                  <p className="font-bold text-blue-600">{formatCurrency(goal.token_per_occurrence)}/회</p>
+                  <GoalDeleteButton goalId={goal.id} goalName={goal.behavior_name} />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div>
+        <h2 className="text-lg font-bold text-gray-900 mb-3">행동 중재</h2>
+        {(!interventions || interventions.length === 0) ? (
+          <div className="bg-white rounded-2xl border border-gray-100 p-8 text-center">
+            <p className="text-gray-400 text-sm">학생에게 연결된 중재 전략이 없습니다.</p>
+          </div>
+        ) : (
+          <div className="grid gap-3">
+            {interventions.map((intervention) => (
+              <div key={intervention.id} className="bg-white rounded-2xl border border-gray-100 p-4 flex items-center justify-between gap-4">
+                <div>
+                  <p className="font-bold text-gray-900">{intervention.name_ko}</p>
+                  <p className="mt-1 text-xs text-gray-500">
+                    근거수준: {intervention.evidence_level === 'strong' ? '강함' : intervention.evidence_level === 'moderate' ? '중간' : '신규'}
+                  </p>
+                </div>
+                <InterventionDeleteButton
+                  strategyId={intervention.id}
+                  strategyName={intervention.name_ko}
+                  studentId={studentId}
+                />
               </div>
             ))}
           </div>

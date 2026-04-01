@@ -24,7 +24,7 @@ export default async function TeacherLayout({
   return (
     <div className="min-h-screen bg-gray-50 flex">
       {/* 사이드바 */}
-      <aside className="w-60 bg-white border-r border-gray-200 flex flex-col">
+      <aside className="w-60 bg-white border-r border-gray-200 flex flex-col print:hidden">
         <div className="p-4 border-b border-gray-100">
           <Link href={`/${classCode}/dashboard`} className="flex items-center gap-2">
             <span className="text-2xl">🏦</span>
@@ -51,7 +51,7 @@ export default async function TeacherLayout({
       </aside>
 
       {/* 메인 콘텐츠 */}
-      <main className="flex-1 overflow-auto">
+      <main className="flex-1 overflow-auto print:overflow-visible">
         {children}
       </main>
     </div>

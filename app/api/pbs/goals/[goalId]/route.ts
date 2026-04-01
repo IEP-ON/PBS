@@ -57,3 +57,48 @@ export async function PATCH(
     return NextResponse.json({ error: '서버 오류가 발생했습니다.' }, { status: 500 })
   }
 }
+
+// DELETE /api/pbs/goals/[goalId] — PBS 목표 완전 삭제
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ goalId: string }> }
+) {
+  try {
+    const session = await getSession()
+    if (!session.classroomId || session.role !== 'teacher') {
+      return NextResponse.json({ error: '교사 권한이 필요합니다.' }, { status: 403 })
+    }
+
+    const { goalId } = await params
+    const supabase = await createServerSupabase()
+
+    const { data: goal } = await supabase
+      .from('pbs_goals')
+      .select('id, class_code_id, behavior_name')
+      .eq('id', goalId)
+      .eq('class_code_id', session.classroomId)
+      .single()
+
+    if (!goal) {
+      return NextResponse.json({ error: 'PBS 목표를 찾을 수 없습니다.' }, { status: 404 })
+    }
+
+    await supabase.from('pbs_extinction_alerts').delete().eq('goal_id', goalId)
+    await supabase.from('pbs_dro_timers').delete().eq('goal_id', goalId)
+    await supabase.from('pbs_records').delete().eq('goal_id', goalId)
+
+    const { error } = await supabase
+      .from('pbs_goals')
+      .delete()
+      .eq('id', goalId)
+      .eq('class_code_id', session.classroomId)
+
+    if (error) {
+      return NextResponse.json({ error: 'PBS 목표 삭제에 실패했습니다.' }, { status: 500 })
+    }
+
+    return NextResponse.json({ ok: true, goalName: goal.behavior_name })
+  } catch {
+    return NextResponse.json({ error: '서버 오류가 발생했습니다.' }, { status: 500 })
+  }
+}

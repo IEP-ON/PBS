@@ -33,6 +33,13 @@ export default function Home() {
           >
             🏧 ATM 모드
           </Link>
+
+          <Link
+            href="/diary-kiosk"
+            className="block w-full py-3 px-6 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-medium rounded-2xl transition-colors"
+          >
+            🎙️ 말 일기장
+          </Link>
         </div>
 
         <p className="text-xs text-gray-400 mt-8">

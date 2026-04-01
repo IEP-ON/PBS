@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 
 interface Props {
   studentId: string
+  classCode: string
   initialData: {
     name: string
     grade: number | null
@@ -13,7 +14,7 @@ interface Props {
   }
 }
 
-export default function EditStudentButton({ studentId, initialData }: Props) {
+export default function EditStudentButton({ studentId, classCode, initialData }: Props) {
   const router = useRouter()
   const [showModal, setShowModal] = useState(false)
   const [form, setForm] = useState({
@@ -24,6 +25,7 @@ export default function EditStudentButton({ studentId, initialData }: Props) {
     pin: '',
   })
   const [submitting, setSubmitting] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState('')
 
   const handleSave = async () => {
@@ -61,6 +63,34 @@ export default function EditStudentButton({ studentId, initialData }: Props) {
       setError('서버 연결 실패')
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!confirm('학생을 완전히 삭제할까요? 통장, 거래내역, PBS 기록, 말 일기 등 모든 데이터가 함께 삭제됩니다.')) {
+      return
+    }
+
+    setDeleting(true)
+    setError('')
+
+    try {
+      const res = await fetch(`/api/students/${studentId}`, {
+        method: 'DELETE',
+      })
+
+      if (res.ok) {
+        setShowModal(false)
+        router.push(`/${classCode}/students`)
+        router.refresh()
+      } else {
+        const data = await res.json()
+        setError(data.error || '학생 삭제 실패')
+      }
+    } catch {
+      setError('서버 연결 실패')
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -137,6 +167,18 @@ export default function EditStudentButton({ studentId, initialData }: Props) {
 
             {error && <p className="text-red-500 text-sm">{error}</p>}
 
+            <div className="rounded-xl border border-red-200 bg-red-50 p-4">
+              <p className="text-sm font-semibold text-red-700">위험 작업</p>
+              <p className="mt-1 text-xs text-red-600">학생 정보, 통장, PBS 기록, 말 일기 등 모든 백엔드 데이터가 함께 삭제됩니다.</p>
+              <button
+                onClick={handleDelete}
+                disabled={deleting || submitting}
+                className="mt-3 w-full rounded-xl bg-red-600 py-3 text-sm font-semibold text-white transition-colors hover:bg-red-700 disabled:bg-red-300"
+              >
+                {deleting ? '삭제 중...' : '학생 완전 삭제'}
+              </button>
+            </div>
+
             <div className="flex gap-3 pt-2">
               <button
                 onClick={() => setShowModal(false)}
@@ -146,7 +188,7 @@ export default function EditStudentButton({ studentId, initialData }: Props) {
               </button>
               <button
                 onClick={handleSave}
-                disabled={submitting}
+                disabled={submitting || deleting}
                 className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white font-semibold rounded-xl transition-colors"
               >
                 {submitting ? '저장 중...' : '저장'}
