@@ -28,6 +28,10 @@ export interface TeachStudent {
   pendingTokens: number
   goals: TeachGoal[]
   activeTimer: TeachTimer | null
+  class_mode_targets: string[]
+  p_prompt_options: string[]
+  incident_tags: string[]
+  public_safe_summary: string | null
 }
 
 // GET /api/teach/summary — 수업 모드용 전체 학급 현황 (원콜)
@@ -72,6 +76,10 @@ export async function GET() {
     }
 
     const studentIds = students.map(s => s.id)
+    const { data: profiles } = await supabase
+      .from('pbs_student_ai_profiles')
+      .select('student_id, class_mode_targets, p_prompt_options, incident_tags, public_safe_summary')
+      .in('student_id', studentIds)
 
     // 오늘 모든 학생 PBS 기록
     const { data: records } = await supabase
@@ -81,6 +89,7 @@ export async function GET() {
       .in('student_id', studentIds)
 
     const allRecords = records || []
+    const profileMap = new Map((profiles || []).map((profile) => [profile.student_id, profile]))
 
     const result: TeachStudent[] = students.map(student => {
       const account = Array.isArray(student.pbs_accounts)
@@ -129,6 +138,10 @@ export async function GET() {
         pendingTokens,
         goals: goalsWithProgress,
         activeTimer,
+        class_mode_targets: profileMap.get(student.id)?.class_mode_targets || [],
+        p_prompt_options: profileMap.get(student.id)?.p_prompt_options || [],
+        incident_tags: profileMap.get(student.id)?.incident_tags || [],
+        public_safe_summary: profileMap.get(student.id)?.public_safe_summary || null,
       }
     })
 

@@ -91,9 +91,12 @@ export default function TeachPage() {
   }, [])
 
   useEffect(() => {
-    loadSummary()
+    const timer = setTimeout(() => {
+      void loadSummary()
+    }, 0)
     refreshIntervalRef.current = setInterval(loadSummary, 30000)
     return () => {
+      clearTimeout(timer)
       if (refreshIntervalRef.current) clearInterval(refreshIntervalRef.current)
     }
   }, [loadSummary])
@@ -313,6 +316,7 @@ export default function TeachPage() {
           const isPrompted = promptedStudent === student.id
           const isExpanded = expandedStudent === student.id
           const primaryGoal = student.goals[0] || null
+          const promptHint = student.p_prompt_options[0] || null
 
           return (
             <div
@@ -328,6 +332,11 @@ export default function TeachPage() {
                 <div>
                   <p className="font-bold text-gray-900 text-base leading-tight">{student.name}</p>
                   <p className="text-xs text-gray-400">LV.{student.pbs_stage}</p>
+                  {student.public_safe_summary && (
+                    <p className="mt-1 max-w-[210px] text-[11px] leading-4 text-gray-500">
+                      {student.public_safe_summary}
+                    </p>
+                  )}
                 </div>
                 <div className="text-right">
                   <p className="text-sm font-bold text-green-600">⭐ {formatCurrency(student.todayTokens)}</p>
@@ -437,6 +446,11 @@ export default function TeachPage() {
                       </button>
                     ))}
                   </div>
+                  {promptHint && (
+                    <p className="mt-2 rounded-lg border border-amber-100 bg-amber-50 px-2 py-1 text-[11px] text-amber-700">
+                      추천 촉구: {promptHint}
+                    </p>
+                  )}
                 </div>
               )}
 
@@ -490,6 +504,27 @@ export default function TeachPage() {
                   </div>
                 </div>
               ))}
+              {isExpanded && student.incident_tags.length > 0 && (
+                <div className="border-t border-gray-50 px-3 pb-3 pt-2">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-gray-400">사건 태그 추천</p>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {student.incident_tags.slice(0, 5).map(tag => (
+                      <button
+                        key={tag}
+                        onClick={() => {
+                          setIncidentStudentId(student.id)
+                          setIncidentType(tag)
+                          setIncidentNote('')
+                          setShowIncident(true)
+                        }}
+                        className="rounded-full border border-rose-100 bg-rose-50 px-2 py-1 text-[10px] font-medium text-rose-700"
+                      >
+                        {tag}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )
         })}
@@ -562,6 +597,27 @@ export default function TeachPage() {
                 </button>
               ))}
             </div>
+
+            {incidentStudentId && students.find(s => s.id === incidentStudentId)?.incident_tags?.length ? (
+              <div className="rounded-2xl border border-red-100 bg-red-50 p-3">
+                <p className="text-xs font-semibold text-red-700">학생 맞춤 사건 태그</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {students.find(s => s.id === incidentStudentId)!.incident_tags.slice(0, 6).map(tag => (
+                    <button
+                      key={tag}
+                      onClick={() => setIncidentType(tag)}
+                      className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                        incidentType === tag
+                          ? 'bg-red-600 text-white'
+                          : 'bg-white text-red-700 border border-red-200'
+                      }`}
+                    >
+                      {tag}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
 
             {/* 메모 (선택) */}
             <input

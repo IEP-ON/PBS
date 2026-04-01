@@ -29,6 +29,11 @@ export default async function StudentHomePage({
   if (!student) redirect('/login')
 
   const account = Array.isArray(student.pbs_accounts) ? student.pbs_accounts[0] : student.pbs_accounts
+  const { data: aiProfile } = await supabase
+    .from('pbs_student_ai_profiles')
+    .select('public_safe_summary, preferences, class_mode_targets')
+    .eq('student_id', studentId)
+    .maybeSingle()
   const todayKst = getKstToday()
   const { startIso, endIso } = getKstDateRange(todayKst)
 
@@ -185,6 +190,27 @@ export default async function StudentHomePage({
           </div>
         </div>
       </div>
+
+      {aiProfile && (
+        <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4">
+          <p className="text-sm font-bold text-blue-900">🌱 오늘의 나</p>
+          {aiProfile.public_safe_summary && (
+            <p className="mt-2 text-sm leading-6 text-gray-700">{aiProfile.public_safe_summary}</p>
+          )}
+          <div className="mt-3 flex flex-wrap gap-2">
+            {(aiProfile.class_mode_targets || []).slice(0, 3).map((target: string) => (
+              <span key={target} className="rounded-full bg-white px-3 py-1 text-xs font-medium text-blue-700">
+                목표 · {target}
+              </span>
+            ))}
+            {(aiProfile.preferences || []).slice(0, 2).map((preference: string) => (
+              <span key={preference} className="rounded-full bg-white px-3 py-1 text-xs font-medium text-emerald-700">
+                좋아함 · {preference}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* 보유 주식 */}
       {holdings && holdings.length > 0 && (

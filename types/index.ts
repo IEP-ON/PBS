@@ -27,6 +27,7 @@ export type ContractStrategyType =
   | 'SM' | 'TA' | 'TM-CM'
 
 export type UserRole = 'teacher' | 'student'
+export type BehaviorFunctionKey = 'attention' | 'escape' | 'sensory' | 'tangible'
 
 // ===== 세션 =====
 
@@ -228,4 +229,63 @@ export interface SpeechDiaryStatus {
   reward_granted_today: boolean
   latest_diary_at: string | null
   latest_sentiment: 'positive' | 'negative' | 'neutral' | null
+}
+
+export interface StudentAiFollowUpQuestion {
+  id: string
+  question: string
+  reason: string
+  target_field: string
+}
+
+export interface StudentAiProfile {
+  id: string
+  student_id: string
+  class_code_id: string
+  source_free_text: string | null
+  current_level_summary: string | null
+  strengths: string[]
+  preferences: string[]
+  student_voice_keywords: string[]
+  support_needs: string[]
+  risk_flags: string[]
+  observable_behaviors: string[]
+  antecedent_patterns: string[]
+  consequence_patterns: string[]
+  hypothesized_functions: string[]
+  replacement_behaviors: string[]
+  positive_target_behaviors: string[]
+  prevention_supports: string[]
+  reinforcement_preferences: string[]
+  incident_tags: string[]
+  class_mode_targets: string[]
+  p_prompt_options: string[]
+  dro_candidate: string | null
+  student_registration_summary: string | null
+  ai_plan_one_liner: string | null
+  public_safe_summary: string | null
+  private_teacher_notes: string | null
+  teacher_verified: boolean
+  generated_follow_up_questions: StudentAiFollowUpQuestion[]
+  confidence_by_field: Record<string, string>
+  created_at: string
+  updated_at: string
+}
+
+export interface StudentAiProfileDraft {
+  profile: Omit<
+    StudentAiProfile,
+    'id' | 'student_id' | 'class_code_id' | 'teacher_verified' | 'created_at' | 'updated_at'
+  >
+  follow_up_questions: StudentAiFollowUpQuestion[]
+}
+
+export interface StudentFeatureOutputs {
+  registrationSummary: string
+  aiPlanOneLiner: string
+  classModeTargets: string[]
+  pPromptOptions: string[]
+  incidentTags: string[]
+  droCandidate: string
+  publicSafeSummary: string
 }

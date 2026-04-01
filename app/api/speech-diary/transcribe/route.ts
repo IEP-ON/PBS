@@ -52,6 +52,12 @@ export async function POST(request: Request) {
     const rawTranscript = transcription.text
     const today = getKstToday()
 
+    const { data: aiProfile } = await supabase
+      .from('pbs_student_ai_profiles')
+      .select('preferences, student_voice_keywords, support_needs, public_safe_summary')
+      .eq('student_id', student.id)
+      .maybeSingle()
+
     const { data: context } = await supabase
       .from('pbs_speech_context')
       .select('*')
@@ -61,6 +67,13 @@ export async function POST(request: Request) {
 
     const contextInfo = context
       ? `오늘의 급식: ${context.lunch_menu || '정보 없음'}\n오늘의 행사: ${context.event || '정보 없음'}\n오늘의 메모: ${context.memo || '정보 없음'}`
+      : ''
+
+    const aiProfileInfo = aiProfile
+      ? `학생이 좋아하는 것: ${(aiProfile.preferences || []).slice(0, 3).join(', ') || '정보 없음'}
+학생이 자주 쓰는 표현: ${(aiProfile.student_voice_keywords || []).slice(0, 5).join(', ') || '정보 없음'}
+학생 지원 포인트: ${(aiProfile.support_needs || []).slice(0, 3).join(', ') || '정보 없음'}
+학생 공개 요약: ${aiProfile.public_safe_summary || '정보 없음'}`
       : ''
 
     const completion = await openai.chat.completions.create({
@@ -79,6 +92,7 @@ export async function POST(request: Request) {
 4. 말투를 지나치게 어른스럽게 바꾸지 않습니다.
 
 ${contextInfo}
+${aiProfileInfo}
 
 반드시 아래 JSON만 반환하세요:
 {

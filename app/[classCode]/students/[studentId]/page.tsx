@@ -9,6 +9,7 @@ import LevelUpButton from './LevelUpButton'
 import AiBehaviorPlan from './AiBehaviorPlan'
 import GoalDeleteButton from './GoalDeleteButton'
 import InterventionDeleteButton from './InterventionDeleteButton'
+import { buildFeatureOutputs, mapStudentAiProfile } from '@/lib/ai-profile'
 
 export default async function StudentDetailPage({
   params,
@@ -31,6 +32,14 @@ export default async function StudentDetailPage({
   if (!student) redirect(`/${classCode}/students`)
 
   const account = Array.isArray(student.pbs_accounts) ? student.pbs_accounts[0] : student.pbs_accounts
+  const { data: aiProfileRow } = await supabase
+    .from('pbs_student_ai_profiles')
+    .select('*')
+    .eq('student_id', studentId)
+    .maybeSingle()
+
+  const aiProfile = aiProfileRow ? mapStudentAiProfile(aiProfileRow as Record<string, unknown>) : null
+  const aiFeatureOutputs = buildFeatureOutputs(aiProfile)
 
   // PBS 목표
   const { data: goals } = await supabase
@@ -128,6 +137,24 @@ export default async function StudentDetailPage({
           />
           <LevelUpButton studentId={studentId} currentStage={student.pbs_stage} />
         </div>
+        {aiProfile && (
+          <div className="mt-4 rounded-2xl border border-purple-100 bg-purple-50 p-4">
+            <p className="text-xs font-bold uppercase tracking-[0.22em] text-purple-500">AI 학생 요약</p>
+            <p className="mt-2 text-sm leading-6 text-gray-700">{aiFeatureOutputs.registrationSummary}</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {aiProfile.strengths.slice(0, 3).map((strength) => (
+                <span key={strength} className="rounded-full border border-white bg-white px-3 py-1 text-xs font-medium text-purple-700">
+                  강점 · {strength}
+                </span>
+              ))}
+              {aiProfile.preferences.slice(0, 2).map((preference) => (
+                <span key={preference} className="rounded-full border border-white bg-white px-3 py-1 text-xs font-medium text-blue-700">
+                  선호 · {preference}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 요약 카드 */}
@@ -302,6 +329,7 @@ export default async function StudentDetailPage({
         studentName={student.name}
         grade={student.grade}
         classCode={classCode}
+        initialProfile={aiProfile}
       />
 
       {/* QR 코드 */}

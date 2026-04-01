@@ -124,6 +124,7 @@ export async function DELETE(
     }
 
     await supabase.from('pbs_ai_generation_log').delete().eq('student_id', studentId)
+    await supabase.from('pbs_student_ai_profiles').delete().eq('student_id', studentId)
     await supabase.from('pbs_speech_diaries').delete().eq('student_id', studentId)
     await supabase.from('pbs_extinction_alerts').delete().eq('student_id', studentId)
     await supabase.from('pbs_dro_timers').delete().eq('student_id', studentId)

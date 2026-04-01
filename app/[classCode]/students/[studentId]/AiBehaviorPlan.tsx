@@ -1,13 +1,21 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
+import {
+  buildFeatureOutputs,
+  normalizeStringArray,
+  sanitizeConfidenceMap,
+  sanitizeText,
+} from '@/lib/ai-profile'
+import type { StudentAiFollowUpQuestion, StudentAiProfile } from '@/types'
 
 interface Props {
   studentId: string
   studentName: string
   grade: number | null
   classCode: string
+  initialProfile: StudentAiProfile | null
 }
 
 interface FbaPlan {
@@ -63,20 +71,18 @@ interface BehaviorPlan {
   extinctionAlert: ExtinctionDraft
 }
 
+type SaveStatus = 'idle' | 'saving' | 'done' | 'error'
+
+type EditableStudentAiProfile = Omit<
+  StudentAiProfile,
+  'id' | 'student_id' | 'class_code_id' | 'created_at' | 'updated_at'
+>
+
 const FUNCTION_LABELS: Record<string, string> = {
   attention: '주의 추구',
   escape: '회피/도피',
   sensory: '감각 자극',
   tangible: '물건 획득',
-}
-
-const CONFIDENCE_LABELS: Record<string, string> = {
-  high: '높음', medium: '중간', low: '낮음',
-}
-
-const EVIDENCE_LABELS: Record<string, string> = {
-  strong: '강력 근거', moderate: '중간 근거', emerging: '신규 근거',
-  'evidence-based': '근거기반', promising: '유망',
 }
 
 const FUNCTION_COLORS: Record<string, string> = {
@@ -86,80 +92,293 @@ const FUNCTION_COLORS: Record<string, string> = {
   tangible: 'bg-blue-100 text-blue-700',
 }
 
-type SaveStatus = 'idle' | 'saving' | 'done' | 'error'
+const EVIDENCE_LABELS: Record<string, string> = {
+  strong: '강력 근거',
+  moderate: '중간 근거',
+  emerging: '신규 근거',
+  'evidence-based': '근거기반',
+  promising: '유망',
+}
 
-export default function AiBehaviorPlan({ studentId, studentName, grade, classCode }: Props) {
+function createEmptyProfile(sourceText = ''): EditableStudentAiProfile {
+  return {
+    source_free_text: sourceText,
+    current_level_summary: null,
+    strengths: [],
+    preferences: [],
+    student_voice_keywords: [],
+    support_needs: [],
+    risk_flags: [],
+    observable_behaviors: [],
+    antecedent_patterns: [],
+    consequence_patterns: [],
+    hypothesized_functions: [],
+    replacement_behaviors: [],
+    positive_target_behaviors: [],
+    prevention_supports: [],
+    reinforcement_preferences: [],
+    incident_tags: [],
+    class_mode_targets: [],
+    p_prompt_options: [],
+    dro_candidate: null,
+    student_registration_summary: null,
+    ai_plan_one_liner: null,
+    public_safe_summary: null,
+    private_teacher_notes: null,
+    teacher_verified: false,
+    generated_follow_up_questions: [],
+    confidence_by_field: {},
+  }
+}
+
+function profileToEditable(profile: StudentAiProfile | null): EditableStudentAiProfile {
+  if (!profile) return createEmptyProfile()
+
+  return {
+    source_free_text: profile.source_free_text,
+    current_level_summary: profile.current_level_summary,
+    strengths: profile.strengths,
+    preferences: profile.preferences,
+    student_voice_keywords: profile.student_voice_keywords,
+    support_needs: profile.support_needs,
+    risk_flags: profile.risk_flags,
+    observable_behaviors: profile.observable_behaviors,
+    antecedent_patterns: profile.antecedent_patterns,
+    consequence_patterns: profile.consequence_patterns,
+    hypothesized_functions: profile.hypothesized_functions,
+    replacement_behaviors: profile.replacement_behaviors,
+    positive_target_behaviors: profile.positive_target_behaviors,
+    prevention_supports: profile.prevention_supports,
+    reinforcement_preferences: profile.reinforcement_preferences,
+    incident_tags: profile.incident_tags,
+    class_mode_targets: profile.class_mode_targets,
+    p_prompt_options: profile.p_prompt_options,
+    dro_candidate: profile.dro_candidate,
+    student_registration_summary: profile.student_registration_summary,
+    ai_plan_one_liner: profile.ai_plan_one_liner,
+    public_safe_summary: profile.public_safe_summary,
+    private_teacher_notes: profile.private_teacher_notes,
+    teacher_verified: profile.teacher_verified,
+    generated_follow_up_questions: profile.generated_follow_up_questions,
+    confidence_by_field: profile.confidence_by_field,
+  }
+}
+
+function editableToProfile(editable: EditableStudentAiProfile): StudentAiProfile {
+  return {
+    id: 'draft',
+    student_id: 'draft',
+    class_code_id: 'draft',
+    created_at: '',
+    updated_at: '',
+    ...editable,
+  }
+}
+
+function arrayToText(value: string[]) {
+  return value.join('\n')
+}
+
+function textToArray(value: string) {
+  return normalizeStringArray(value.split('\n'))
+}
+
+function normalizeEditableProfile(
+  profile: EditableStudentAiProfile,
+  fallbackSourceText: string
+): EditableStudentAiProfile {
+  return {
+    ...profile,
+    source_free_text: sanitizeText(profile.source_free_text) ?? sanitizeText(fallbackSourceText),
+    current_level_summary: sanitizeText(profile.current_level_summary),
+    strengths: normalizeStringArray(profile.strengths),
+    preferences: normalizeStringArray(profile.preferences),
+    student_voice_keywords: normalizeStringArray(profile.student_voice_keywords),
+    support_needs: normalizeStringArray(profile.support_needs),
+    risk_flags: normalizeStringArray(profile.risk_flags),
+    observable_behaviors: normalizeStringArray(profile.observable_behaviors),
+    antecedent_patterns: normalizeStringArray(profile.antecedent_patterns),
+    consequence_patterns: normalizeStringArray(profile.consequence_patterns),
+    hypothesized_functions: normalizeStringArray(profile.hypothesized_functions),
+    replacement_behaviors: normalizeStringArray(profile.replacement_behaviors),
+    positive_target_behaviors: normalizeStringArray(profile.positive_target_behaviors),
+    prevention_supports: normalizeStringArray(profile.prevention_supports),
+    reinforcement_preferences: normalizeStringArray(profile.reinforcement_preferences),
+    incident_tags: normalizeStringArray(profile.incident_tags),
+    class_mode_targets: normalizeStringArray(profile.class_mode_targets),
+    p_prompt_options: normalizeStringArray(profile.p_prompt_options),
+    dro_candidate: sanitizeText(profile.dro_candidate),
+    student_registration_summary: sanitizeText(profile.student_registration_summary),
+    ai_plan_one_liner: sanitizeText(profile.ai_plan_one_liner),
+    public_safe_summary: sanitizeText(profile.public_safe_summary),
+    private_teacher_notes: sanitizeText(profile.private_teacher_notes),
+    teacher_verified: Boolean(profile.teacher_verified),
+    generated_follow_up_questions: profile.generated_follow_up_questions || [],
+    confidence_by_field: sanitizeConfidenceMap(profile.confidence_by_field),
+  }
+}
+
+export default function AiBehaviorPlan({
+  studentId,
+  studentName,
+  grade,
+  classCode,
+  initialProfile,
+}: Props) {
   const [open, setOpen] = useState(true)
-
-  // 입력 모드: 'structured' | 'free'
-  const [inputMode, setInputMode] = useState<'structured' | 'free'>('free')
-  const [freeText, setFreeText] = useState('')
+  const [freeText, setFreeText] = useState(initialProfile?.source_free_text || '')
+  const [followUpAnswers, setFollowUpAnswers] = useState<Record<string, string>>({})
+  const [optionalPrompt, setOptionalPrompt] = useState('')
+  const [profileId, setProfileId] = useState<string | null>(initialProfile?.id || null)
+  const [profile, setProfile] = useState<EditableStudentAiProfile>(profileToEditable(initialProfile))
   const [parsing, setParsing] = useState(false)
+  const [refining, setRefining] = useState(false)
+  const [savingProfile, setSavingProfile] = useState(false)
   const [parseError, setParseError] = useState('')
+  const [profileMessage, setProfileMessage] = useState('')
 
-  // 입력 폼
-  const [currentLevel, setCurrentLevel] = useState('')
-  const [targetBehavior, setTargetBehavior] = useState('')
-  const [antecedents, setAntecedents] = useState('')
-  const [consequences, setConsequences] = useState('')
-  const [environment, setEnvironment] = useState('')
-
-  // AI 결과
-  const [plan, setPlan] = useState<BehaviorPlan | null>(null)
+  const [editedPlan, setEditedPlan] = useState<BehaviorPlan | null>(null)
   const [generating, setGenerating] = useState(false)
   const [genError, setGenError] = useState('')
-
-  // 편집 가능한 초안 상태
-  const [editedPlan, setEditedPlan] = useState<BehaviorPlan | null>(null)
-
-  // 피드백 루프용: 생성 로그 ID + 원본 계획 참조
   const [logId, setLogId] = useState<string | null>(null)
   const [originalPlan, setOriginalPlan] = useState<BehaviorPlan | null>(null)
-
-  // PBS 목표 ↔ 중재전략 매핑 (goalIndex → interventionIndex | -1)
   const [strategyMapping, setStrategyMapping] = useState<Record<number, number>>({})
-
-  // 저장 상태 (섹션별)
   const [saveStatus, setSaveStatus] = useState<Record<string, SaveStatus>>({})
   const [saveMsg, setSaveMsg] = useState<Record<string, string>>({})
 
+  useEffect(() => {
+    setProfileId(initialProfile?.id || null)
+    setProfile(profileToEditable(initialProfile))
+    setFreeText(initialProfile?.source_free_text || '')
+  }, [initialProfile])
+
+  const featureOutputs = useMemo(
+    () => buildFeatureOutputs(editableToProfile(profile)),
+    [profile]
+  )
+
+  const setStatus = (key: string, status: SaveStatus, msg = '') => {
+    setSaveStatus((prev) => ({ ...prev, [key]: status }))
+    setSaveMsg((prev) => ({ ...prev, [key]: msg }))
+  }
+
+  const applyDraft = (draft: {
+    profile: EditableStudentAiProfile
+    follow_up_questions?: StudentAiFollowUpQuestion[]
+    confidence_by_field?: Record<string, string>
+  }) => {
+    const nextProfile = normalizeEditableProfile(
+      {
+        ...profile,
+        ...draft.profile,
+        generated_follow_up_questions: draft.follow_up_questions || draft.profile.generated_follow_up_questions || [],
+        confidence_by_field: draft.confidence_by_field || draft.profile.confidence_by_field || {},
+      },
+      freeText
+    )
+    setProfile(nextProfile)
+    setProfileMessage('AI 구조화 결과를 불러왔습니다. 확인 후 저장하세요.')
+  }
+
   const handleParse = async () => {
-    if (!freeText || freeText.trim().length < 10) {
-      setParseError('학생에 대한 설명을 10자 이상 입력해주세요.')
+    if (!freeText || freeText.trim().length < 20) {
+      setParseError('학생에 대한 자유입력을 20자 이상 적어주세요.')
       return
     }
+
     setParsing(true)
     setParseError('')
+    setProfileMessage('')
+
     try {
-      const res = await fetch('/api/ai/parse-behavior', {
+      const res = await fetch('/api/ai/student-profile/parse', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ freeText, studentName, grade }),
+        body: JSON.stringify({ studentId, studentName, grade, freeText }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || '분석 오류')
-      const p = data.parsed
-      if (p.currentLevel) setCurrentLevel(p.currentLevel)
-      if (p.targetBehavior) setTargetBehavior(p.targetBehavior)
-      if (p.antecedents) setAntecedents(p.antecedents)
-      if (p.consequences) setConsequences(p.consequences)
-      if (p.environment) setEnvironment(p.environment)
-      setInputMode('structured')
-    } catch (e: unknown) {
-      setParseError(e instanceof Error ? e.message : '오류가 발생했습니다.')
+      if (!res.ok) throw new Error(data.error || 'AI 구조화에 실패했습니다.')
+      applyDraft(data.draft)
+    } catch (error: unknown) {
+      setParseError(error instanceof Error ? error.message : '오류가 발생했습니다.')
     } finally {
       setParsing(false)
     }
   }
 
-  const handleGenerate = async () => {
-    if (!currentLevel || !targetBehavior) {
-      setGenError('현행수준과 표적 행동을 입력하세요.')
+  const handleRefine = async () => {
+    const answered = Object.fromEntries(
+      Object.entries(followUpAnswers).filter(([, value]) => value.trim())
+    )
+
+    if (Object.keys(answered).length === 0) {
+      setParseError('보강할 답변을 한 개 이상 입력해주세요.')
       return
     }
+
+    setRefining(true)
+    setParseError('')
+
+    try {
+      const res = await fetch('/api/ai/student-profile/refine', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          studentId,
+          sourceFreeText: freeText,
+          currentProfile: profile,
+          answers: answered,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'AI 보강에 실패했습니다.')
+      applyDraft(data.draft)
+      setFollowUpAnswers({})
+    } catch (error: unknown) {
+      setParseError(error instanceof Error ? error.message : '오류가 발생했습니다.')
+    } finally {
+      setRefining(false)
+    }
+  }
+
+  const saveProfile = async () => {
+    setSavingProfile(true)
+    setProfileMessage('')
+
+    try {
+      const payload = normalizeEditableProfile(
+        { ...profile, teacher_verified: true },
+        freeText
+      )
+      const res = await fetch(`/api/students/${studentId}/ai-profile`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          profile: payload,
+          sourceFreeText: freeText,
+          teacherVerified: true,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || '학생 AI 프로필 저장에 실패했습니다.')
+
+      setProfile(profileToEditable(data.profile))
+      setProfileId(data.profile.id)
+      setFreeText(data.profile.source_free_text || freeText)
+      setProfileMessage('학생 AI 프로필을 저장했습니다.')
+      return data.profile as StudentAiProfile
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : '오류가 발생했습니다.'
+      setProfileMessage(message)
+      throw error
+    } finally {
+      setSavingProfile(false)
+    }
+  }
+
+  const handleGeneratePlan = async () => {
     setGenerating(true)
     setGenError('')
-    setPlan(null)
     setEditedPlan(null)
     setSaveStatus({})
     setSaveMsg({})
@@ -167,82 +386,72 @@ export default function AiBehaviorPlan({ studentId, studentName, grade, classCod
     setOriginalPlan(null)
 
     try {
+      await saveProfile()
+
       const res = await fetch('/api/ai/behavior-plan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          studentName,
-          grade,
-          currentLevel,
-          targetBehavior,
-          antecedents,
-          consequences,
-          environment,
           studentId,
+          optionalPrompt: optionalPrompt.trim() || undefined,
         }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'AI 오류')
-      setPlan(data.plan)
+      if (!res.ok) throw new Error(data.error || 'AI 행동 지원 계획 생성에 실패했습니다.')
+
       setEditedPlan(JSON.parse(JSON.stringify(data.plan)))
       setOriginalPlan(JSON.parse(JSON.stringify(data.plan)))
-      if (data.logId) setLogId(data.logId)
+      setLogId(data.logId || null)
 
-      // 자동 매핑: pbsGoals[i].strategyType 약어가 intervention 이름에 포함되면 자동 연결
       const mapping: Record<number, number> = {}
-      const ivs: InterventionDraft[] = data.plan.interventions || []
-      ;(data.plan.pbsGoals || []).forEach((goal: PbsGoalDraft, i: number) => {
+      const interventions: InterventionDraft[] = data.plan.interventions || []
+      ;(data.plan.pbsGoals || []).forEach((goal: PbsGoalDraft, index: number) => {
         const abbr = (goal.strategyType || '').toUpperCase()
-        const matchIdx = ivs.findIndex(iv =>
-          iv.strategyName.toUpperCase().includes(abbr) ||
-          iv.description?.toUpperCase().includes(abbr)
+        const matchIndex = interventions.findIndex((item) =>
+          item.strategyName.toUpperCase().includes(abbr) ||
+          item.description.toUpperCase().includes(abbr)
         )
-        mapping[i] = matchIdx
+        mapping[index] = matchIndex
       })
       setStrategyMapping(mapping)
-    } catch (e: unknown) {
-      setGenError(e instanceof Error ? e.message : '오류가 발생했습니다.')
+    } catch (error: unknown) {
+      setGenError(error instanceof Error ? error.message : '오류가 발생했습니다.')
     } finally {
       setGenerating(false)
     }
   }
 
-  const setStatus = (key: string, status: SaveStatus, msg = '') => {
-    setSaveStatus(p => ({ ...p, [key]: status }))
-    setSaveMsg(p => ({ ...p, [key]: msg }))
-  }
-
-  const saveFba = async () => {
-    if (!editedPlan) return
+  const saveFba = async (currentPlan = editedPlan) => {
+    if (!currentPlan) return
     setStatus('fba', 'saving')
-    const fba = editedPlan.fba
+    const fba = currentPlan.fba
     const res = await fetch('/api/fba', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         studentId,
-        behaviorDescription: targetBehavior,
-        antecedentPatterns: antecedents ? antecedents.split(',').map(s => s.trim()) : [],
-        consequencePatterns: consequences ? consequences.split(',').map(s => s.trim()) : [],
+        behaviorDescription: currentPlan.contract.targetBehavior || profile.observable_behaviors[0] || '',
+        antecedentPatterns: profile.antecedent_patterns,
+        consequencePatterns: profile.consequence_patterns,
         requestAiAnalysis: false,
         estimatedFunction: fba.estimatedFunction,
         confidence: fba.confidence,
         rationale: fba.rationale,
       }),
     })
-    if (res.ok) setStatus('fba', 'done', 'FBA 기록 저장 완료 (기능: ' + fba.estimatedFunction + ')')
+    if (res.ok) setStatus('fba', 'done', `FBA 저장 완료 (${FUNCTION_LABELS[fba.estimatedFunction] || fba.estimatedFunction})`)
     else setStatus('fba', 'error', 'FBA 저장 실패')
   }
 
-  const savePbsGoals = async () => {
-    if (!editedPlan) return
+  const savePbsGoals = async (currentPlan = editedPlan) => {
+    if (!currentPlan) return
     setStatus('pbs', 'saving')
+
     let success = 0
-    const dro = editedPlan.dro
-    for (let i = 0; i < editedPlan.pbsGoals.length; i++) {
-      const goal = editedPlan.pbsGoals[i]
-      // 첫 번째 목표에 DRO 설정 자동 포함
-      const isDroGoal = i === 0 && dro.intervalMinutes > 0
+    const dro = currentPlan.dro
+    for (let index = 0; index < currentPlan.pbsGoals.length; index += 1) {
+      const goal = currentPlan.pbsGoals[index]
+      const isDroGoal = index === 0 && dro.intervalMinutes > 0
       const res = await fetch('/api/pbs/goals', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -256,16 +465,21 @@ export default function AiBehaviorPlan({ studentId, studentName, grade, classCod
           droIntervalMinutes: isDroGoal ? dro.intervalMinutes : undefined,
         }),
       })
-      if (res.ok) success++
+      if (res.ok) success += 1
     }
-    setStatus('pbs', success === editedPlan.pbsGoals.length ? 'done' : 'error',
-      `PBS 목표 ${success}/${editedPlan.pbsGoals.length}개 저장${dro.intervalMinutes > 0 ? ' (DRO 포함)' : ''}`)
+
+    setStatus(
+      'pbs',
+      success === currentPlan.pbsGoals.length ? 'done' : 'error',
+      `PBS 목표 ${success}/${currentPlan.pbsGoals.length}개 저장`
+    )
   }
 
-  const saveContract = async () => {
-    if (!editedPlan) return
+  const saveContract = async (currentPlan = editedPlan) => {
+    if (!currentPlan) return
     setStatus('contract', 'saving')
-    const c = editedPlan.contract
+
+    const c = currentPlan.contract
     const res = await fetch('/api/contracts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -281,72 +495,115 @@ export default function AiBehaviorPlan({ studentId, studentName, grade, classCod
         contractStart: new Date().toISOString().split('T')[0],
       }),
     })
+
     if (res.ok) setStatus('contract', 'done', '행동계약서 저장 완료')
     else setStatus('contract', 'error', '계약서 저장 실패')
   }
 
-  const saveInterventions = async () => {
-    if (!editedPlan) return
+  const saveInterventions = async (currentPlan = editedPlan) => {
+    if (!currentPlan) return
     setStatus('interventions', 'saving')
+
     let success = 0
-    for (const iv of editedPlan.interventions) {
+    for (const intervention of currentPlan.interventions) {
       const res = await fetch('/api/interventions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          strategyName: iv.strategyName,
-          description: iv.description,
-          evidenceLevel: iv.evidenceLevel,
-          applicableFunctions: iv.applicableFunctions,
+          strategyName: intervention.strategyName,
+          description: intervention.description,
+          evidenceLevel: intervention.evidenceLevel,
+          applicableFunctions: intervention.applicableFunctions,
         }),
       })
-      if (res.ok) success++
+      if (res.ok) success += 1
     }
-    setStatus('interventions', success === editedPlan.interventions.length ? 'done' : 'error',
-      `중재전략 ${success}/${editedPlan.interventions.length}개 저장`)
+
+    setStatus(
+      'interventions',
+      success === currentPlan.interventions.length ? 'done' : 'error',
+      `중재전략 ${success}/${currentPlan.interventions.length}개 저장`
+    )
   }
 
   const saveAll = async () => {
     if (!editedPlan) return
 
-    // 1단계: 중재전략 먼저 저장 (PBS 목표가 참조해야 하므로)
-    await saveInterventions()
+    await saveInterventions(editedPlan)
 
-    // 2단계: PBS 목표 strategyType을 선택된 중재전략명으로 업데이트 후 저장
-    const updatedGoals = editedPlan.pbsGoals.map((goal, i) => {
-      const ivIdx = strategyMapping[i] ?? -1
-      if (ivIdx >= 0 && editedPlan.interventions[ivIdx]) {
-        return { ...goal, strategyType: editedPlan.interventions[ivIdx].strategyName }
+    const linkedGoals = editedPlan.pbsGoals.map((goal, index) => {
+      const interventionIndex = strategyMapping[index] ?? -1
+      if (interventionIndex >= 0 && editedPlan.interventions[interventionIndex]) {
+        return { ...goal, strategyType: editedPlan.interventions[interventionIndex].strategyName }
       }
       return goal
     })
-    const planWithLinkedGoals = { ...editedPlan, pbsGoals: updatedGoals }
-    setEditedPlan(planWithLinkedGoals)
 
-    // 3단계: FBA + PBS 목표 + 행동계약서 병렬 저장
-    await Promise.all([saveFba(), savePbsGoals(), saveContract()])
+    const nextPlan = { ...editedPlan, pbsGoals: linkedGoals }
+    setEditedPlan(nextPlan)
 
-    // 피드백 루프
-    if (logId && editedPlan) {
-      const teacherModified = JSON.stringify(editedPlan) !== JSON.stringify(originalPlan)
+    await Promise.all([
+      saveFba(nextPlan),
+      savePbsGoals(nextPlan),
+      saveContract(nextPlan),
+    ])
+
+    if (logId && originalPlan) {
       fetch('/api/ai/behavior-plan-feedback', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           logId,
           accepted: true,
-          teacherModified,
-          finalSaved: planWithLinkedGoals,
+          teacherModified: JSON.stringify(nextPlan) !== JSON.stringify(originalPlan),
+          finalSaved: nextPlan,
         }),
       }).catch(() => {})
     }
   }
 
-  const updateGoal = (i: number, field: keyof PbsGoalDraft, value: string | number) => {
+  const SaveBtn = ({ skey, onClick }: { skey: string; onClick: () => void }) => {
+    const status = saveStatus[skey]
+    return (
+      <button
+        onClick={onClick}
+        disabled={status === 'saving' || status === 'done'}
+        className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+          status === 'done'
+            ? 'bg-green-100 text-green-700 cursor-default'
+            : status === 'error'
+              ? 'bg-red-100 text-red-600'
+              : status === 'saving'
+                ? 'bg-gray-100 text-gray-400 cursor-wait'
+                : 'bg-blue-600 hover:bg-blue-700 text-white'
+        }`}
+      >
+        {status === 'done' ? '✓ 저장됨' : status === 'saving' ? '저장 중...' : status === 'error' ? '재시도' : '저장'}
+      </button>
+    )
+  }
+
+  const updateProfileText = (field: keyof EditableStudentAiProfile, value: string) => {
+    setProfile((prev) => ({
+      ...prev,
+      [field]: value,
+      teacher_verified: false,
+    }))
+  }
+
+  const updateProfileArray = (field: keyof EditableStudentAiProfile, value: string) => {
+    setProfile((prev) => ({
+      ...prev,
+      [field]: textToArray(value),
+      teacher_verified: false,
+    }))
+  }
+
+  const updateGoal = (index: number, field: keyof PbsGoalDraft, value: string | number) => {
     if (!editedPlan) return
-    const goals = [...editedPlan.pbsGoals]
-    goals[i] = { ...goals[i], [field]: value }
-    setEditedPlan({ ...editedPlan, pbsGoals: goals })
+    const nextGoals = [...editedPlan.pbsGoals]
+    nextGoals[index] = { ...nextGoals[index], [field]: value }
+    setEditedPlan({ ...editedPlan, pbsGoals: nextGoals })
   }
 
   const updateContract = (field: keyof ContractDraft, value: string | number) => {
@@ -354,339 +611,377 @@ export default function AiBehaviorPlan({ studentId, studentName, grade, classCod
     setEditedPlan({ ...editedPlan, contract: { ...editedPlan.contract, [field]: value } })
   }
 
-  const SaveBtn = ({ skey, onClick }: { skey: string; onClick: () => void }) => {
-    const s = saveStatus[skey]
-    return (
-      <button
-        onClick={onClick}
-        disabled={s === 'saving' || s === 'done'}
-        className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
-          s === 'done' ? 'bg-green-100 text-green-700 cursor-default' :
-          s === 'error' ? 'bg-red-100 text-red-600' :
-          s === 'saving' ? 'bg-gray-100 text-gray-400 cursor-wait' :
-          'bg-blue-600 hover:bg-blue-700 text-white'
-        }`}
-      >
-        {s === 'done' ? '✓ 저장됨' : s === 'saving' ? '저장 중...' : s === 'error' ? '재시도' : '저장'}
-      </button>
-    )
-  }
-
   return (
     <div className="bg-white rounded-2xl border border-purple-200 overflow-hidden">
-      {/* 헤더 */}
       <button
-        onClick={() => setOpen(o => !o)}
+        onClick={() => setOpen((prev) => !prev)}
         className="w-full flex items-center justify-between px-6 py-4 hover:bg-purple-50 transition-colors"
       >
         <div className="flex items-center gap-3">
           <span className="text-2xl">🤖</span>
           <div className="text-left">
             <p className="font-bold text-gray-900">AI 행동 지원 계획</p>
-            <p className="text-xs text-gray-500">현행수준 입력 → GPT-4o가 ABA 기반 초안 생성 → 교사 검토·저장</p>
+            <p className="text-xs text-gray-500">학생 이해 입력 → AI 구조화 → 교사 수정 → 전 기능 재사용</p>
           </div>
         </div>
         <span className="text-gray-400 text-sm">{open ? '▲' : '▼'}</span>
       </button>
 
       {open && (
-        <div className="px-6 pb-6 space-y-5 border-t border-purple-100">
-
-          {/* 입력 모드 토글 */}
-          <div className="flex items-center gap-2 pt-4">
-            <button
-              onClick={() => setInputMode('free')}
-              className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                inputMode === 'free'
-                  ? 'bg-purple-600 text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              ✍️ 자유 입력
-            </button>
-            <button
-              onClick={() => setInputMode('structured')}
-              className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                inputMode === 'structured'
-                  ? 'bg-purple-600 text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              📋 항목별 입력
-            </button>
-            <span className="text-xs text-gray-400 ml-2">
-              {inputMode === 'free' ? 'AI가 ABA ABC 모델 기반으로 자동 분배합니다' : '각 항목에 직접 입력합니다'}
-            </span>
-          </div>
-
-          {/* 자유 입력 모드 */}
-          {inputMode === 'free' && (
-            <div className="space-y-3">
-              <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 rounded-xl p-4">
-                <p className="text-sm font-semibold text-purple-800 mb-1">💡 자유롭게 작성하세요</p>
-                <p className="text-xs text-purple-600">학생의 장애 유형, 현재 수준, 문제 행동, 발생 상황 등을 순서 상관없이 편하게 적어주세요. AI가 ABA 기능행동평가(FBA) 프레임워크에 맞게 자동으로 분류합니다.</p>
-              </div>
-              <textarea
-                value={freeText}
-                onChange={e => setFreeText(e.target.value)}
-                placeholder="예: 지적장애 2급인 3학년 남학생이에요. 수업 중에 자리를 이탈하는 행동이 하루에 5~8번 정도 있어요. 특히 수학 시간이나 어려운 과제가 주어지면 더 심해지고, 자리를 이탈하면 제가 가서 개별 지도를 해주게 돼요. 통합학급 25명이고 보조교사가 오전에만 있어요. 단어~짧은 문장 수준으로 표현하고 숫자는 10까지 인식해요."
-                rows={6}
-                className="block w-full px-4 py-3 bg-white border border-purple-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-400 resize-none"
-              />
-              {parseError && <p className="text-sm text-red-500">{parseError}</p>}
+        <div className="px-6 pb-6 pt-4 space-y-5 border-t border-purple-100">
+          <div className="rounded-2xl border border-purple-200 bg-purple-50 p-4">
+            <p className="text-sm font-bold text-purple-900">학생 이해 입력</p>
+            <p className="mt-2 text-xs leading-6 text-purple-700">
+              진단명만 적기보다 강점, 좋아하는 것, 어려운 행동, 자주 생기는 상황, 행동 뒤 교사 반응, 꼭 조심할 점을 편하게 적어주세요.
+            </p>
+            <textarea
+              value={freeText}
+              onChange={(event) => setFreeText(event.target.value)}
+              rows={7}
+              className="mt-3 block w-full rounded-xl border border-purple-200 bg-white px-4 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-400 resize-none"
+              placeholder="예: 운동을 좋아하고 축구 이야기를 많이 합니다. 자유시간과 체육 시간에 흥분하면 규칙을 놓치고 공을 너무 세게 차는 경우가 있습니다. 수업 전후 준비물을 자주 빠뜨리고, 교사가 짧게 다시 알려주면 바로 따라오는 편입니다. 좋아하는 칭찬과 활동 기회가 뚜렷하고, 친구와 가까울 때 위생 행동이 나올 수 있어 조심이 필요합니다."
+            />
+            {parseError && <p className="mt-3 text-sm text-red-500">{parseError}</p>}
+            {profileMessage && <p className="mt-3 text-sm text-purple-700">{profileMessage}</p>}
+            <div className="mt-4 flex flex-wrap gap-2">
               <button
                 onClick={handleParse}
                 disabled={parsing}
-                className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white font-semibold rounded-xl transition-colors flex items-center justify-center gap-2"
+                className="rounded-xl bg-purple-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-purple-700 disabled:bg-purple-300"
               >
-                {parsing ? (
-                  <>
-                    <span className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
-                    AI 분석 중... (ABC 모델 기반 분류)
-                  </>
-                ) : '🧠 AI 자동 분배 (ABA 기반)'}
+                {parsing ? 'AI 구조화 중...' : '🧠 AI 구조화하기'}
               </button>
+              <button
+                onClick={() => void saveProfile()}
+                disabled={savingProfile}
+                className="rounded-xl bg-gray-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-black disabled:bg-gray-400"
+              >
+                {savingProfile ? '저장 중...' : '💾 학생 AI 프로필 저장'}
+              </button>
+            </div>
+          </div>
+
+          {profile.generated_follow_up_questions.length > 0 && (
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-bold text-amber-900">AI 보강 질문</p>
+                  <p className="mt-1 text-xs text-amber-700">누락 정보만 짧게 보완하면 다음 생성 품질이 더 안정됩니다.</p>
+                </div>
+                <button
+                  onClick={handleRefine}
+                  disabled={refining}
+                  className="rounded-xl bg-amber-500 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-amber-600 disabled:bg-amber-300"
+                >
+                  {refining ? '보강 중...' : '보강 반영'}
+                </button>
+              </div>
+              <div className="mt-4 grid gap-3">
+                {profile.generated_follow_up_questions.map((question) => (
+                  <label key={question.id} className="block rounded-xl border border-amber-200 bg-white p-3">
+                    <p className="text-sm font-semibold text-gray-900">{question.question}</p>
+                    {question.reason && <p className="mt-1 text-xs text-gray-500">{question.reason}</p>}
+                    <input
+                      value={followUpAnswers[question.id] || ''}
+                      onChange={(event) =>
+                        setFollowUpAnswers((prev) => ({ ...prev, [question.id]: event.target.value }))
+                      }
+                      className="mt-3 block w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-amber-300"
+                      placeholder="짧게 답을 적어주세요"
+                    />
+                  </label>
+                ))}
+              </div>
             </div>
           )}
 
-          {/* 구조화 입력 폼 */}
-          <div className={`space-y-3 ${inputMode === 'free' ? 'pt-2' : 'pt-4'}`}>
-            {inputMode === 'structured' && currentLevel && (
-              <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                <p className="text-xs text-green-700">✅ AI 자동 분배 완료 — 아래 항목을 확인하고 필요시 수정하세요</p>
+          <div className="grid gap-4 xl:grid-cols-2">
+            <div className="space-y-4">
+              <div className="rounded-2xl border border-gray-200 p-4">
+                <p className="text-sm font-bold text-gray-900">학생 AI 프로필 카드</p>
+                <div className="mt-4 space-y-4">
+                  <label className="block">
+                    <span className="text-xs font-semibold text-gray-600">현행수준 요약</span>
+                    <textarea
+                      rows={3}
+                      value={profile.current_level_summary || ''}
+                      onChange={(event) => updateProfileText('current_level_summary', event.target.value)}
+                      className="mt-1 block w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-300 resize-none"
+                    />
+                  </label>
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <label className="block">
+                      <span className="text-xs font-semibold text-gray-600">강점</span>
+                      <textarea rows={4} value={arrayToText(profile.strengths)} onChange={(event) => updateProfileArray('strengths', event.target.value)} className="mt-1 block w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-300 resize-none" />
+                    </label>
+                    <label className="block">
+                      <span className="text-xs font-semibold text-gray-600">선호 / 강화물</span>
+                      <textarea rows={4} value={arrayToText(profile.preferences)} onChange={(event) => updateProfileArray('preferences', event.target.value)} className="mt-1 block w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-300 resize-none" />
+                    </label>
+                    <label className="block">
+                      <span className="text-xs font-semibold text-gray-600">지원 필요</span>
+                      <textarea rows={4} value={arrayToText(profile.support_needs)} onChange={(event) => updateProfileArray('support_needs', event.target.value)} className="mt-1 block w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-300 resize-none" />
+                    </label>
+                    <label className="block">
+                      <span className="text-xs font-semibold text-gray-600">위험 요인</span>
+                      <textarea rows={4} value={arrayToText(profile.risk_flags)} onChange={(event) => updateProfileArray('risk_flags', event.target.value)} className="mt-1 block w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-300 resize-none" />
+                    </label>
+                  </div>
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <label className="block">
+                      <span className="text-xs font-semibold text-gray-600">관찰 행동</span>
+                      <textarea rows={4} value={arrayToText(profile.observable_behaviors)} onChange={(event) => updateProfileArray('observable_behaviors', event.target.value)} className="mt-1 block w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-300 resize-none" />
+                    </label>
+                    <label className="block">
+                      <span className="text-xs font-semibold text-gray-600">대체 행동</span>
+                      <textarea rows={4} value={arrayToText(profile.replacement_behaviors)} onChange={(event) => updateProfileArray('replacement_behaviors', event.target.value)} className="mt-1 block w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-300 resize-none" />
+                    </label>
+                    <label className="block">
+                      <span className="text-xs font-semibold text-gray-600">선행 사건</span>
+                      <textarea rows={4} value={arrayToText(profile.antecedent_patterns)} onChange={(event) => updateProfileArray('antecedent_patterns', event.target.value)} className="mt-1 block w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-300 resize-none" />
+                    </label>
+                    <label className="block">
+                      <span className="text-xs font-semibold text-gray-600">결과 사건</span>
+                      <textarea rows={4} value={arrayToText(profile.consequence_patterns)} onChange={(event) => updateProfileArray('consequence_patterns', event.target.value)} className="mt-1 block w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-300 resize-none" />
+                    </label>
+                  </div>
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <label className="block">
+                      <span className="text-xs font-semibold text-gray-600">수업모드 목표</span>
+                      <textarea rows={4} value={arrayToText(profile.class_mode_targets)} onChange={(event) => updateProfileArray('class_mode_targets', event.target.value)} className="mt-1 block w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-300 resize-none" />
+                    </label>
+                    <label className="block">
+                      <span className="text-xs font-semibold text-gray-600">촉구 문구 후보</span>
+                      <textarea rows={4} value={arrayToText(profile.p_prompt_options)} onChange={(event) => updateProfileArray('p_prompt_options', event.target.value)} className="mt-1 block w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-300 resize-none" />
+                    </label>
+                    <label className="block">
+                      <span className="text-xs font-semibold text-gray-600">사건 태그</span>
+                      <textarea rows={4} value={arrayToText(profile.incident_tags)} onChange={(event) => updateProfileArray('incident_tags', event.target.value)} className="mt-1 block w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-300 resize-none" />
+                    </label>
+                    <label className="block">
+                      <span className="text-xs font-semibold text-gray-600">DRO 후보</span>
+                      <textarea rows={4} value={profile.dro_candidate || ''} onChange={(event) => updateProfileText('dro_candidate', event.target.value)} className="mt-1 block w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-300 resize-none" />
+                    </label>
+                  </div>
+
+                  <label className="block">
+                    <span className="text-xs font-semibold text-gray-600">학생 등록 요약</span>
+                    <textarea rows={3} value={profile.student_registration_summary || ''} onChange={(event) => updateProfileText('student_registration_summary', event.target.value)} className="mt-1 block w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-300 resize-none" />
+                  </label>
+                  <label className="block">
+                    <span className="text-xs font-semibold text-gray-600">AI 행동 지원 계획 한 줄</span>
+                    <textarea rows={3} value={profile.ai_plan_one_liner || ''} onChange={(event) => updateProfileText('ai_plan_one_liner', event.target.value)} className="mt-1 block w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-300 resize-none" />
+                  </label>
+                  <label className="block">
+                    <span className="text-xs font-semibold text-gray-600">학생 공개용 안전 요약</span>
+                    <textarea rows={3} value={profile.public_safe_summary || ''} onChange={(event) => updateProfileText('public_safe_summary', event.target.value)} className="mt-1 block w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-300 resize-none" />
+                  </label>
+                  <label className="block">
+                    <span className="text-xs font-semibold text-gray-600">교사 전용 메모</span>
+                    <textarea rows={3} value={profile.private_teacher_notes || ''} onChange={(event) => updateProfileText('private_teacher_notes', event.target.value)} className="mt-1 block w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-300 resize-none" />
+                  </label>
+                </div>
               </div>
-            )}
-            <label className="block">
-              <span className="text-sm font-semibold text-gray-700">현행수준 <span className="text-red-400">*</span></span>
-              <textarea
-                value={currentLevel}
-                onChange={e => setCurrentLevel(e.target.value)}
-                placeholder="예: 지적장애 경도. 단어~짧은 문장 표현. 숫자 10까지 인식. 주의집중 5분 이내."
-                rows={3}
-                className="mt-1 block w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-400 resize-none"
-              />
-            </label>
-            <label className="block">
-              <span className="text-sm font-semibold text-gray-700">표적 행동 (문제 행동) <span className="text-red-400">*</span></span>
-              <input
-                value={targetBehavior}
-                onChange={e => setTargetBehavior(e.target.value)}
-                placeholder="예: 수업 중 자리 이탈, 하루 평균 5~8회"
-                className="mt-1 block w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-400"
-              />
-            </label>
-            <div className="grid grid-cols-2 gap-3">
-              <label className="block">
-                <span className="text-sm font-medium text-gray-700">선행 사건</span>
-                <input
-                  value={antecedents}
-                  onChange={e => setAntecedents(e.target.value)}
-                  placeholder="예: 어려운 과제, 교사 관심 감소"
-                  className="mt-1 block w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-400"
-                />
-              </label>
-              <label className="block">
-                <span className="text-sm font-medium text-gray-700">결과 사건</span>
-                <input
-                  value={consequences}
-                  onChange={e => setConsequences(e.target.value)}
-                  placeholder="예: 교사 개별 지도, 과제 회피 성공"
-                  className="mt-1 block w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-400"
-                />
-              </label>
             </div>
-            <label className="block">
-              <span className="text-sm font-medium text-gray-700">환경 / 상황</span>
-              <input
-                value={environment}
-                onChange={e => setEnvironment(e.target.value)}
-                placeholder="예: 통합학급 25명, 보조교사 있음, 오전 1~2교시에 주로 발생"
-                className="mt-1 block w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-400"
-              />
-            </label>
 
-            {genError && <p className="text-sm text-red-500">{genError}</p>}
+            <div className="space-y-4">
+              <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-bold text-blue-900">플랫폼 연동 미리보기</p>
+                  {profileId && (
+                    <span className="rounded-full bg-white px-3 py-1 text-[11px] font-bold text-blue-700">
+                      저장된 프로필
+                    </span>
+                  )}
+                </div>
+                <div className="mt-4 space-y-3">
+                  <div className="rounded-xl bg-white p-3">
+                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-400">학생 등록 요약</p>
+                    <p className="mt-2 text-sm leading-6 text-gray-700">{featureOutputs.registrationSummary}</p>
+                  </div>
+                  <div className="rounded-xl bg-white p-3">
+                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-400">AI 계획 한 줄</p>
+                    <p className="mt-2 text-sm leading-6 text-gray-700">{featureOutputs.aiPlanOneLiner}</p>
+                  </div>
+                  <div className="rounded-xl bg-white p-3">
+                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-400">수업 모드</p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {featureOutputs.classModeTargets.length > 0 ? featureOutputs.classModeTargets.map((target) => (
+                        <span key={target} className="rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-700">{target}</span>
+                      )) : <span className="text-sm text-gray-500">아직 제안된 목표가 없습니다.</span>}
+                    </div>
+                  </div>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <div className="rounded-xl bg-white p-3">
+                      <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-400">촉구 문구</p>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {featureOutputs.pPromptOptions.length > 0 ? featureOutputs.pPromptOptions.map((prompt) => (
+                          <span key={prompt} className="rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-700">{prompt}</span>
+                        )) : <span className="text-sm text-gray-500">촉구 문구가 없습니다.</span>}
+                      </div>
+                    </div>
+                    <div className="rounded-xl bg-white p-3">
+                      <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-400">사건 태그</p>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {featureOutputs.incidentTags.length > 0 ? featureOutputs.incidentTags.map((tag) => (
+                          <span key={tag} className="rounded-full bg-rose-100 px-3 py-1 text-xs font-medium text-rose-700">{tag}</span>
+                        )) : <span className="text-sm text-gray-500">사건 태그가 없습니다.</span>}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="rounded-xl bg-white p-3">
+                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-400">학생 홈 / 말 일기장 공개 요약</p>
+                    <p className="mt-2 text-sm leading-6 text-gray-700">{featureOutputs.publicSafeSummary}</p>
+                  </div>
+                  <div className="rounded-xl bg-white p-3">
+                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-400">DRO 후보</p>
+                    <p className="mt-2 text-sm leading-6 text-gray-700">{featureOutputs.droCandidate}</p>
+                  </div>
+                </div>
+              </div>
 
-            <button
-              onClick={handleGenerate}
-              disabled={generating}
-              className="w-full py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-300 text-white font-semibold rounded-xl transition-colors flex items-center justify-center gap-2"
-            >
-              {generating ? (
-                <>
-                  <span className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
-                  GPT-4o 분석 중...
-                </>
-              ) : '🤖 AI 행동 지원 계획 생성'}
-            </button>
+              <div className="rounded-2xl border border-indigo-200 bg-indigo-50 p-4">
+                <p className="text-sm font-bold text-indigo-900">행동 지원 계획 생성</p>
+                <p className="mt-1 text-xs text-indigo-700">학생 AI 프로필을 기준으로 FBA, PBS 목표, 계약서, 중재 전략, DRO를 생성합니다.</p>
+                <textarea
+                  rows={3}
+                  value={optionalPrompt}
+                  onChange={(event) => setOptionalPrompt(event.target.value)}
+                  className="mt-3 block w-full rounded-xl border border-indigo-200 bg-white px-4 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-300 resize-none"
+                  placeholder="예: 이번에는 자리이탈과 도움요청 중심으로 수업모드에 바로 쓸 수 있게 생성해줘"
+                />
+                <button
+                  onClick={handleGeneratePlan}
+                  disabled={generating || savingProfile}
+                  className="mt-3 w-full rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-indigo-700 disabled:bg-indigo-300"
+                >
+                  {generating ? 'GPT-4o 분석 중...' : '🤖 AI 행동 지원 계획 생성'}
+                </button>
+                {genError && <p className="mt-3 text-sm text-red-500">{genError}</p>}
+              </div>
+            </div>
           </div>
 
-          {/* 결과 섹션 */}
           {editedPlan && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <p className="font-bold text-gray-900">📋 생성된 초안 — 수정 후 저장하세요</p>
+                <p className="font-bold text-gray-900">📋 생성된 행동 지원 초안</p>
                 <button
                   onClick={saveAll}
-                  className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-xl transition-colors"
+                  className="rounded-xl bg-purple-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-purple-700"
                 >
                   ✅ 모두 저장
                 </button>
               </div>
 
-              {/* FBA */}
               <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 space-y-2">
                 <div className="flex items-center justify-between">
                   <p className="font-bold text-sm text-purple-900">🔍 FBA 기능행동분석</p>
                   <div className="flex items-center gap-2">
                     {saveMsg.fba && <span className="text-xs text-gray-500">{saveMsg.fba}</span>}
-                    <SaveBtn skey="fba" onClick={saveFba} />
+                    <SaveBtn skey="fba" onClick={() => void saveFba()} />
                     <Link href={`/${classCode}/fba`} className="text-xs text-purple-500 hover:text-purple-700">FBA 탭 →</Link>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex flex-wrap gap-2">
                   <span className={`text-xs px-2 py-1 rounded-full font-medium ${FUNCTION_COLORS[editedPlan.fba.estimatedFunction] || 'bg-gray-100 text-gray-600'}`}>
                     추정 기능: {FUNCTION_LABELS[editedPlan.fba.estimatedFunction] || editedPlan.fba.estimatedFunction}
                   </span>
-                  <span className="text-xs bg-white border border-purple-200 px-2 py-1 rounded-full">
-                    신뢰도: {CONFIDENCE_LABELS[editedPlan.fba.confidence] || editedPlan.fba.confidence}
+                  <span className="text-xs rounded-full border border-purple-200 bg-white px-2 py-1">
+                    신뢰도: {editedPlan.fba.confidence}
                   </span>
                 </div>
                 <p className="text-sm text-gray-700">{editedPlan.fba.rationale}</p>
                 <p className="text-xs text-gray-500 italic">{editedPlan.fba.behaviorPattern}</p>
               </div>
 
-              {/* PBS 목표 */}
               <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <p className="font-bold text-sm text-blue-900">✅ PBS 행동 목표 ({editedPlan.pbsGoals.length}개)</p>
                   <div className="flex items-center gap-2">
                     {saveMsg.pbs && <span className="text-xs text-gray-500">{saveMsg.pbs}</span>}
-                    <SaveBtn skey="pbs" onClick={savePbsGoals} />
+                    <SaveBtn skey="pbs" onClick={() => void savePbsGoals()} />
                     <Link href={`/${classCode}/pbs`} className="text-xs text-blue-500 hover:text-blue-700">PBS 탭 →</Link>
                   </div>
                 </div>
-                {editedPlan.pbsGoals.map((goal, i) => (
-                  <div key={i} className="bg-white rounded-lg p-3 space-y-2 border border-blue-100">
+                {editedPlan.pbsGoals.map((goal, index) => (
+                  <div key={index} className="rounded-lg border border-blue-100 bg-white p-3 space-y-2">
                     <div className="grid grid-cols-2 gap-2">
-                      <input
-                        value={goal.behaviorName}
-                        onChange={e => updateGoal(i, 'behaviorName', e.target.value)}
-                        className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm font-medium text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400"
-                        placeholder="행동명"
-                      />
-                      <div className="flex gap-1">
-                        <input
-                          type="number"
-                          value={goal.tokenPerOccurrence}
-                          onChange={e => updateGoal(i, 'tokenPerOccurrence', Number(e.target.value))}
-                          className="w-20 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400"
-                        />
-                        <span className="text-xs text-gray-400 self-center">원/회</span>
+                      <input value={goal.behaviorName} onChange={(event) => updateGoal(index, 'behaviorName', event.target.value)} className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-medium text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400" />
+                      <div className="flex items-center gap-2">
+                        <input type="number" value={goal.tokenPerOccurrence} onChange={(event) => updateGoal(index, 'tokenPerOccurrence', Number(event.target.value))} className="w-24 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400" />
+                        <span className="text-xs text-gray-400">원/회</span>
                       </div>
                     </div>
-                    {/* 중재전략 연동 드롭다운 */}
                     {editedPlan.interventions.length > 0 && (
                       <div className="flex items-center gap-2">
-                        <span className="text-xs text-gray-500 shrink-0">적용 전략:</span>
+                        <span className="text-xs text-gray-500">적용 전략:</span>
                         <select
-                          value={strategyMapping[i] ?? -1}
-                          onChange={e => setStrategyMapping(prev => ({ ...prev, [i]: Number(e.target.value) }))}
-                          className="flex-1 px-2 py-1.5 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-800 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                          value={strategyMapping[index] ?? -1}
+                          onChange={(event) => setStrategyMapping((prev) => ({ ...prev, [index]: Number(event.target.value) }))}
+                          className="flex-1 rounded-lg border border-blue-200 bg-blue-50 px-2 py-1.5 text-xs text-blue-800 focus:outline-none focus:ring-1 focus:ring-blue-400"
                         >
-                          <option value={-1}>— 전략 없음 (기존 약어 "{goal.strategyType}" 사용)</option>
-                          {editedPlan.interventions.map((iv, j) => (
-                            <option key={j} value={j}>{iv.strategyName}</option>
+                          <option value={-1}>— 전략 없음 (기존 약어 유지)</option>
+                          {editedPlan.interventions.map((intervention, j) => (
+                            <option key={j} value={j}>{intervention.strategyName}</option>
                           ))}
                         </select>
-                        {(strategyMapping[i] ?? -1) >= 0 && (
-                          <span className="text-xs text-green-600 shrink-0">✓ 연동됨</span>
-                        )}
                       </div>
                     )}
-                    <textarea
-                      value={goal.behaviorDefinition}
-                      onChange={e => updateGoal(i, 'behaviorDefinition', e.target.value)}
-                      rows={2}
-                      className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-400 resize-none"
-                      placeholder="행동 정의"
-                    />
+                    <textarea value={goal.behaviorDefinition} onChange={(event) => updateGoal(index, 'behaviorDefinition', event.target.value)} rows={2} className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-400 resize-none" />
                     <p className="text-xs text-gray-400 italic">{goal.rationale}</p>
                   </div>
                 ))}
               </div>
 
-              {/* 행동계약서 */}
               <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <p className="font-bold text-sm text-amber-900">📝 행동계약서 초안</p>
                   <div className="flex items-center gap-2">
                     {saveMsg.contract && <span className="text-xs text-gray-500">{saveMsg.contract}</span>}
-                    <SaveBtn skey="contract" onClick={saveContract} />
+                    <SaveBtn skey="contract" onClick={() => void saveContract()} />
                     <Link href={`/${classCode}/contracts`} className="text-xs text-amber-600 hover:text-amber-800">계약서 탭 →</Link>
                   </div>
                 </div>
-                <div className="bg-white rounded-lg p-3 space-y-2 border border-amber-100">
-                  <input
-                    value={editedPlan.contract.contractTitle}
-                    onChange={e => updateContract('contractTitle', e.target.value)}
-                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm font-medium text-gray-900 focus:outline-none focus:ring-1 focus:ring-amber-400"
-                    placeholder="계약서 제목"
-                  />
+                <div className="rounded-lg border border-amber-100 bg-white p-3 space-y-2">
+                  <input value={editedPlan.contract.contractTitle} onChange={(event) => updateContract('contractTitle', event.target.value)} className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-medium text-gray-900 focus:outline-none focus:ring-1 focus:ring-amber-400" />
                   <div className="grid grid-cols-2 gap-2">
-                    <input
-                      value={editedPlan.contract.measurementMethod}
-                      onChange={e => updateContract('measurementMethod', e.target.value)}
-                      className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-700 focus:outline-none focus:ring-1 focus:ring-amber-400"
-                      placeholder="측정 방법"
-                    />
-                    <input
-                      value={editedPlan.contract.achievementCriteria}
-                      onChange={e => updateContract('achievementCriteria', e.target.value)}
-                      className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-700 focus:outline-none focus:ring-1 focus:ring-amber-400"
-                      placeholder="달성 기준"
-                    />
+                    <input value={editedPlan.contract.measurementMethod} onChange={(event) => updateContract('measurementMethod', event.target.value)} className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-700 focus:outline-none focus:ring-1 focus:ring-amber-400" />
+                    <input value={editedPlan.contract.achievementCriteria} onChange={(event) => updateContract('achievementCriteria', event.target.value)} className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-700 focus:outline-none focus:ring-1 focus:ring-amber-400" />
                   </div>
                   <div className="flex items-center gap-2">
-                    <label className="text-xs text-gray-600">보상:</label>
-                    <input
-                      type="number"
-                      value={editedPlan.contract.rewardAmount}
-                      onChange={e => updateContract('rewardAmount', Number(e.target.value))}
-                      className="w-28 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-amber-400"
-                    />
+                    <label className="text-xs text-gray-600">보상</label>
+                    <input type="number" value={editedPlan.contract.rewardAmount} onChange={(event) => updateContract('rewardAmount', Number(event.target.value))} className="w-28 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-amber-400" />
                     <span className="text-xs text-gray-400">원</span>
                   </div>
                 </div>
               </div>
 
-              {/* 중재전략 */}
               <div className="bg-green-50 border border-green-200 rounded-xl p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <p className="font-bold text-sm text-green-900">📚 추천 중재전략 ({editedPlan.interventions.length}개)</p>
                   <div className="flex items-center gap-2">
                     {saveMsg.interventions && <span className="text-xs text-gray-500">{saveMsg.interventions}</span>}
-                    <SaveBtn skey="interventions" onClick={saveInterventions} />
+                    <SaveBtn skey="interventions" onClick={() => void saveInterventions()} />
                     <Link href={`/${classCode}/interventions`} className="text-xs text-green-600 hover:text-green-800">전략 탭 →</Link>
                   </div>
                 </div>
-                {editedPlan.interventions.map((iv, i) => (
-                  <div key={i} className="bg-white rounded-lg p-3 space-y-1 border border-green-100">
+                {editedPlan.interventions.map((intervention, index) => (
+                  <div key={index} className="rounded-lg border border-green-100 bg-white p-3 space-y-2">
                     <div className="flex items-center gap-2">
-                      <p className="font-medium text-sm text-gray-900">{iv.strategyName}</p>
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${
-                        iv.evidenceLevel === 'strong' ? 'bg-green-100 text-green-700' :
-                        iv.evidenceLevel === 'evidence-based' ? 'bg-green-100 text-green-700' :
-                        iv.evidenceLevel === 'moderate' ? 'bg-yellow-100 text-yellow-700' :
-                        iv.evidenceLevel === 'promising' ? 'bg-yellow-100 text-yellow-700' :
-                        'bg-gray-100 text-gray-600'
-                      }`}>{EVIDENCE_LABELS[iv.evidenceLevel]}</span>
+                      <p className="font-medium text-sm text-gray-900">{intervention.strategyName}</p>
+                      <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-700">
+                        {EVIDENCE_LABELS[intervention.evidenceLevel] || intervention.evidenceLevel}
+                      </span>
                     </div>
-                    <p className="text-xs text-gray-600">{iv.description}</p>
-                    <div className="flex gap-1 flex-wrap">
-                      {iv.applicableFunctions.map(f => (
-                        <span key={f} className={`text-xs px-1.5 py-0.5 rounded ${FUNCTION_COLORS[f] || 'bg-gray-100 text-gray-600'}`}>
-                          {FUNCTION_LABELS[f] || f}
+                    <p className="text-xs text-gray-600">{intervention.description}</p>
+                    <div className="flex flex-wrap gap-1">
+                      {intervention.applicableFunctions.map((fn) => (
+                        <span key={fn} className={`rounded px-1.5 py-0.5 text-xs ${FUNCTION_COLORS[fn] || 'bg-gray-100 text-gray-600'}`}>
+                          {FUNCTION_LABELS[fn] || fn}
                         </span>
                       ))}
                     </div>
@@ -694,8 +989,7 @@ export default function AiBehaviorPlan({ studentId, studentName, grade, classCod
                 ))}
               </div>
 
-              {/* DRO + 소거알림 */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-3 md:grid-cols-2">
                 <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 space-y-2">
                   <div className="flex items-center justify-between">
                     <p className="font-bold text-sm text-orange-900">⏱️ DRO 권장 설정</p>
@@ -704,7 +998,6 @@ export default function AiBehaviorPlan({ studentId, studentName, grade, classCod
                   <p className="text-2xl font-bold text-orange-700">{editedPlan.dro.intervalMinutes}분</p>
                   <p className="text-xs text-gray-500">간격 · 보상 {editedPlan.dro.tokenReward}원</p>
                   <p className="text-xs text-gray-400 italic">{editedPlan.dro.rationale}</p>
-                  <p className="text-xs text-orange-600 bg-orange-100 px-2 py-1 rounded-lg mt-1">↑ PBS 목표 저장 시 DRO 설정이 자동 포함됩니다</p>
                 </div>
                 <div className="bg-red-50 border border-red-200 rounded-xl p-4 space-y-2">
                   <div className="flex items-center justify-between">
@@ -712,14 +1005,11 @@ export default function AiBehaviorPlan({ studentId, studentName, grade, classCod
                     <Link href={`/${classCode}/extinction-alerts`} className="text-xs text-red-500 hover:text-red-700">알림 탭 →</Link>
                   </div>
                   <p className="text-xs text-gray-600">
-                    기저선 <strong>{editedPlan.extinctionAlert.baselineCount}회</strong>/일
-                    → 임계값 <strong className="text-red-600">{editedPlan.extinctionAlert.alertThreshold}회</strong> 초과 시 알림
+                    기저선 <strong>{editedPlan.extinctionAlert.baselineCount}회</strong>/일 · 임계값 <strong className="text-red-600">{editedPlan.extinctionAlert.alertThreshold}회</strong>
                   </p>
                   <p className="text-xs text-gray-400 italic">{editedPlan.extinctionAlert.rationale}</p>
-                  <p className="text-xs text-red-600 bg-red-100 px-2 py-1 rounded-lg mt-1">시스템이 PBS 기록 패턴에서 자동 감지합니다</p>
                 </div>
               </div>
-
             </div>
           )}
         </div>

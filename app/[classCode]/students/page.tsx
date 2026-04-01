@@ -12,6 +12,8 @@ interface Student {
   pbs_stage: number
   qr_code: string
   response_cost_enabled: boolean
+  ai_profile_summary: string | null
+  public_safe_summary: string | null
   pbs_accounts: { balance: number; total_earned: number; total_spent: number } | null
 }
 
@@ -218,6 +220,11 @@ export default function StudentsPage() {
                         <span className="ml-2 text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded">RC</span>
                       )}
                     </p>
+                    {student.ai_profile_summary && (
+                      <p className="mt-1 max-w-2xl text-xs leading-5 text-gray-500">
+                        {student.ai_profile_summary}
+                      </p>
+                    )}
                   </div>
                 </div>
                 <div className="text-right">
