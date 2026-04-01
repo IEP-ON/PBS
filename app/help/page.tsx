@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 
 const SECTIONS = [
   { id: 0, icon: '👋', label: '서비스 소개', group: '준비' },
@@ -169,49 +170,82 @@ function Flow({ items }: { items: string[] }) {
   )
 }
 
-function NavActions({ prev, next, prevLabel = '← 이전', nextLabel = '다음 →', done = false }: { prev?: number; next?: number; prevLabel?: string; nextLabel?: string; done?: boolean }) {
-  return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 28, paddingTop: 20, borderTop: '1px solid #f1f5f9' }}>
-      <span />
-      {prev !== undefined
-        ? <NavBtn idx={prev} label={prevLabel} variant="prev" />
-        : <span />}
-      {next !== undefined
-        ? <NavBtn idx={next} label={nextLabel} variant={done ? 'done' : 'next'} />
-        : <span />}
-    </div>
-  )
-}
-
-function NavBtn({ idx, label, variant }: { idx: number; label: string; variant: 'prev' | 'next' | 'done' }) {
-  const [, forceRender] = useState(0)
-  const bg = variant === 'prev' ? '#f1f5f9' : variant === 'done' ? '#10b981' : '#3b82f6'
-  const color = variant === 'prev' ? '#64748b' : '#fff'
-  const gotoFn = (window as unknown as { __pbsGoto?: (n: number) => void }).__pbsGoto
-  return (
-    <button
-      onClick={() => gotoFn?.(idx) ?? forceRender(n => n + 1)}
-      style={{ padding: '9px 18px', borderRadius: 10, fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', background: bg, color }}
-    >
-      {label}
-    </button>
-  )
-}
-
 // ── 각 섹션 ─────────────────────────────────────────────────
 
 function Sec0({ goto }: { goto: (n: number) => void }) {
   return (
     <div>
-      <SectionHeader step="✨ 환영합니다" title="PBS 토큰 경제 플랫폼이란?" desc="특수학급에서 긍정적 행동 지원(PBS)을 디지털로 운영하는 도구입니다. ABA 원칙에 기반하여 학생의 목표 행동을 체계적으로 강화합니다." />
+      <SectionHeader
+        step="✨ 환영합니다"
+        title="PBS 기반 디지털 행동지원 플랫폼"
+        desc="본 플랫폼은 특수학급에서 긍정적 행동지원(PBS)을 체계적으로 운영하기 위한 디지털 교육자료입니다. 학생별 목표행동 설정, 즉시 강화, 사건기록, 기능 기반 행동분석(FBA), 행동지원계획 수립 기능을 한 흐름으로 연결합니다."
+      />
+      <Card title="🏛 서비스 정체성">
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+          <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 12, padding: 16 }}>
+            <p style={{ fontSize: 11, fontWeight: 800, color: '#6366f1', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>상위 이념</p>
+            <p style={{ fontSize: 13, lineHeight: 1.7, color: '#334155', margin: 0 }}>
+              학생을 통제하기 위한 시스템이 아니라, 기대행동과 대체행동을 가르치고 유지하도록 돕는
+              <strong style={{ color: '#0f172a' }}> 긍정적·예방적 행동지원 체계</strong>입니다.
+            </p>
+          </div>
+          <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 12, padding: 16 }}>
+            <p style={{ fontSize: 11, fontWeight: 800, color: '#6366f1', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>작동 원리</p>
+            <p style={{ fontSize: 13, lineHeight: 1.7, color: '#334155', margin: 0 }}>
+              PBS를 상위 운영 틀로 두고, <strong style={{ color: '#0f172a' }}>ABA 기반 강화·기록·분석 원리</strong>를
+              실행 레이어로 활용합니다. ABA는 엔진이고, PBS는 교실 운영 체계입니다.
+            </p>
+          </div>
+        </div>
+      </Card>
+      <Card title="🧭 원리 · 이념 · 계층">
+        <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: 16 }}>
+          <div>
+            <p style={{ fontSize: 12, fontWeight: 700, color: '#0f172a', marginBottom: 8 }}>핵심 원리</p>
+            <ul style={{ paddingLeft: 18, margin: 0 }}>
+              {[
+                '긍정적 강화: 목표행동 발생 시 즉시 토큰 제공',
+                '기능 기반 이해: 사건기록과 FBA로 행동 기능 추정',
+                '예방 중심 지원: 수업 전 목표와 지원을 먼저 설정',
+                '데이터 기반 조정: 기록 자동 집계 후 계획 재설정',
+              ].map((item) => (
+                <li key={item} style={{ fontSize: 12.5, color: '#475569', lineHeight: 1.8, marginBottom: 2 }}>{item}</li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <p style={{ fontSize: 12, fontWeight: 700, color: '#0f172a', marginBottom: 8 }}>계층 구조</p>
+            <div style={{ display: 'grid', gap: 8 }}>
+              {[
+                ['0층', '교육적 목적', '기대행동 형성, 자기조절 향상, 수업 참여 확대'],
+                ['1층', '상위 운영 틀', 'PBS 기반 긍정적 행동지원'],
+                ['2층', '실행 전략', '토큰경제, DRO, FBA, 촉구, 사건기록, 행동계약'],
+                ['3층', '플랫폼 기능', '학생등록, AI 계획, 수업 모드, 정산, TV 순위판'],
+              ].map(([level, title, desc]) => (
+                <div key={level} style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 12, padding: '10px 12px' }}>
+                  <p style={{ fontSize: 11, fontWeight: 800, color: '#2563eb', margin: 0 }}>{level} · {title}</p>
+                  <p style={{ fontSize: 12, color: '#64748b', margin: '4px 0 0', lineHeight: 1.6 }}>{desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </Card>
+      <Card title="🔄 운영 흐름">
+        <Flow items={['학생 등록', '목표행동 설정', 'AI 계획 생성', '수업 중 강화·기록', '분석', '정산·교환', '계획 수정']} />
+        <p style={{ fontSize: 12.5, color: '#64748b', lineHeight: 1.7, margin: 0 }}>
+          이 플랫폼은 메뉴를 늘어놓은 도구가 아니라, <strong style={{ color: '#0f172a' }}>설정 → 실행 → 기록 → 분석 → 정산 → 수정</strong>의
+          순환 구조로 행동지원을 운영하도록 설계되었습니다.
+        </p>
+      </Card>
       <Grid2>
-        <FeatureCard icon="✅" title="PBS 토큰 체크" desc="학생별 목표 행동 달성 시 토큰 즉시 지급. 하루 기록이 자동 집계됩니다." />
-        <FeatureCard icon="👨‍🏫" title="수업 모드" desc="6명 동시 모니터링. DRO 타이머, P촉구 토글, 사건기록을 한 화면에서 처리." />
-        <FeatureCard icon="🤖" title="AI 행동 지원 계획" desc="자유 텍스트 한 줄 → FBA 분석 + PBS 목표 + 계약서 + 중재전략 자동 생성." />
-        <FeatureCard icon="📊" title="학급 경제" desc="토큰을 가상 화폐로 운영. 주식, 상점, 급여, 이자까지 실제 경제처럼." />
+        <FeatureCard icon="✅" title="PBS 토큰 체크" desc="학생별 목표행동 달성 시 토큰을 즉시 지급하고, 하루 기록을 자동 집계합니다." />
+        <FeatureCard icon="👨‍🏫" title="수업 모드" desc="6명 동시 모니터링, DRO 타이머, 촉구 기록, 사건기록을 한 화면에서 처리합니다." />
+        <FeatureCard icon="🤖" title="AI 행동 지원 계획" desc="자유입력 → 구조화 → FBA 분석 → PBS 목표·계약서·중재전략 생성까지 연결합니다." />
+        <FeatureCard icon="📊" title="학급 경제" desc="게임 요소가 아니라, 강화의 누적·선택·지연교환을 학습하는 동기 유지 시스템입니다." />
       </Grid2>
       <Flow items={['🔐 가입', '👨‍🎓 학생 등록', '🤖 AI 계획', '👨‍🏫 수업 모드', '💰 정산']} />
-      <Tip type="warn"><strong>처음 세팅 시간:</strong> 회원가입 → 학생 등록 → AI 행동 지원 계획 생성까지 약 <strong>15분</strong>이면 첫 수업을 시작할 수 있습니다.</Tip>
+      <Tip type="warn"><strong>읽는 법:</strong> 이 도움말의 상단은 작품의 철학과 구조를 설명하고, 아래 단계들은 실제 사용 순서를 안내합니다. 즉, <strong>상단 20%는 개념 설명</strong>, <strong>나머지 80%는 운영 매뉴얼</strong>입니다.</Tip>
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 28, paddingTop: 20, borderTop: '1px solid #f1f5f9' }}>
         <button onClick={() => goto(1)} style={{ padding: '9px 18px', borderRadius: 10, fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', background: '#3b82f6', color: '#fff' }}>다음: 회원가입 →</button>
       </div>
@@ -312,7 +346,7 @@ function Sec3({ goto }: { goto: (n: number) => void }) {
 function Sec4({ goto }: { goto: (n: number) => void }) {
   return (
     <div>
-      <SectionHeader step="STEP 4 · GPT-4o" title="AI 행동 지원 계획" desc="자유롭게 학생에 대해 서술하면 AI가 FBA → PBS 목표 → 행동계약서 → 중재전략을 한 번에 생성합니다." />
+      <SectionHeader step="STEP 4 · GPT-4o" title="AI 행동 지원 계획" desc="자유롭게 학생을 서술하면 AI가 학생 이해 정보를 구조화하고, 이를 바탕으로 FBA → PBS 목표 → 행동계약서 → 중재전략을 한 흐름으로 생성합니다." />
       <Card title="🖊 자유 텍스트 입력 예시">
         <div style={{ background: '#1e293b', color: '#e2e8f0', borderRadius: 10, padding: '14px 16px', fontFamily: 'monospace', fontSize: 12, lineHeight: 1.7 }}>
           <span style={{ color: '#64748b' }}># 이렇게 자유롭게 써도 됩니다{'\n'}</span>
@@ -320,6 +354,13 @@ function Sec4({ goto }: { goto: (n: number) => void }) {
             {`김민준, 3학년, 지적장애 경도.\n수업 중 자리를 이탈해서 교실을 돌아다녀요.\n특히 수학 시간에 자주 발생하고, 친구들이\n웃어주면 더 심해지는 것 같아요.`}
           </span>
         </div>
+      </Card>
+      <Card title="🧠 AI의 역할">
+        <Steps items={[
+          { title: '학생 이해 정보 구조화', desc: '강점, 선호, 지원 필요, 위험요인, 관찰 행동, 선행·결과 사건을 먼저 정리합니다.' },
+          { title: '학생별 AI 프로필 저장', desc: '한 번 구조화한 정보는 학생 상세에 저장되어 이후 계획 생성과 수업 운영에 재사용됩니다.' },
+          { title: '행동지원 산출물 생성', desc: '저장된 프로필을 바탕으로 FBA, PBS 목표, 계약서, 중재전략, DRO 후보를 만듭니다.' },
+        ]} />
       </Card>
       <Card title="🤖 AI가 자동으로 생성하는 것">
         <Steps items={[
@@ -329,7 +370,7 @@ function Sec4({ goto }: { goto: (n: number) => void }) {
           { title: '근거기반 중재전략', desc: 'FCT·DRO·NCR 등 18개 전략 DB에서 기능에 맞는 전략을 우선순위로 추천.' },
         ]} />
       </Card>
-      <Tip type="danger"><strong>AI 산출물은 초안입니다.</strong> 감각 기능 행동에 소거(EXT) 적용 불가 등 주요 안전 규칙은 시스템이 자동으로 방지하지만, 저장 전 교사가 반드시 검토·수정하세요.</Tip>
+      <Tip type="danger"><strong>AI 산출물은 초안입니다.</strong> 이 플랫폼은 PBS를 상위 운영 틀로 두고 ABA 기반 원리를 활용하지만, 최종 판단은 반드시 교사가 해야 합니다. 감각 기능 행동 소거 금지 등 주요 안전 규칙은 자동 반영되더라도 저장 전 검토·수정은 필수입니다.</Tip>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 28, paddingTop: 20, borderTop: '1px solid #f1f5f9' }}>
         <button onClick={() => goto(3)} style={{ padding: '9px 18px', borderRadius: 10, fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', background: '#f1f5f9', color: '#64748b' }}>← 이전</button>
         <button onClick={() => goto(5)} style={{ padding: '9px 18px', borderRadius: 10, fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', background: '#3b82f6', color: '#fff' }}>다음: 수업 모드 →</button>
@@ -408,6 +449,14 @@ function Sec7({ goto }: { goto: (n: number) => void }) {
           ))}
         </div>
       </Card>
+      <Card title="PBS와 ABA의 관계">
+        <p style={{ fontSize: 13, color: '#475569', lineHeight: 1.8, margin: 0 }}>
+          이 플랫폼에서 <strong style={{ color: '#0f172a' }}>PBS는 상위 운영 틀</strong>이고,
+          <strong style={{ color: '#0f172a' }}> ABA는 작동 원리 일부</strong>입니다.
+          강화, 토큰 지급, 촉구, DRO, 사건기록, FBA 같은 기법은 ABA 기반 원리를 활용하지만,
+          전체 운영 목표는 학교·학급 맥락에서 예방적이고 교육적인 행동지원을 수행하는 PBS에 있습니다.
+        </p>
+      </Card>
       <Card title="📚 중재전략 인라인 조회">
         <p style={{ fontSize: 13, color: '#475569', lineHeight: 1.7 }}>각 FBA 기록에서 <strong>&ldquo;중재전략 보기 ▼&rdquo;</strong> 버튼 클릭 시 해당 기능에 맞는 근거기반 전략 상위 3개가 바로 펼쳐집니다. &ldquo;PBS 목표로 →&rdquo; 버튼으로 바로 연결.</p>
       </Card>
@@ -445,7 +494,7 @@ function Sec8({ goto }: { goto: (n: number) => void }) {
       </div>
       <div style={{ marginTop: 28, display: 'flex', gap: 10, justifyContent: 'center' }}>
         <button onClick={() => goto(0)} style={{ padding: '10px 20px', borderRadius: 10, fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', background: '#f1f5f9', color: '#64748b' }}>처음으로 돌아가기</button>
-        <a href="/login" style={{ padding: '10px 24px', borderRadius: 10, fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', background: '#10b981', color: '#fff', textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>🏫 시작하기</a>
+        <Link href="/login" style={{ padding: '10px 24px', borderRadius: 10, fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', background: '#10b981', color: '#fff', textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>🏫 시작하기</Link>
       </div>
     </div>
   )
