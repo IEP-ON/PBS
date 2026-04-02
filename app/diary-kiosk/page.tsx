@@ -4,8 +4,6 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
-type CameraPermissionState = 'unknown' | 'prompt' | 'granted' | 'denied' | 'unsupported'
-
 export default function DiaryKioskPage() {
   const router = useRouter()
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -16,8 +14,6 @@ export default function DiaryKioskPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [ready, setReady] = useState(false)
-  const [requestingPermission, setRequestingPermission] = useState(false)
-  const [cameraPermission, setCameraPermission] = useState<CameraPermissionState>('unknown')
 
   const stopCamera = useCallback(() => {
     scanningRef.current = false
@@ -54,14 +50,12 @@ export default function DiaryKioskPage() {
   const startCamera = useCallback(async () => {
     setError('')
     setReady(false)
-    setRequestingPermission(true)
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
       })
 
-      setCameraPermission('granted')
       streamRef.current = stream
       scanningRef.current = true
 
@@ -105,32 +99,14 @@ export default function DiaryKioskPage() {
 
       requestAnimationFrame(tick)
     } catch {
-      setCameraPermission('denied')
       setError('카메라를 사용할 수 없습니다. 권한을 확인해주세요.')
-    } finally {
-      setRequestingPermission(false)
     }
   }, [handleQrData])
 
   useEffect(() => {
-    const updatePermission = async () => {
-      if (!navigator.permissions?.query) {
-        setCameraPermission('unsupported')
-        return
-      }
-
-      try {
-        const status = await navigator.permissions.query({ name: 'camera' as PermissionName })
-        setCameraPermission(status.state as CameraPermissionState)
-        status.onchange = () => setCameraPermission(status.state as CameraPermissionState)
-      } catch {
-        setCameraPermission('unsupported')
-      }
-    }
-
-    void updatePermission()
+    void startCamera()
     return () => stopCamera()
-  }, [stopCamera])
+  }, [startCamera, stopCamera])
 
   return (
     <div className="min-h-[100dvh] bg-[radial-gradient(circle_at_top,_#fff6d8_0%,_#ffedd5_30%,_#e0f2fe_68%,_#f8fafc_100%)] px-4 py-6">
@@ -165,37 +141,11 @@ export default function DiaryKioskPage() {
 
             {!ready && (
               <div className="absolute inset-0 flex items-center justify-center bg-slate-950/60">
-                {requestingPermission ? (
-                  <div className="h-12 w-12 animate-spin rounded-full border-4 border-white border-t-transparent" />
-                ) : (
-                  <div className="px-6 text-center text-white">
-                    <p className="text-lg font-black">카메라 권한을 먼저 받아야 해요</p>
-                    <p className="mt-2 text-sm text-white/70">버튼을 누르면 갤럭시탭 PWA에서 권한 요청이 나타납니다.</p>
-                    <button
-                      type="button"
-                      onClick={() => void startCamera()}
-                      className="mt-4 rounded-2xl bg-amber-300 px-5 py-3 text-sm font-black text-slate-900 shadow-lg transition hover:bg-amber-200"
-                    >
-                      📷 카메라 권한 요청 및 시작
-                    </button>
-                  </div>
-                )}
+                <div className="h-12 w-12 animate-spin rounded-full border-4 border-white border-t-transparent" />
               </div>
             )}
           </div>
         </div>
-
-        {!ready && (
-          <div className="rounded-[1.4rem] bg-white/80 px-5 py-4 text-center shadow-sm ring-1 ring-white/80">
-            <p className="text-sm font-bold text-slate-900">
-              {cameraPermission === 'denied'
-                ? '권한이 거부되어 있어요. 브라우저 또는 앱 설정에서 카메라 권한을 허용해주세요.'
-                : cameraPermission === 'granted'
-                  ? '카메라를 연결하는 중입니다.'
-                  : '카메라 권한을 요청한 뒤 스캔을 시작해주세요.'}
-            </p>
-          </div>
-        )}
 
         {loading && (
           <div className="rounded-2xl bg-emerald-500 px-6 py-4 text-center text-lg font-black text-white shadow-lg">
