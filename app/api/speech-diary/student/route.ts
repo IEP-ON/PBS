@@ -1,15 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createServerSupabase } from '@/lib/supabase/server'
-
-interface StudentLookupResult {
-  id: string
-  name: string
-  class_code_id: string
-  pbs_class_codes?: {
-    code: string | null
-    class_name: string | null
-  } | null
-}
+import { createClient } from '@supabase/supabase-js'
 
 // GET /api/speech-diary/student?qrCode=...
 // 표준 QR 형식은 pbs_students.qr_code ("QR-...") 하나만 허용
@@ -22,13 +12,16 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'QR 코드가 필요합니다.' }, { status: 400 })
     }
 
-    const supabase = await createServerSupabase()
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
     const { data: student } = await supabase
       .from('pbs_students')
-      .select('id, name, class_code_id, pbs_class_codes(code, class_name)')
+      .select('id, name')
       .eq('qr_code', qrCode)
       .eq('is_active', true)
-      .maybeSingle<StudentLookupResult>()
+      .maybeSingle<{ id: string; name: string }>()
 
     if (!student) {
       return NextResponse.json(
@@ -40,9 +33,6 @@ export async function GET(request: Request) {
     return NextResponse.json({
       studentId: student.id,
       name: student.name,
-      classCodeId: student.class_code_id,
-      classCode: student.pbs_class_codes?.code ?? null,
-      className: student.pbs_class_codes?.class_name ?? null,
     })
   } catch {
     return NextResponse.json({ error: '학생 조회 중 오류가 발생했습니다.' }, { status: 500 })

@@ -4,12 +4,20 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
+type StudentLookup = {
+  studentId: string
+  name: string
+}
+
 export default function DiaryKioskPage() {
   const router = useRouter()
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const scanningRef = useRef(false)
+  const jsQrRef = useRef<(typeof import('jsqr'))['default'] | null>(null)
+  const lookupCacheRef = useRef<Map<string, StudentLookup>>(new Map())
+  const lastScanAtRef = useRef(0)
 
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -31,8 +39,16 @@ export default function DiaryKioskPage() {
     setError('')
 
     try {
-      const res = await fetch(`/api/speech-diary/student?qrCode=${encodeURIComponent(qrCode)}`)
-      const data = await res.json()
+      const cachedStudent = lookupCacheRef.current.get(qrCode)
+      if (cachedStudent) {
+        router.push(`/diary-kiosk/record/${cachedStudent.studentId}?name=${encodeURIComponent(cachedStudent.name)}`)
+        return
+      }
+
+      const res = await fetch(`/api/speech-diary/student?qrCode=${encodeURIComponent(qrCode)}`, {
+        cache: 'no-store',
+      })
+      const data = await res.json() as StudentLookup & { error?: string }
 
       if (!res.ok) {
         setError(data.error || '학생을 찾지 못했습니다.')
@@ -40,6 +56,10 @@ export default function DiaryKioskPage() {
         return
       }
 
+      lookupCacheRef.current.set(qrCode, {
+        studentId: data.studentId,
+        name: data.name,
+      })
       router.push(`/diary-kiosk/record/${data.studentId}?name=${encodeURIComponent(data.name)}`)
     } catch {
       setError('학생 조회 중 오류가 발생했습니다.')
@@ -53,7 +73,12 @@ export default function DiaryKioskPage() {
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
+        video: {
+          facingMode: 'user',
+          width: { ideal: 960 },
+          height: { ideal: 540 },
+          frameRate: { ideal: 24, max: 30 },
+        },
       })
 
       streamRef.current = stream
@@ -69,6 +94,13 @@ export default function DiaryKioskPage() {
       const tick = async () => {
         if (!scanningRef.current) return
 
+        const now = performance.now()
+        if (now - lastScanAtRef.current < 90) {
+          requestAnimationFrame(tick)
+          return
+        }
+        lastScanAtRef.current = now
+
         const video = videoRef.current
         const canvas = canvasRef.current
         if (!video || !canvas || video.readyState < 2) {
@@ -76,18 +108,41 @@ export default function DiaryKioskPage() {
           return
         }
 
-        canvas.width = video.videoWidth
-        canvas.height = video.videoHeight
-        const context = canvas.getContext('2d')
+        const sourceWidth = video.videoWidth
+        const sourceHeight = video.videoHeight
+        const cropSize = Math.floor(Math.min(sourceWidth, sourceHeight) * 0.68)
+        const sourceX = Math.floor((sourceWidth - cropSize) / 2)
+        const sourceY = Math.floor((sourceHeight - cropSize) / 2)
+        const targetSize = Math.min(420, cropSize)
+
+        if (canvas.width !== targetSize || canvas.height !== targetSize) {
+          canvas.width = targetSize
+          canvas.height = targetSize
+        }
+
+        const context = canvas.getContext('2d', { willReadFrequently: true })
         if (!context) {
           requestAnimationFrame(tick)
           return
         }
 
-        context.drawImage(video, 0, 0, canvas.width, canvas.height)
+        context.drawImage(
+          video,
+          sourceX,
+          sourceY,
+          cropSize,
+          cropSize,
+          0,
+          0,
+          targetSize,
+          targetSize
+        )
         const imageData = context.getImageData(0, 0, canvas.width, canvas.height)
-        const jsQR = (await import('jsqr')).default
-        const code = jsQR(imageData.data, imageData.width, imageData.height)
+        const jsQR = jsQrRef.current ?? (await import('jsqr')).default
+        jsQrRef.current = jsQR
+        const code = jsQR(imageData.data, imageData.width, imageData.height, {
+          inversionAttempts: 'dontInvert',
+        })
 
         if (code?.data) {
           void handleQrData(code.data)
@@ -104,6 +159,9 @@ export default function DiaryKioskPage() {
   }, [handleQrData])
 
   useEffect(() => {
+    void import('jsqr').then((module) => {
+      jsQrRef.current = module.default
+    })
     void startCamera()
     return () => stopCamera()
   }, [startCamera, stopCamera])
