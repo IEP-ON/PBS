@@ -38,38 +38,16 @@ type SortMode = 'balance' | 'today'
 const MEDAL = ['🥇', '🥈', '🥉']
 
 function getShopBadge(stock: number | null) {
-  if (stock == null) {
-    return {
-      label: '무제한',
-      className: 'bg-emerald-400/15 text-emerald-200 ring-1 ring-emerald-300/20',
-    }
-  }
-
-  if (stock <= 0) {
-    return {
-      label: '품절',
-      className: 'bg-rose-400/15 text-rose-200 ring-1 ring-rose-300/20',
-    }
-  }
-
-  return {
-    label: `${stock}개 남음`,
-    className: 'bg-sky-400/15 text-sky-200 ring-1 ring-sky-300/20',
-  }
+  if (stock == null) return { label: '무제한', className: 'bg-emerald-400/15 text-emerald-300' }
+  if (stock <= 0) return { label: '품절', className: 'bg-rose-400/15 text-rose-300' }
+  return { label: `${stock}개`, className: 'bg-sky-400/15 text-sky-300' }
 }
 
 function getStockChange(stock: StockSnapshot) {
-  if (stock.previous_price == null) {
-    return null
-  }
-
+  if (stock.previous_price == null) return null
   const change = stock.current_price - stock.previous_price
   const percent = stock.previous_price > 0 ? (change / stock.previous_price) * 100 : 0
-
-  return {
-    change,
-    percent,
-  }
+  return { change, percent }
 }
 
 export default function TvModePage() {
@@ -103,7 +81,7 @@ export default function TvModePage() {
 
   useEffect(() => {
     loadRankings()
-    const interval = setInterval(loadRankings, 30000) // 30초마다 갱신
+    const interval = setInterval(loadRankings, 30000)
     return () => clearInterval(interval)
   }, [loadRankings])
 
@@ -118,278 +96,271 @@ export default function TvModePage() {
 
   if (loading) {
     return (
-      <div className="min-h-[100dvh] bg-gradient-to-br from-indigo-900 to-blue-900 flex items-center justify-center">
-        <p className="text-white text-2xl">로딩 중...</p>
+      <div className="h-[100dvh] flex items-center justify-center bg-[#070c18]">
+        <div className="flex items-center gap-3">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-400" />
+          </span>
+          <p className="text-white/50 text-sm font-semibold tracking-widest uppercase">Loading</p>
+        </div>
       </div>
     )
   }
 
-  return (
-    <div className="min-h-[100dvh] bg-[radial-gradient(circle_at_top,_rgba(96,165,250,0.24),_transparent_28%),linear-gradient(140deg,_#111827_0%,_#172554_42%,_#1d4ed8_100%)] p-4 lg:p-6">
-      <div className="mx-auto flex min-h-[calc(100dvh-2rem)] max-w-[1680px] flex-col gap-5 lg:min-h-[calc(100dvh-3rem)]">
-        <div className="flex flex-col gap-4 rounded-[2rem] border border-white/10 bg-white/8 px-5 py-5 shadow-2xl shadow-slate-950/20 backdrop-blur xl:flex-row xl:items-center xl:justify-between">
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded-full bg-cyan-300/15 px-3 py-1 text-xs font-bold uppercase tracking-[0.22em] text-cyan-100">
-                Classroom Live
-              </span>
-              <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-white/80">
-                학생 {rankings.length}명
-              </span>
-              <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-white/80">
-                가게 {shopItems.length}개
-              </span>
-              <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-white/80">
-                주식 {stocks.length}종목
-              </span>
-            </div>
-            <h1 className="mt-3 text-3xl font-black tracking-tight text-white lg:text-4xl">
-              {className || classCode} 🏆 순위판
-            </h1>
-            <p className="mt-1 text-sm text-cyan-100/80">
-              {lastUpdated.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })} 기준 · 30초마다 자동 갱신
-            </p>
-          </div>
+  // Podium display order: 2nd · 1st · 3rd
+  const podiumOrder = [top[1], top[0], top[2]]
+  const podiumOrigIdx = [1, 0, 2]
+  const podiumHeights = ['75%', '100%', '62%']
+  const podiumStyles = [
+    'border-slate-500/25 bg-gradient-to-b from-slate-500/20 to-slate-600/10',
+    'border-amber-400/35 bg-gradient-to-b from-amber-400/15 to-amber-600/5',
+    'border-orange-500/25 bg-gradient-to-b from-orange-500/15 to-orange-700/5',
+  ]
 
-          <div className="flex flex-wrap gap-2">
+  return (
+    <div className="h-[100dvh] overflow-hidden flex flex-col bg-[#070c18] text-white select-none"
+      style={{ background: 'radial-gradient(ellipse 80% 50% at 30% 0%, rgba(29,78,216,0.12) 0%, transparent 70%), radial-gradient(ellipse 60% 40% at 80% 80%, rgba(6,182,212,0.06) 0%, transparent 60%), #070c18' }}>
+
+      {/* ── Header ── */}
+      <header className="shrink-0 flex items-center justify-between px-5 border-b border-white/[0.05]" style={{ height: '52px' }}>
+        <div className="flex items-center gap-3">
+          <span className="relative flex h-1.5 w-1.5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-400" />
+          </span>
+          <span className="text-[9px] font-bold tracking-[0.35em] uppercase text-white/25">LIVE</span>
+          <div className="h-3 w-px bg-white/10" />
+          <h1 className="text-sm font-black text-white/90">{className || classCode}</h1>
+          <span className="text-[11px] text-white/25">
+            학생 {rankings.length}명 · 가게 {shopItems.length}개 · 주식 {stocks.length}종목
+          </span>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <div className="flex overflow-hidden rounded-lg border border-white/[0.07]">
             <button
               onClick={() => setSortMode('today')}
-              className={`rounded-2xl px-5 py-2.5 text-sm font-bold transition-all ${
+              className={`px-4 py-1.5 text-xs font-bold transition-colors ${
                 sortMode === 'today'
-                  ? 'bg-yellow-300 text-slate-950 shadow-lg shadow-yellow-300/25'
-                  : 'bg-white/10 text-white hover:bg-white/20'
+                  ? 'bg-amber-400 text-black'
+                  : 'text-white/40 hover:text-white/80 hover:bg-white/[0.05]'
               }`}
             >
               오늘 획득
             </button>
             <button
               onClick={() => setSortMode('balance')}
-              className={`rounded-2xl px-5 py-2.5 text-sm font-bold transition-all ${
+              className={`px-4 py-1.5 text-xs font-bold border-l border-white/[0.07] transition-colors ${
                 sortMode === 'balance'
-                  ? 'bg-yellow-300 text-slate-950 shadow-lg shadow-yellow-300/25'
-                  : 'bg-white/10 text-white hover:bg-white/20'
+                  ? 'bg-amber-400 text-black'
+                  : 'text-white/40 hover:text-white/80 hover:bg-white/[0.05]'
               }`}
             >
               전체 잔액
             </button>
-            <button
-              onClick={loadRankings}
-              className="rounded-2xl bg-white/10 px-4 py-2.5 text-sm font-semibold text-white transition-all hover:bg-white/20"
-              title="새로고침"
-            >
-              🔄 새로고침
-            </button>
           </div>
+          <button
+            onClick={loadRankings}
+            className="text-white/25 hover:text-white/60 transition-colors text-base leading-none"
+            title="새로고침"
+          >
+            ↻
+          </button>
+          <span className="text-[11px] text-white/20 tabular-nums font-mono">
+            {lastUpdated.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+          </span>
         </div>
+      </header>
 
-        <div className="grid flex-1 min-h-0 gap-5 2xl:grid-cols-[minmax(0,1.7fr)_420px]">
-          <section className="flex min-h-0 flex-col gap-5">
-            {rankings.length === 0 ? (
-              <div className="flex flex-1 items-center justify-center rounded-[2rem] border border-white/10 bg-white/8 p-10 text-center backdrop-blur">
-                <div>
-                  <p className="mb-4 text-6xl">🏫</p>
-                  <p className="text-xl font-bold text-white">등록된 학생이 없습니다.</p>
-                  <p className="mt-2 text-sm text-white/65">학생을 등록하면 이 화면에 순위와 학급 보드가 함께 표시됩니다.</p>
-                </div>
+      {/* ── Body ── */}
+      <div className="flex-1 min-h-0 flex">
+
+        {/* Rankings */}
+        <main className="flex-1 min-w-0 flex flex-col gap-0 p-4">
+          {rankings.length === 0 ? (
+            <div className="flex-1 flex items-center justify-center">
+              <div className="text-center">
+                <p className="text-5xl mb-4">🏫</p>
+                <p className="text-lg font-bold text-white/70">등록된 학생이 없습니다</p>
+                <p className="text-sm text-white/30 mt-1">학생을 등록하면 순위가 여기에 표시됩니다</p>
               </div>
-            ) : (
-              <>
-                {top.length > 0 && (
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                    {[top[1], top[0], top[2]].map((student, idx) => {
-                      if (!student) return <div key={idx} />
-                      const originalIdx = idx === 0 ? 1 : idx === 1 ? 0 : 2
-                      const isFirst = originalIdx === 0
-                      const value = sortMode === 'today' ? student.todayEarned : student.balance
+            </div>
+          ) : (
+            <>
+              {/* TOP 3 Podium */}
+              {top.length > 0 && (
+                <div className="shrink-0 flex items-end justify-center gap-3 pb-3" style={{ height: '42%' }}>
+                  {podiumOrder.map((student, i) => {
+                    if (!student) return <div key={i} className="flex-1 max-w-[240px]" />
+                    const origIdx = podiumOrigIdx[i]
+                    const isFirst = origIdx === 0
+                    const value = sortMode === 'today' ? student.todayEarned : student.balance
 
-                      return (
-                        <div
-                          key={student.id}
-                          className={`flex flex-col items-center rounded-[2rem] px-6 py-6 transition-all ${
-                            isFirst
-                              ? 'scale-[1.03] bg-gradient-to-b from-yellow-300 to-amber-400 text-slate-950 shadow-2xl shadow-yellow-400/25'
-                              : originalIdx === 1
-                              ? 'bg-gradient-to-b from-slate-200 to-slate-300 text-slate-900 shadow-xl'
-                              : 'bg-gradient-to-b from-amber-500 to-orange-600 text-white shadow-xl'
-                          } ${isFirst ? 'py-8' : ''}`}
-                        >
-                          <span className="mb-2 text-4xl">{MEDAL[originalIdx]}</span>
-                          <p className="text-center text-2xl font-black">{student.name}</p>
-                          <p className={`mt-1 text-sm font-semibold ${isFirst ? 'text-slate-700' : 'text-white/80'}`}>
-                            LV.{student.pbs_stage}
-                          </p>
-                          <p className="mt-3 text-3xl font-black">
-                            {sortMode === 'today'
-                              ? value > 0 ? `+${formatCurrency(value)}` : formatCurrency(value)
-                              : formatCurrency(value)
-                            }
-                          </p>
-                          <p className={`mt-1 text-xs font-semibold uppercase tracking-[0.2em] ${isFirst ? 'text-slate-600' : 'text-white/60'}`}>
-                            {sortMode === 'today' ? 'Today Earned' : 'Balance'}
-                          </p>
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
+                    return (
+                      <div
+                        key={student.id}
+                        className={`flex-1 max-w-[240px] flex flex-col items-center justify-center gap-1.5 rounded-2xl border backdrop-blur-sm px-4 transition-all ${podiumStyles[i]}`}
+                        style={{ height: podiumHeights[i] }}
+                      >
+                        <span className={`leading-none ${isFirst ? 'text-5xl' : 'text-4xl'}`}>
+                          {MEDAL[origIdx]}
+                        </span>
+                        <p className={`font-black text-center leading-snug tracking-tight ${isFirst ? 'text-[1.4rem] text-amber-100' : 'text-xl text-white/85'}`}>
+                          {student.name}
+                        </p>
+                        <p className="text-[11px] text-white/30 font-semibold">LV.{student.pbs_stage}</p>
+                        <p className={`font-black tabular-nums ${isFirst ? 'text-2xl text-amber-300' : 'text-xl text-white/75'}`}>
+                          {sortMode === 'today' && value > 0 ? `+${formatCurrency(value)}` : formatCurrency(value)}
+                        </p>
+                        <p className="text-[9px] uppercase tracking-[0.22em] text-white/25">
+                          {sortMode === 'today' ? 'Today' : 'Balance'}
+                        </p>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
 
-                {rest.length > 0 && (
-                  <div className="grid flex-1 grid-cols-1 gap-3 xl:grid-cols-2">
-                    {rest.map((student, idx) => {
-                      const value = sortMode === 'today' ? student.todayEarned : student.balance
-                      return (
-                        <div
-                          key={student.id}
-                          className="flex items-center gap-4 rounded-[1.6rem] border border-white/10 bg-white/8 px-5 py-4 backdrop-blur"
-                        >
-                          <span className="w-8 text-center text-2xl font-black text-white/55">
-                            {idx + 4}
-                          </span>
-                          <div className="flex-1">
-                            <p className="text-lg font-bold text-white">{student.name}</p>
-                            <p className="text-xs font-semibold text-cyan-100/70">LV.{student.pbs_stage}</p>
-                          </div>
-                          <p className="text-xl font-black text-white">
-                            {sortMode === 'today'
-                              ? value > 0 ? `+${formatCurrency(value)}` : formatCurrency(value)
-                              : formatCurrency(value)
-                            }
-                          </p>
+              {/* Divider */}
+              {top.length > 0 && rest.length > 0 && (
+                <div className="shrink-0 flex items-center gap-2 mb-3">
+                  <div className="flex-1 h-px bg-white/[0.05]" />
+                  <span className="text-[9px] text-white/20 uppercase tracking-[0.25em]">이하 순위</span>
+                  <div className="flex-1 h-px bg-white/[0.05]" />
+                </div>
+              )}
+
+              {/* Rest grid */}
+              {rest.length > 0 && (
+                <div className="flex-1 min-h-0 overflow-hidden grid grid-cols-2 gap-1.5 content-start">
+                  {rest.map((student, idx) => {
+                    const value = sortMode === 'today' ? student.todayEarned : student.balance
+                    return (
+                      <div
+                        key={student.id}
+                        className="flex items-center gap-3 rounded-xl border border-white/[0.05] bg-white/[0.025] px-4 py-2.5"
+                      >
+                        <span className="w-6 text-sm font-black text-white/20 tabular-nums shrink-0 text-right">
+                          {idx + 4}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold text-white/85 text-sm truncate leading-tight">{student.name}</p>
+                          <p className="text-[10px] text-white/30 font-semibold">LV.{student.pbs_stage}</p>
                         </div>
-                      )
-                    })}
-                  </div>
-                )}
-              </>
-            )}
+                        <p className="text-sm font-black text-white/75 tabular-nums shrink-0">
+                          {sortMode === 'today' && value > 0 ? `+${formatCurrency(value)}` : formatCurrency(value)}
+                        </p>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </>
+          )}
+        </main>
+
+        {/* Sidebar divider */}
+        <div className="shrink-0 w-px bg-white/[0.04]" />
+
+        {/* Shop + Stock */}
+        <aside className="shrink-0 w-72 flex flex-col divide-y divide-white/[0.04]">
+
+          {/* Shop Board */}
+          <section className="flex-1 min-h-0 flex flex-col px-4 py-3">
+            <div className="shrink-0 flex items-center justify-between mb-2.5">
+              <div>
+                <p className="text-[9px] font-bold tracking-[0.3em] uppercase text-white/20">Shop Board</p>
+                <h2 className="text-sm font-black text-white/80 mt-0.5">🏪 가게</h2>
+              </div>
+              <span className="text-[10px] font-semibold text-white/25">{shopItems.length}개 운영</span>
+            </div>
+
+            <div className="flex-1 min-h-0 overflow-hidden flex flex-col gap-1.5">
+              {visibleShopItems.length === 0 ? (
+                <div className="flex-1 flex items-center justify-center">
+                  <p className="text-xs text-white/25">아이템 없음</p>
+                </div>
+              ) : (
+                visibleShopItems.map((item) => {
+                  const badge = getShopBadge(item.stock)
+                  return (
+                    <div
+                      key={item.id}
+                      className="flex items-center gap-2.5 rounded-xl border border-white/[0.05] bg-white/[0.025] px-3 py-2"
+                    >
+                      <span className="text-lg shrink-0 leading-none">{item.emoji || '🎁'}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-bold text-white/85 truncate leading-tight">{item.name}</p>
+                        <p className="text-[10px] text-white/35 tabular-nums">{formatCurrency(item.price)}</p>
+                      </div>
+                      <span className={`shrink-0 text-[9px] font-bold px-2 py-0.5 rounded-full ${badge.className}`}>
+                        {badge.label}
+                      </span>
+                    </div>
+                  )
+                })
+              )}
+              {shopItems.length > visibleShopItems.length && (
+                <p className="text-right text-[10px] text-white/20 pt-0.5">
+                  +{shopItems.length - visibleShopItems.length}개 더
+                </p>
+              )}
+            </div>
           </section>
 
-          <aside className="grid min-h-0 gap-5 lg:grid-cols-2 2xl:grid-cols-1">
-            <section className="rounded-[2rem] border border-white/10 bg-slate-950/30 p-5 shadow-xl shadow-slate-950/20 backdrop-blur">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-[0.22em] text-cyan-100/70">Shop Board</p>
-                  <h2 className="mt-1 text-2xl font-black text-white">🏪 가게</h2>
-                </div>
-                <div className="rounded-full bg-white/10 px-3 py-1 text-xs font-bold text-white/80">
-                  {shopItems.length}개 운영 중
-                </div>
+          {/* Stock Board */}
+          <section className="flex-1 min-h-0 flex flex-col px-4 py-3">
+            <div className="shrink-0 flex items-center justify-between mb-2.5">
+              <div>
+                <p className="text-[9px] font-bold tracking-[0.3em] uppercase text-white/20">Stock Board</p>
+                <h2 className="text-sm font-black text-white/80 mt-0.5">📈 주식</h2>
               </div>
+              <span className="text-[10px] font-semibold text-white/25">{stocks.length}종목 운영</span>
+            </div>
 
-              <div className="mt-4 space-y-3">
-                {visibleShopItems.length === 0 ? (
-                  <div className="rounded-[1.4rem] border border-dashed border-white/10 bg-white/5 px-4 py-8 text-center">
-                    <p className="text-sm font-semibold text-white/70">등록된 가게 아이템이 없습니다.</p>
-                  </div>
-                ) : (
-                  visibleShopItems.map((item) => {
-                    const badge = getShopBadge(item.stock)
-                    return (
-                      <div
-                        key={item.id}
-                        className="flex items-center gap-3 rounded-[1.4rem] border border-white/10 bg-white/6 px-4 py-3"
-                      >
-                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/10 text-2xl">
-                          {item.emoji || '🎁'}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate font-bold text-white">{item.name}</p>
-                          <p className="text-sm font-semibold text-cyan-100/75">{formatCurrency(item.price)}</p>
-                        </div>
-                        <div className={`shrink-0 rounded-full px-3 py-1 text-xs font-bold ${badge.className}`}>
-                          {badge.label}
-                        </div>
+            <div className="flex-1 min-h-0 overflow-hidden flex flex-col gap-1.5">
+              {visibleStocks.length === 0 ? (
+                <div className="flex-1 flex items-center justify-center">
+                  <p className="text-xs text-white/25">종목 없음</p>
+                </div>
+              ) : (
+                visibleStocks.map((stock) => {
+                  const delta = getStockChange(stock)
+                  const isRise = (delta?.change || 0) > 0
+                  const isFall = (delta?.change || 0) < 0
+                  return (
+                    <div
+                      key={stock.id}
+                      className="flex items-center gap-2.5 rounded-xl border border-white/[0.05] bg-white/[0.025] px-3 py-2"
+                    >
+                      <span className="text-lg shrink-0 leading-none">{stock.emoji || '🎲'}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-bold text-white/85 truncate leading-tight">{stock.name}</p>
+                        {delta ? (
+                          <p className={`text-[10px] font-bold ${isRise ? 'text-rose-400' : isFall ? 'text-sky-400' : 'text-white/30'}`}>
+                            {isRise ? '▲' : isFall ? '▼' : '■'} {Math.abs(delta.percent).toFixed(1)}%
+                          </p>
+                        ) : (
+                          <p className="text-[10px] text-white/25">첫 시세</p>
+                        )}
                       </div>
-                    )
-                  })
-                )}
-              </div>
-
-              {shopItems.length > visibleShopItems.length && (
-                <p className="mt-4 text-right text-xs font-semibold text-white/50">
-                  외 {shopItems.length - visibleShopItems.length}개 더 있음
-                </p>
+                      <p className="text-xs font-black text-white/80 tabular-nums shrink-0">
+                        {formatCurrency(stock.current_price)}
+                      </p>
+                    </div>
+                  )
+                })
               )}
-            </section>
-
-            <section className="rounded-[2rem] border border-white/10 bg-slate-950/30 p-5 shadow-xl shadow-slate-950/20 backdrop-blur">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-[0.22em] text-cyan-100/70">Stock Board</p>
-                  <h2 className="mt-1 text-2xl font-black text-white">📈 주식</h2>
-                </div>
-                <div className="rounded-full bg-white/10 px-3 py-1 text-xs font-bold text-white/80">
-                  {stocks.length}종목 운영 중
-                </div>
-              </div>
-
-              <div className="mt-4 space-y-3">
-                {visibleStocks.length === 0 ? (
-                  <div className="rounded-[1.4rem] border border-dashed border-white/10 bg-white/5 px-4 py-8 text-center">
-                    <p className="text-sm font-semibold text-white/70">등록된 주식 종목이 없습니다.</p>
-                  </div>
-                ) : (
-                  visibleStocks.map((stock) => {
-                    const delta = getStockChange(stock)
-                    const isRise = (delta?.change || 0) > 0
-                    const isFall = (delta?.change || 0) < 0
-
-                    return (
-                      <div
-                        key={stock.id}
-                        className="rounded-[1.4rem] border border-white/10 bg-white/6 px-4 py-3"
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/10 text-2xl">
-                            {stock.emoji || '🎲'}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="min-w-0">
-                                <p className="truncate font-bold text-white">{stock.name}</p>
-                                <p className="truncate text-xs text-white/45">
-                                  {stock.description || '학급에서 운영 중인 커스텀 종목'}
-                                </p>
-                              </div>
-                              <div className="text-right">
-                                <p className="text-lg font-black text-white">{formatCurrency(stock.current_price)}</p>
-                                {delta ? (
-                                  <p className={`text-xs font-bold ${isRise ? 'text-rose-300' : isFall ? 'text-sky-300' : 'text-white/55'}`}>
-                                    {isRise ? '▲' : isFall ? '▼' : '■'} {formatCurrency(Math.abs(delta.change))}
-                                    {delta.percent !== 0 ? ` (${Math.abs(delta.percent).toFixed(1)}%)` : ''}
-                                  </p>
-                                ) : (
-                                  <p className="text-xs font-bold text-white/55">첫 시세</p>
-                                )}
-                              </div>
-                            </div>
-                            {stock.price_date && (
-                              <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-100/45">
-                                최근 반영일 {stock.price_date}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    )
-                  })
-                )}
-              </div>
-
               {stocks.length > visibleStocks.length && (
-                <p className="mt-4 text-right text-xs font-semibold text-white/50">
-                  외 {stocks.length - visibleStocks.length}종목 더 있음
+                <p className="text-right text-[10px] text-white/20 pt-0.5">
+                  +{stocks.length - visibleStocks.length}종목 더
                 </p>
               )}
-            </section>
-          </aside>
-        </div>
+            </div>
+          </section>
 
-        <div className="text-center">
-          <p className="text-xs font-semibold text-cyan-100/55">
-            PBS 토큰 이코노미 · 순위, 가게, 주식 현황을 한 화면에서 보여줍니다.
-          </p>
-        </div>
+        </aside>
       </div>
     </div>
   )
