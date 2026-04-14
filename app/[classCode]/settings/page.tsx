@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
+import { EconomyConfigNotice, useTokenEconomyHealth } from '../token-economy/health-ui'
 
 interface Settings {
   currency_unit: number
@@ -28,6 +29,7 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
+  const { data: health, loading: healthLoading, error: healthError } = useTokenEconomyHealth()
 
   const [form, setForm] = useState({
     currencyUnit: '500',
@@ -141,6 +143,8 @@ export default function SettingsPage() {
       {message && (
         <div className="px-4 py-3 bg-green-50 border border-green-200 rounded-xl text-sm text-green-700">{message}</div>
       )}
+
+      <EconomyConfigNotice data={health} loading={healthLoading} error={healthError} />
 
       {/* 통화 설정 */}
       <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-4">

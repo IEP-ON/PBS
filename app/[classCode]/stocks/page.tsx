@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react'
 import { formatCurrency } from '@/lib/utils'
 import StockPriceChart from './StockPriceChart'
+import type { TokenEconomyStockLabel } from '@/types'
+import { EconomyPriceBadge, EconomyRangeBanner, useTokenEconomyHealth } from '../token-economy/health-ui'
 
 interface Stock {
   id: string
@@ -30,6 +32,7 @@ export default function StocksPage() {
   const [submitting, setSubmitting] = useState(false)
   const [adjusting, setAdjusting] = useState<string | null>(null)
   const [message, setMessage] = useState('')
+  const { data: health, loading: healthLoading, error: healthError } = useTokenEconomyHealth()
 
   const fetchStocks = async () => {
     const res = await fetch('/api/stocks')
@@ -92,6 +95,10 @@ export default function StocksPage() {
     )
   }
 
+  const stockLabelMap = new Map<string, TokenEconomyStockLabel>(
+    (health?.stockLabels || []).map((label) => [label.stockId, label])
+  )
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -103,6 +110,8 @@ export default function StocksPage() {
           + 종목 추가
         </button>
       </div>
+
+      <EconomyRangeBanner data={health} loading={healthLoading} error={healthError} mode="stock" />
 
       {message && (
         <div className="px-4 py-3 bg-green-50 border border-green-200 rounded-xl text-sm text-green-700">{message}</div>
@@ -125,6 +134,7 @@ export default function StocksPage() {
             const prev = stock.priceHistory[0]?.previous_price
             const change = prev ? stock.current_price - prev : 0
             const changePercent = prev ? ((change / prev) * 100).toFixed(1) : '0'
+            const healthLabel = stockLabelMap.get(stock.id)
             return (
               <div key={stock.id} className="bg-white rounded-2xl border border-gray-100 p-5 space-y-3">
                 <div className="flex items-center justify-between">
@@ -137,9 +147,19 @@ export default function StocksPage() {
                   </div>
                   <div className="text-right">
                     <p className="text-2xl font-bold text-gray-900">{formatCurrency(stock.current_price)}</p>
+                    {healthLabel && (
+                      <div className="mt-2 flex justify-end">
+                        <EconomyPriceBadge label={healthLabel.label} />
+                      </div>
+                    )}
                     {change !== 0 && (
                       <p className={`text-sm font-medium ${change > 0 ? 'text-red-500' : 'text-blue-500'}`}>
                         {change > 0 ? '▲' : '▼'} {formatCurrency(Math.abs(change))} ({changePercent}%)
+                      </p>
+                    )}
+                    {healthLabel && healthLabel.label !== 'good' && (
+                      <p className="mt-1 text-xs text-slate-500">
+                        권장 범위 {formatCurrency(healthLabel.recommendedMin)} ~ {formatCurrency(healthLabel.recommendedMax)}
                       </p>
                     )}
                   </div>

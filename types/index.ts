@@ -16,6 +16,7 @@ export type TransactionType =
   | 'level_up_bonus'    // 행동형성 레벨업 보너스
   | 'class_reward'      // 학급 공동 보상
   | 'speech_diary_reward' // 말 일기장 작성 보상
+  | 'qr_token'          // QR 토큰 충전
 
 export type BehaviorFunction = 'attention' | 'escape' | 'automatic' | 'access'
 export type PbsStage = 1 | 2 | 3
@@ -288,4 +289,91 @@ export interface StudentFeatureOutputs {
   incidentTags: string[]
   droCandidate: string
   publicSafeSummary: string
+}
+
+export type TokenEconomyHealthStatus =
+  | 'balanced'
+  | 'inflation_medium'
+  | 'inflation_high'
+  | 'deflation_medium'
+  | 'deflation_high'
+  | 'insufficient_data'
+
+export type TokenEconomyBaselineSource = 'observed' | 'projected'
+export type TokenEconomyWarningSeverity = 'high' | 'medium' | 'info'
+export type TokenEconomyPriceLabel = 'too_low' | 'good' | 'too_high'
+export type TokenEconomyBandKey = 'small' | 'medium' | 'large' | 'stockStart'
+
+export interface TokenEconomyBand {
+  min: number
+  max: number
+}
+
+export interface TokenEconomyRecommendedBands {
+  small: TokenEconomyBand
+  medium: TokenEconomyBand
+  large: TokenEconomyBand
+  stockStart: TokenEconomyBand
+}
+
+export interface TokenEconomyWarning {
+  code: string
+  severity: TokenEconomyWarningSeverity
+  title: string
+  detail: string
+  action: string
+}
+
+export interface TokenEconomyMetrics {
+  analysisDays: number
+  totalIncome: number
+  totalSpending: number
+  incomeToSpendingRatio: number | null
+  classroomTotalBalance: number
+  averageBalance: number
+  averageBalanceDays: number | null
+  activeStudentCount: number
+  studentsWithSpending: number
+  purchaseStudentRatio: number
+  pendingPbsAmount: number
+  incomeBreakdown: {
+    attendance: number
+    pbs: number
+    bonusAndInterest: number
+    other: number
+  }
+  shopPriceMin: number | null
+  shopPriceMedian: number | null
+  shopPriceMax: number | null
+  stockMedianPrice: number | null
+  contractRewardMedian: number | null
+  attendanceSalary: number
+  weeklyBonus: number
+}
+
+export interface TokenEconomyShopLabel {
+  itemId: string
+  label: TokenEconomyPriceLabel
+  suggestedBand: Extract<TokenEconomyBandKey, 'small' | 'medium' | 'large'>
+  recommendedMin: number
+  recommendedMax: number
+}
+
+export interface TokenEconomyStockLabel {
+  stockId: string
+  label: TokenEconomyPriceLabel
+  recommendedMin: number
+  recommendedMax: number
+}
+
+export interface TokenEconomyHealthResponse {
+  healthStatus: TokenEconomyHealthStatus
+  baselineDailyEarn: number
+  baselineSource: TokenEconomyBaselineSource
+  score: number
+  metrics: TokenEconomyMetrics
+  recommendedBands: TokenEconomyRecommendedBands
+  warnings: TokenEconomyWarning[]
+  shopLabels: TokenEconomyShopLabel[]
+  stockLabels: TokenEconomyStockLabel[]
 }

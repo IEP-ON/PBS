@@ -2,10 +2,12 @@
 
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
+import { EconomyHealthSummaryCard, useTokenEconomyHealth } from './health-ui'
 
 export default function TokenEconomyPage() {
   const params = useParams()
   const classCode = params.classCode as string
+  const { data: health, loading: healthLoading, error: healthError } = useTokenEconomyHealth()
 
   const tabs = [
     { id: 'shop', label: '가게', icon: '🏪', description: '상점 아이템 관리', href: `/${classCode}/shop` },
@@ -21,6 +23,8 @@ export default function TokenEconomyPage() {
         <h1 className="text-2xl font-bold text-gray-900">🏪 토큰 경제 시스템</h1>
         <p className="text-sm text-gray-500 mt-1">토큰의 획득·소비·투자·공동 관리를 한 곳에서</p>
       </div>
+
+      <EconomyHealthSummaryCard data={health} loading={healthLoading} error={healthError} />
 
       {/* 안내 메시지 */}
       <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">

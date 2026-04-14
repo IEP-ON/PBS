@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { formatCurrency } from '@/lib/utils'
+import type { TokenEconomyShopLabel } from '@/types'
+import { EconomyPriceBadge, EconomyRangeBanner, useTokenEconomyHealth } from '../token-economy/health-ui'
 
 interface ShopItem {
   id: string
@@ -49,6 +51,7 @@ export default function ShopPage() {
   const [form, setForm] = useState<ItemFormData>(emptyForm)
   const [formError, setFormError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const { data: health, loading: healthLoading, error: healthError } = useTokenEconomyHealth()
 
   const fetchItems = async () => {
     const res = await fetch('/api/shop/items')
@@ -143,6 +146,10 @@ export default function ShopPage() {
     )
   }
 
+  const shopLabelMap = new Map<string, TokenEconomyShopLabel>(
+    (health?.shopLabels || []).map((label) => [label.itemId, label])
+  )
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -154,6 +161,8 @@ export default function ShopPage() {
           + 아이템 추가
         </button>
       </div>
+
+      <EconomyRangeBanner data={health} loading={healthLoading} error={healthError} mode="shop" />
 
       {items.length === 0 ? (
         <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
@@ -168,42 +177,52 @@ export default function ShopPage() {
         </div>
       ) : (
         <div className="grid gap-3">
-          {items.map((item) => (
-            <div key={item.id} className="bg-white rounded-2xl border border-gray-100 p-4 flex items-center gap-4">
-              <div className="w-12 h-12 bg-gray-50 rounded-xl flex items-center justify-center text-2xl">
-                {item.emoji || '🎁'}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <p className="font-bold text-gray-900">{item.name}</p>
-                  <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
-                    {CATEGORY_OPTIONS.find(c => c.value === item.category)?.label || item.category}
-                  </span>
-                  {item.is_giftable && (
-                    <span className="text-xs bg-pink-50 text-pink-500 px-2 py-0.5 rounded-full">선물가능</span>
+          {items.map((item) => {
+            const healthLabel = shopLabelMap.get(item.id)
+
+            return (
+              <div key={item.id} className="bg-white rounded-2xl border border-gray-100 p-4 flex items-center gap-4">
+                <div className="w-12 h-12 bg-gray-50 rounded-xl flex items-center justify-center text-2xl">
+                  {item.emoji || '🎁'}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="font-bold text-gray-900">{item.name}</p>
+                    <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
+                      {CATEGORY_OPTIONS.find(c => c.value === item.category)?.label || item.category}
+                    </span>
+                    {item.is_giftable && (
+                      <span className="text-xs bg-pink-50 text-pink-500 px-2 py-0.5 rounded-full">선물가능</span>
+                    )}
+                    {healthLabel && <EconomyPriceBadge label={healthLabel.label} />}
+                  </div>
+                  <p className="text-sm text-gray-500">
+                    {formatCurrency(item.price)}
+                    {item.stock != null && ` · 재고 ${item.stock}개`}
+                  </p>
+                  {healthLabel && healthLabel.label !== 'good' && (
+                    <p className="mt-1 text-xs text-slate-500">
+                      권장 범위 {formatCurrency(healthLabel.recommendedMin)} ~ {formatCurrency(healthLabel.recommendedMax)}
+                    </p>
                   )}
                 </div>
-                <p className="text-sm text-gray-500">
-                  {formatCurrency(item.price)}
-                  {item.stock != null && ` · 재고 ${item.stock}개`}
-                </p>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => openEditModal(item)}
+                    className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors"
+                  >
+                    ✏️
+                  </button>
+                  <button
+                    onClick={() => handleDeactivate(item.id)}
+                    className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors"
+                  >
+                    🗑️
+                  </button>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => openEditModal(item)}
-                  className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors"
-                >
-                  ✏️
-                </button>
-                <button
-                  onClick={() => handleDeactivate(item.id)}
-                  className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors"
-                >
-                  🗑️
-                </button>
-              </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
 
