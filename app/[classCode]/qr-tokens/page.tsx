@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import QRCode from 'qrcode'
 
 interface QrToken {
@@ -16,6 +16,17 @@ interface QrToken {
 }
 
 const PRESET_AMOUNTS = [100, 200, 500, 1000, 2000, 5000]
+const PRINT_COLUMNS = 4
+const PRINT_ROWS = 6
+const TOKENS_PER_PRINT_PAGE = PRINT_COLUMNS * PRINT_ROWS
+
+function chunkItems<T>(items: T[], size: number) {
+  const chunks: T[][] = []
+  for (let index = 0; index < items.length; index += size) {
+    chunks.push(items.slice(index, index + size))
+  }
+  return chunks
+}
 
 export default function QrTokensPage() {
   const [tokens, setTokens] = useState<QrToken[]>([])
@@ -27,7 +38,6 @@ export default function QrTokensPage() {
   const [message, setMessage] = useState('')
   const [newTokens, setNewTokens] = useState<QrToken[]>([])
   const [qrDataUrls, setQrDataUrls] = useState<Record<string, string>>({})
-  const printRef = useRef<HTMLDivElement>(null)
 
   const fetchTokens = async () => {
     const res = await fetch('/api/qr-tokens')
@@ -86,46 +96,99 @@ export default function QrTokensPage() {
 
   const usedCount = tokens.filter(t => t.is_used).length
   const unusedCount = tokens.filter(t => !t.is_used).length
+  const newTokenPages = chunkItems(newTokens, TOKENS_PER_PRINT_PAGE)
+  const canPrintNewTokens = newTokens.length > 0 && newTokens.every(token => Boolean(qrDataUrls[token.id]))
 
   return (
     <>
       {/* 인쇄 전용 영역 */}
-      <div ref={printRef} className="hidden print:block">
+      <div className="hidden print:block">
         <style>{`
           @media print {
-            @page { margin: 10mm; size: A4; }
-            body * { visibility: hidden; }
-            .print-area, .print-area * { visibility: visible; }
-            .print-area { position: fixed; top: 0; left: 0; }
+            @page {
+              size: A4 portrait;
+              margin: 8mm;
+            }
+
+            html,
+            body {
+              background: white !important;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+
+            body * {
+              visibility: hidden;
+            }
+
+            .token-print-root,
+            .token-print-root * {
+              visibility: visible;
+            }
+
+            .token-print-root {
+              position: absolute;
+              inset: 0;
+              margin: 0 !important;
+              padding: 0 !important;
+              background: white !important;
+            }
+
+            .token-print-sheet {
+              break-after: page;
+              page-break-after: always;
+            }
+
+            .token-print-sheet:last-child {
+              break-after: auto;
+              page-break-after: auto;
+            }
+
+            .token-print-grid {
+              display: grid !important;
+              grid-template-columns: repeat(4, 40mm);
+              gap: 4mm;
+              justify-content: center;
+              align-content: start;
+            }
+
+            .token-print-sticker {
+              width: 40mm;
+              height: 40mm;
+              break-inside: avoid;
+              page-break-inside: avoid;
+            }
           }
         `}</style>
-        <div className="print-area">
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3mm', padding: '5mm' }}>
-            {newTokens.map(token => (
-              <div
-                key={token.id}
-                style={{
-                  width: '25mm',
-                  border: '0.5px solid #ccc',
-                  padding: '1mm',
-                  textAlign: 'center',
-                  pageBreakInside: 'avoid',
-                  borderRadius: '2mm',
-                }}
-              >
-                {qrDataUrls[token.id] && (
-                  <img
-                    src={qrDataUrls[token.id]}
-                    alt={token.code}
-                    style={{ width: '23mm', height: '23mm', display: 'block' }}
-                  />
-                )}
-                <div style={{ fontSize: '7pt', fontWeight: 'bold', marginTop: '0.5mm' }}>
-                  {token.amount.toLocaleString()}원
-                </div>
+        <div className="token-print-root">
+          {newTokenPages.map((page, pageIndex) => (
+            <section key={`print-page-${pageIndex}`} className="token-print-sheet">
+              <div className="token-print-grid">
+                {page.map(token => (
+                  <div
+                    key={token.id}
+                    className="token-print-sticker flex flex-col items-center justify-center rounded-full border-[1.2px] border-slate-300 bg-[#fffdf8] p-[2.8mm] text-center"
+                  >
+                    <p className="text-[8px] font-black uppercase tracking-[0.28em] text-slate-500">
+                      QR TOKEN
+                    </p>
+                    {qrDataUrls[token.id] && (
+                      <div className="mt-[1.2mm] rounded-[4mm] border border-slate-200 bg-white p-[1.4mm]">
+                        <img
+                          src={qrDataUrls[token.id]}
+                          alt={token.code}
+                          style={{ width: '22mm', height: '22mm', display: 'block' }}
+                        />
+                      </div>
+                    )}
+                    <div className="mt-[1.4mm] rounded-full bg-slate-900 px-[2.2mm] py-[0.7mm] text-[9px] font-black text-white">
+                      {token.amount.toLocaleString()}원
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </section>
+          ))}
         </div>
       </div>
 
@@ -224,25 +287,34 @@ export default function QrTokensPage() {
               </h2>
               <button
                 onClick={handlePrint}
-                className="flex items-center gap-2 px-4 py-2 bg-gray-900 hover:bg-black text-white text-sm font-medium rounded-xl transition-colors"
+                disabled={!canPrintNewTokens}
+                className="flex items-center gap-2 rounded-xl bg-gray-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-black disabled:cursor-not-allowed disabled:bg-gray-300"
               >
-                🖨️ 인쇄 (25mm 격자)
+                🖨️ 인쇄 (40mm 원형)
               </button>
             </div>
             <p className="text-xs text-gray-500">
-              💡 인쇄 후 실물 코인에 스티커로 부착하세요. 각 QR은 25mm × 25mm 크기로 출력됩니다.
+              💡 Windows 인쇄 기준으로 각 토큰이 지름 40mm 원형 스티커로 출력됩니다. QR은 원형 안쪽 중앙에 배치됩니다.
             </p>
-            <div className="grid grid-cols-6 gap-3">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
               {newTokens.map(token => (
-                <div key={token.id} className="border border-gray-200 rounded-xl p-2 text-center bg-gray-50">
+                <div
+                  key={token.id}
+                  className="flex aspect-square flex-col items-center justify-center rounded-full border-2 border-[#d7e2ef] bg-[radial-gradient(circle_at_top,_#ffffff_0%,_#f8fbff_58%,_#e8f1fb_100%)] p-4 text-center"
+                >
+                  <p className="text-[10px] font-black uppercase tracking-[0.28em] text-slate-500">
+                    QR TOKEN
+                  </p>
                   {qrDataUrls[token.id] ? (
-                    <img src={qrDataUrls[token.id]} alt={token.code} className="w-full aspect-square" />
+                    <div className="mt-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
+                      <img src={qrDataUrls[token.id]} alt={token.code} className="aspect-square w-full max-w-[116px]" />
+                    </div>
                   ) : (
-                    <div className="w-full aspect-square bg-gray-200 rounded flex items-center justify-center text-xs text-gray-400">
+                    <div className="mt-2 flex aspect-square w-full max-w-[116px] items-center justify-center rounded-2xl bg-gray-200 text-xs text-gray-400">
                       생성중...
                     </div>
                   )}
-                  <div className="text-xs font-bold text-gray-700 mt-1">
+                  <div className="mt-3 rounded-full bg-slate-900 px-3 py-1 text-xs font-black text-white">
                     {token.amount.toLocaleString()}원
                   </div>
                 </div>
