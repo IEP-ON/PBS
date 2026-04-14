@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createServerSupabase } from '@/lib/supabase/server'
+import { normalizeClassCode } from '@/lib/utils'
 
 // GET /api/classroom/[classCode] — 학급 정보 조회
 export async function GET(
@@ -8,12 +9,13 @@ export async function GET(
 ) {
   try {
     const { classCode } = await params
+    const normalizedCode = normalizeClassCode(classCode)
     const supabase = await createServerSupabase()
 
     const { data, error } = await supabase
       .from('pbs_class_codes')
       .select('class_name, school_name, is_active, teacher_name')
-      .eq('code', classCode)
+      .eq('code', normalizedCode)
       .single()
 
     if (error || !data) {

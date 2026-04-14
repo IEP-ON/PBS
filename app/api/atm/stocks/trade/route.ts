@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server'
 import { createServerSupabase } from '@/lib/supabase/server'
-import { canWithdraw } from '@/lib/utils'
+import { canWithdraw, normalizeClassCode } from '@/lib/utils'
 
 // POST /api/atm/stocks/trade — ATM: 주식 매수/매도 (세션 없이)
 export async function POST(request: Request) {
   try {
-    const { classCode, studentId, stockId, stockName, action, quantity } = await request.json()
+    const { classCode: rawClassCode, studentId, stockId, stockName, action, quantity } = await request.json()
+    const classCode = normalizeClassCode(rawClassCode)
 
     if (!classCode || !studentId || !stockName || !action || !quantity || quantity <= 0) {
       return NextResponse.json({ error: '필수 항목이 누락되었습니다.' }, { status: 400 })
@@ -17,7 +18,7 @@ export async function POST(request: Request) {
     const { data: classroom } = await supabase
       .from('pbs_class_codes')
       .select('id')
-      .eq('code', classCode.toUpperCase())
+      .eq('code', classCode)
       .eq('is_active', true)
       .single()
 

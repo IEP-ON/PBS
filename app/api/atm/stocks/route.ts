@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server'
 import { createServerSupabase } from '@/lib/supabase/server'
+import { normalizeClassCode } from '@/lib/utils'
 
 // GET /api/atm/stocks?classCode=...&studentId=... — ATM: 주식 목록 + 보유현황 (세션 없이)
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
-    const classCode = searchParams.get('classCode')
+    const classCode = normalizeClassCode(searchParams.get('classCode'))
     const studentId = searchParams.get('studentId')
 
     if (!classCode) {
@@ -17,7 +18,7 @@ export async function GET(request: Request) {
     const { data: classroom } = await supabase
       .from('pbs_class_codes')
       .select('id')
-      .eq('code', classCode.toUpperCase())
+      .eq('code', classCode)
       .eq('is_active', true)
       .single()
 

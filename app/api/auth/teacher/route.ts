@@ -1,14 +1,16 @@
 import { NextResponse } from 'next/server'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { getSession } from '@/lib/session'
+import { normalizeClassCode } from '@/lib/utils'
 import bcrypt from 'bcryptjs'
 
 // POST /api/auth/teacher — 교사 로그인
 export async function POST(request: Request) {
   try {
     const { classCode, teacherPin } = await request.json()
+    const normalizedCode = normalizeClassCode(classCode)
 
-    if (!classCode || !teacherPin) {
+    if (!normalizedCode || !teacherPin) {
       return NextResponse.json({ error: '학급코드와 PIN을 입력해주세요.' }, { status: 400 })
     }
 
@@ -17,7 +19,7 @@ export async function POST(request: Request) {
     const { data: classroom, error } = await supabase
       .from('pbs_class_codes')
       .select('*')
-      .eq('code', classCode.toUpperCase())
+      .eq('code', normalizedCode)
       .eq('is_active', true)
       .single()
 

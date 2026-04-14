@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { formatClassCodeInput, normalizeClassCode } from '@/lib/utils'
 
 const STUDENT_SAVED_KEY = 'pbs_student_saved'
 
@@ -45,15 +46,18 @@ export default function LoginPage() {
   }, [])
 
   const handleClassCodeSubmit = async () => {
-    if (!classCode.trim()) {
+    const normalizedCode = normalizeClassCode(classCode)
+
+    if (!normalizedCode) {
       setError('학급코드를 입력해주세요.')
       return
     }
     setError('')
     setLoading(true)
+    setClassCode(normalizedCode)
 
     try {
-      const res = await fetch(`/api/classroom/${classCode.toUpperCase()}`)
+      const res = await fetch(`/api/classroom/${normalizedCode}`)
       const data = await res.json()
 
       if (!res.ok) {
@@ -79,7 +83,7 @@ export default function LoginPage() {
       const res = await fetch('/api/auth/teacher', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ classCode: classCode.toUpperCase(), teacherPin }),
+        body: JSON.stringify({ classCode: normalizeClassCode(classCode), teacherPin }),
       })
       const data = await res.json()
 
@@ -106,7 +110,7 @@ export default function LoginPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          classCode: classCode.toUpperCase(),
+          classCode: normalizeClassCode(classCode),
           studentName,
           studentPin: pinToSubmit,
         }),
@@ -120,8 +124,9 @@ export default function LoginPage() {
       }
 
       if (classInfo) {
+        const normalizedCode = normalizeClassCode(classCode)
         localStorage.setItem(STUDENT_SAVED_KEY, JSON.stringify({
-          classCode: classCode.toUpperCase(),
+          classCode: normalizedCode,
           studentName,
           classInfo,
         }))
@@ -196,7 +201,7 @@ export default function LoginPage() {
               <input
                 type="text"
                 value={classCode}
-                onChange={(e) => setClassCode(e.target.value.toUpperCase())}
+                onChange={(e) => setClassCode(formatClassCodeInput(e.target.value))}
                 placeholder="예: NDG-2026-001"
                 className="mt-2 block w-full rounded-[1.5rem] border-2 border-sky-100 bg-sky-50 px-5 py-5 text-center font-mono text-xl font-bold tracking-[0.18em] text-slate-900 shadow-inner outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-200"
                 onKeyDown={(e) => e.key === 'Enter' && handleClassCodeSubmit()}
@@ -220,7 +225,7 @@ export default function LoginPage() {
             <div className="rounded-[2rem] border border-sky-100 bg-white/90 p-5 text-center shadow-[0_18px_50px_rgba(14,116,144,0.12)]">
               <p className="text-sm font-bold uppercase tracking-[0.2em] text-sky-500">{classInfo.schoolName}</p>
               <p className="mt-2 text-2xl font-black text-slate-900">{classInfo.className}</p>
-              <p className="mt-2 inline-flex rounded-full bg-sky-50 px-4 py-1.5 font-mono text-sm font-bold tracking-[0.15em] text-sky-700">{classCode.toUpperCase()}</p>
+              <p className="mt-2 inline-flex rounded-full bg-sky-50 px-4 py-1.5 font-mono text-sm font-bold tracking-[0.15em] text-sky-700">{normalizeClassCode(classCode)}</p>
             </div>
 
             <div className="grid grid-cols-2 gap-3 rounded-[2rem] border border-white/70 bg-white/80 p-2 shadow-[0_14px_40px_rgba(148,163,184,0.15)] backdrop-blur">

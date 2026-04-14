@@ -1,13 +1,14 @@
 import { NextResponse } from 'next/server'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { getSession } from '@/lib/session'
+import { normalizeClassCode } from '@/lib/utils'
 import bcrypt from 'bcryptjs'
 
 // POST /api/auth/student — 학생 로그인
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const classCode = body.classCode?.trim()
+    const classCode = normalizeClassCode(body.classCode)
     const studentName = body.studentName?.trim()
     const studentPin = body.studentPin?.toString().trim()
 
@@ -21,7 +22,7 @@ export async function POST(request: Request) {
     const { data: classroom } = await supabase
       .from('pbs_class_codes')
       .select('id, code')
-      .eq('code', classCode.toUpperCase())
+      .eq('code', classCode)
       .eq('is_active', true)
       .single()
 

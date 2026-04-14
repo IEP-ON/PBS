@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createServerSupabase } from '@/lib/supabase/server'
+import { normalizeClassCode } from '@/lib/utils'
 import bcrypt from 'bcryptjs'
 
 // POST /api/atm/login — ATM: 학생 인증 (세션 없이)
@@ -7,7 +8,7 @@ import bcrypt from 'bcryptjs'
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const classCode = body.classCode?.trim()
+    const classCode = normalizeClassCode(body.classCode)
     const studentName = body.studentName?.trim()
     const studentPin = body.studentPin?.toString().trim()
     const qrCode = body.qrCode?.trim() || body.passbookQrCode?.trim()
@@ -28,7 +29,7 @@ export async function POST(request: Request) {
     const { data: classroom } = await supabase
       .from('pbs_class_codes')
       .select('id')
-      .eq('code', classCode.toUpperCase())
+      .eq('code', classCode)
       .eq('is_active', true)
       .single()
 

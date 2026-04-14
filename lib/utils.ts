@@ -12,6 +12,21 @@ export function formatDate(isoDate: string): string {
   })
 }
 
+// 학급 식별코드 입력 정리 (예: "ndg2026001" → "NDG-2026-001")
+export function formatClassCodeInput(value: string): string {
+  const sanitized = value.toUpperCase().replace(/[^A-Z0-9]/g, '')
+  const letters = sanitized.replace(/[^A-Z]/g, '').slice(0, 3)
+  const digits = sanitized.replace(/[^0-9]/g, '').slice(0, 7)
+  const year = digits.slice(0, 4)
+  const seq = digits.slice(4, 7)
+
+  return [letters, year, seq].filter(Boolean).join('-')
+}
+
+export function normalizeClassCode(value: string | null | undefined): string {
+  return formatClassCodeInput(value?.trim() ?? '')
+}
+
 // 학급 식별코드 생성 (예: NDG-2026-001)
 export function generateClassCode(schoolName: string, year: number, seq: number): string {
   // 학교명에서 초성 추출 (간단 버전: 첫 3글자 영문화)

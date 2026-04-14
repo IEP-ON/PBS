@@ -3,7 +3,7 @@
 import type { FormEvent } from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { formatCurrency } from '@/lib/utils'
+import { formatClassCodeInput, formatCurrency, normalizeClassCode } from '@/lib/utils'
 
 type Mode = 'setup' | 'login' | 'dashboard' | 'scan_token' | 'scan_student' | 'shop' | 'stocks'
 type ScanTarget = 'student' | 'token' | null
@@ -84,7 +84,7 @@ export default function AtmPage() {
   useEffect(() => {
     const stored = localStorage.getItem(ATM_CLASS_CODE_KEY)
     if (stored) {
-      setSavedClassCode(stored)
+      setSavedClassCode(normalizeClassCode(stored))
       setMode('login')
     } else {
       setMode('setup')
@@ -254,11 +254,12 @@ export default function AtmPage() {
 
   // 학급 설정 저장
   const handleSetupSave = async () => {
-    if (!setupCode.trim()) return
+    const normalizedCode = normalizeClassCode(setupCode)
+    if (!normalizedCode) return
     setSetupLoading(true)
     setSetupError('')
+    setSetupCode(normalizedCode)
     try {
-      const normalizedCode = setupCode.toUpperCase()
       const res = await fetch(`/api/classroom/${normalizedCode}`)
       const data = await res.json()
 
@@ -450,7 +451,7 @@ export default function AtmPage() {
               <input
                 type="text"
                 value={setupCode}
-                onChange={e => setSetupCode(e.target.value.toUpperCase())}
+                onChange={e => setSetupCode(formatClassCodeInput(e.target.value))}
                 placeholder="예: NDG-2026-001"
                 className="mt-1 block w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-center font-mono tracking-wider text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-400"
               />

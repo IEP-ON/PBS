@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createServerSupabase } from '@/lib/supabase/server'
+import { normalizeClassCode } from '@/lib/utils'
 import bcrypt from 'bcryptjs'
 
 // POST /api/qr-tokens/redeem — ATM: QR 토큰 코인 충전
@@ -10,7 +11,7 @@ export async function POST(request: Request) {
   try {
     const body = await request.json()
     const code = body.code?.trim()
-    const classCode = body.classCode?.trim()
+    const classCode = normalizeClassCode(body.classCode)
     const studentId = body.studentId?.trim()
     const studentName = body.studentName?.trim()
     const studentPin = body.studentPin?.toString().trim()
@@ -28,7 +29,7 @@ export async function POST(request: Request) {
     const { data: classroom } = await supabase
       .from('pbs_class_codes')
       .select('id')
-      .eq('code', classCode.toUpperCase())
+      .eq('code', classCode)
       .eq('is_active', true)
       .single()
 
