@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { getSession } from '@/lib/session'
 
-// PATCH /api/dro/[timerId] — DRO 타이머 리셋/완료/취소
+// PATCH /api/dro/[timerId] — 강화 타이머 리셋/완료/취소
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ timerId: string }> }
@@ -81,7 +81,7 @@ export async function PATCH(
             type: 'salary_pbs',
             amount: tokenAmount,
             balance_after: newBalance,
-            description: `DRO 타이머 완료: ${timer.pbs_goals?.behavior_name || 'DRO'} (+${tokenAmount}원)`,
+            description: `강화 타이머 완료: ${timer.pbs_goals?.behavior_name || '타이머'} (+${tokenAmount}원)`,
           })
         }
       }

@@ -45,9 +45,9 @@ export default function SidebarNav({
     },
     {
       href: `/${classCode}/pbs`,
-      label: 'PBS 체크',
+      label: '행동 목표 체크',
       icon: '✅',
-      description: '학생별 목표 행동 토큰 지급 · 반응대가',
+      description: '학생별 목표 행동 달성 확인 · 토큰 지급',
     },
     {
       href: `/${classCode}/students`,
@@ -57,9 +57,9 @@ export default function SidebarNav({
     },
     {
       href: `/${classCode}/token-economy`,
-      label: '토큰 경제',
+      label: '보상 · 가게',
       icon: '🏪',
-      description: '가게·주식·QR토큰·학급계좌 통합',
+      description: '가게·주식·QR토큰·학급계좌 보상 관리',
     },
     {
       href: `/${classCode}/speech-diary`,
@@ -69,17 +69,17 @@ export default function SidebarNav({
       badge: 'Whisper',
     },
     {
-      href: `/${classCode}/behavior-analysis`,
-      label: '행동 분석',
+      href: `/${classCode}/support`,
+      label: '학생 지원 계획',
       icon: '🧠',
-      description: 'FBA·중재전략·행동계약서·DRO 통합',
+      description: '사정→계획→실행→점검 흐름으로 행동 지원',
       badge: 'GPT-4o',
     },
     {
       href: `/${classCode}/settings`,
       label: '설정',
       icon: '⚙️',
-      description: '급여·이자·윤리·동의서 설정',
+      description: '급여·보상 가격·윤리 기준 설정',
     },
   ]
 
@@ -94,7 +94,7 @@ export default function SidebarNav({
               href: `/${classCode}/teach`,
               label: '수업 모드',
               icon: '👨‍🏫',
-              description: '6명 동시 체크 · DRO 통합 · 사건 기록 · 수업 종료 정산',
+              description: '6명 동시 체크 · 강화 타이머 · 사건 기록 · 수업 종료 정산',
             })
           }
           onMouseLeave={() => setTooltip(null)}

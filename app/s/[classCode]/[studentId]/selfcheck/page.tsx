@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { formatCurrency } from '@/lib/utils'
+import type { PublicCue } from '@/types'
 
 interface Goal {
   id: string
@@ -20,6 +21,7 @@ interface TodayRecord {
 export default function StudentSelfCheckPage() {
   const [goals, setGoals] = useState<Goal[]>([])
   const [todayRecords, setTodayRecords] = useState<TodayRecord[]>([])
+  const [publicCue, setPublicCue] = useState<PublicCue | null>(null)
   const [loading, setLoading] = useState(true)
   const [checking, setChecking] = useState<string | null>(null)
   const [message, setMessage] = useState('')
@@ -30,6 +32,7 @@ export default function StudentSelfCheckPage() {
       const data = await res.json()
       setGoals(data.goals || [])
       setTodayRecords(data.todayRecords || [])
+      setPublicCue(data.publicCue || null)
     }
     setLoading(false)
   }
@@ -72,7 +75,7 @@ export default function StudentSelfCheckPage() {
   return (
     <div className="p-4 space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-gray-900">✅ 셀프 체크</h1>
+        <h1 className="text-xl font-bold text-gray-900">✅ 스스로 행동 체크</h1>
         {todayTotal > 0 && (
           <p className="text-sm font-bold text-green-600">오늘 +{formatCurrency(todayTotal)}</p>
         )}
@@ -82,11 +85,25 @@ export default function StudentSelfCheckPage() {
         <div className="px-4 py-3 bg-gray-50 rounded-xl text-sm text-gray-700">{message}</div>
       )}
 
+      {publicCue && (
+        <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 space-y-2">
+          <p className="text-sm font-bold text-blue-900">🌱 오늘 스스로 점검</p>
+          {publicCue.todayGoal && <p className="text-sm text-blue-800">{publicCue.todayGoal}</p>}
+          {publicCue.selfCheckPrompts.length > 0 && (
+            <div className="space-y-1">
+              {publicCue.selfCheckPrompts.map((prompt) => (
+                <p key={prompt} className="text-xs text-blue-700">• {prompt}</p>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {goals.length === 0 ? (
         <div className="bg-white rounded-2xl border border-gray-100 p-8 text-center">
           <p className="text-4xl mb-2">📋</p>
-          <p className="text-gray-500">셀프체크 가능한 목표가 없습니다.</p>
-          <p className="text-xs text-gray-400 mt-1">선생님이 셀프체크를 허용한 목표만 표시됩니다.</p>
+          <p className="text-gray-500">스스로 체크할 수 있는 행동 목표가 없습니다.</p>
+          <p className="text-xs text-gray-400 mt-1">선생님이 &quot;스스로 체크&quot;를 허용한 목표만 여기에 나옵니다.</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -106,9 +123,11 @@ export default function StudentSelfCheckPage() {
                       <span className="text-xs bg-green-50 text-green-600 px-2 py-0.5 rounded-full">
                         1회 {formatCurrency(goal.token_per_occurrence)}
                       </span>
-                      <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full">
-                        {goal.strategy_type}
-                      </span>
+                      {goal.strategy_type ? (
+                        <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full">
+                          전략 · {goal.strategy_type}
+                        </span>
+                      ) : null}
                       {todayCount > 0 && (
                         <span className="text-xs bg-amber-50 text-amber-600 px-2 py-0.5 rounded-full">
                           오늘 {todayCount}회
@@ -131,7 +150,7 @@ export default function StudentSelfCheckPage() {
       )}
 
       <p className="text-xs text-gray-400 text-center">
-        셀프체크 기록은 선생님의 정산 시 통장에 반영됩니다.
+        스스로 체크한 기록은 선생님이 정산할 때 통장에 반영됩니다.
       </p>
     </div>
   )

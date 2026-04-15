@@ -390,7 +390,7 @@ export default function PbsCheckPage() {
   }
 
   const handleDeactivateGoal = async (goalId: string) => {
-    if (!confirm('이 PBS 목표를 비활성화하시겠습니까?')) return
+    if (!confirm('이 행동 목표를 비활성화하시겠습니까?')) return
     const res = await fetch(`/api/pbs/goals/${goalId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -424,7 +424,7 @@ export default function PbsCheckPage() {
       {/* 헤더 */}
       <div className="flex flex-col gap-4 rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm xl:flex-row xl:items-center xl:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">✅ PBS 행동 체크</h1>
+          <h1 className="text-2xl font-bold text-gray-900">✅ 행동 목표 체크</h1>
           <p className="text-xs text-gray-400 mt-0.5">Positive Behavior Support · Cooper et al. (2020) 토큰 강화 기반</p>
         </div>
         <div className="text-left xl:text-right">
@@ -547,12 +547,12 @@ export default function PbsCheckPage() {
       {goals.length === 0 ? (
         <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
           <p className="text-4xl mb-3">📋</p>
-          <p className="text-gray-500">이 학생의 PBS 목표가 아직 없습니다.</p>
+          <p className="text-gray-500">이 학생의 행동 목표가 아직 없습니다.</p>
           <button
             onClick={openAddModal}
             className="inline-block mt-4 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl transition-colors"
           >
-            PBS 목표 추가
+            행동 목표 추가
           </button>
         </div>
       ) : (
@@ -805,7 +805,7 @@ export default function PbsCheckPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="max-h-[90dvh] w-full max-w-2xl overflow-y-auto rounded-[2rem] bg-white p-6 shadow-xl space-y-4">
             <h2 className="text-lg font-bold text-gray-900">
-              {editingGoal ? 'PBS 목표 수정' : 'PBS 목표 추가'}
+              {editingGoal ? '행동 목표 수정' : '행동 목표 추가'}
             </h2>
 
             <label className="block">
@@ -882,7 +882,7 @@ export default function PbsCheckPage() {
 
             <label className="flex items-center justify-between px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl cursor-pointer">
               <div>
-                <span className="text-sm font-medium text-gray-700">학생 셀프체크 허용</span>
+                <span className="text-sm font-medium text-gray-700">학생 스스로 체크 허용</span>
                 <p className="text-xs text-gray-400 mt-0.5">학생이 직접 이 목표를 체크할 수 있습니다</p>
               </div>
               <button
@@ -927,14 +927,14 @@ export default function PbsCheckPage() {
       <div className="mt-8 pt-8 border-t-2 border-gray-200">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h2 className="text-xl font-bold text-gray-900">⚠️ 반응대가 (Response Cost)</h2>
+            <h2 className="text-xl font-bold text-gray-900">⚠️ 반응대가</h2>
             <p className="text-sm text-gray-500 mt-1">문제 행동 발생 시 토큰 차감</p>
           </div>
           <a
-            href={`/${classCode}/behavior-analysis`}
+            href={`/${classCode}/support?view=response-cost`}
             className="text-sm text-blue-600 hover:text-blue-700 underline"
           >
-            행동 분석 탭에서 상세 관리 →
+            학생 지원 허브에서 상세 관리 →
           </a>
         </div>
 

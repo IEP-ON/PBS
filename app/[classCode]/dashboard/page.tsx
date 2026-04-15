@@ -105,12 +105,12 @@ export default async function DashboardPage({
             <div className="flex items-center gap-2">
               <span className="text-2xl">🚨</span>
               <div>
-                <p className="font-bold text-red-900">소거 위험 알림 ({extinctionAlerts.length}건)</p>
-                <p className="text-xs text-red-600">소거 폭발(Extinction Burst) 패턴이 감지되었습니다</p>
+                <p className="font-bold text-red-900">소거 위험 경보 ({extinctionAlerts.length}건)</p>
+                <p className="text-xs text-red-600">강화 중단 후 일시적 행동 증가 패턴이 감지되었습니다</p>
               </div>
             </div>
             <Link
-              href={`/${classCode}/behavior-analysis`}
+              href={`/${classCode}/support?view=alerts`}
               className="text-xs text-red-600 hover:text-red-800 underline whitespace-nowrap"
             >
               전체 보기 →
@@ -171,7 +171,7 @@ export default async function DashboardPage({
           <p className="text-3xl font-bold text-blue-600 mt-1">{formatCurrency(totalBalance)}</p>
         </div>
         <div className="bg-white rounded-2xl border border-gray-100 p-5">
-          <p className="text-sm text-gray-500">오늘 PBS 체크</p>
+          <p className="text-sm text-gray-500">오늘 행동 체크</p>
           <p className="text-3xl font-bold text-green-600 mt-1">{todayRecords?.length || 0}건</p>
         </div>
       </div>
@@ -185,7 +185,7 @@ export default async function DashboardPage({
         </Link>
         <Link href={`/${classCode}/dro`} className="bg-white rounded-2xl border border-gray-100 p-4 text-center hover:shadow-md transition-shadow relative">
           <p className="text-2xl">⏱️</p>
-          <p className="text-xs font-medium text-gray-700 mt-1">DRO 타이머</p>
+          <p className="text-xs font-medium text-gray-700 mt-1">강화 타이머</p>
           {(runningDroCount ?? 0) > 0 && (
             <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center animate-pulse">{runningDroCount}</span>
           )}

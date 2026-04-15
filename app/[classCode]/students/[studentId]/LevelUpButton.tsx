@@ -8,9 +8,20 @@ interface LevelUpButtonProps {
   currentStage: number
 }
 
+interface LevelUpInfo {
+  canLevelUp: boolean
+  currentStage: number
+  nextStage: number
+  bonus: number
+  totalRecords: number
+  requirement: {
+    minRecords: number
+  }
+}
+
 export default function LevelUpButton({ studentId, currentStage }: LevelUpButtonProps) {
   const [checking, setChecking] = useState(false)
-  const [info, setInfo] = useState<any>(null)
+  const [info, setInfo] = useState<LevelUpInfo | null>(null)
   const [message, setMessage] = useState('')
   const [leveling, setLeveling] = useState(false)
 
@@ -36,6 +47,7 @@ export default function LevelUpButton({ studentId, currentStage }: LevelUpButton
   }
 
   const handleLevelUp = async () => {
+    if (!info) return
     if (!window.confirm(`정말 레벨업하시겠습니까? (보너스: ${formatCurrency(info.bonus)})`)) return
 
     setLeveling(true)

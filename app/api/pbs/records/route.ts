@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { getSession } from '@/lib/session'
 
-// POST /api/pbs/records — PBS 체크 입력
+// POST /api/pbs/records — 행동 목표 체크 입력
 export async function POST(request: Request) {
   try {
     const session = await getSession()
@@ -27,7 +27,7 @@ export async function POST(request: Request) {
       .single()
 
     if (!goal) {
-      return NextResponse.json({ error: 'PBS 목표를 찾을 수 없습니다.' }, { status: 404 })
+      return NextResponse.json({ error: '행동 목표를 찾을 수 없습니다.' }, { status: 404 })
     }
 
     const tokenGranted = goal.token_per_occurrence * occurrenceCount
@@ -47,8 +47,8 @@ export async function POST(request: Request) {
       .single()
 
     if (error) {
-      console.error('PBS 체크 입력 오류:', error)
-      return NextResponse.json({ error: 'PBS 체크 입력에 실패했습니다.' }, { status: 500 })
+      console.error('행동 체크 입력 오류:', error)
+      return NextResponse.json({ error: '행동 체크 입력에 실패했습니다.' }, { status: 500 })
     }
 
     return NextResponse.json({
@@ -60,7 +60,7 @@ export async function POST(request: Request) {
   }
 }
 
-// GET /api/pbs/records — PBS 체크 기록 조회
+// GET /api/pbs/records — 행동 체크 기록 조회
 export async function GET(request: Request) {
   try {
     const session = await getSession()

@@ -32,6 +32,7 @@
   ],
   "exclude": [
     "node_modules",
-    "iepon_tool_5"
+    "iepon_tool_5",
+    "e2e"
   ]
 }

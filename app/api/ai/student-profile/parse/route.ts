@@ -90,8 +90,9 @@ ${referenceContext ? `\n${referenceContext}` : ''}
 3. 없는 정보는 지어내지 말고 빈값 또는 빈 배열로 둡니다.
 4. 위험요인, 감각 기능, 자해/타해는 안전 플래그를 우선 정리합니다.
 5. follow_up_questions는 정말 필요한 누락 정보만 2~4개 생성합니다.
-6. public_safe_summary에는 학생에게 보여도 안전한 표현만 넣고, 민감한 위험요인은 제외합니다.
-7. private_teacher_notes에는 교사용 주의 메모를 짧게 정리합니다.
+6. public_cue에는 학생에게 보여도 안전한 문구만 넣습니다.
+7. public_safe_summary에는 학생에게 보여도 안전한 표현만 넣고, 민감한 위험요인은 제외합니다.
+8. private_teacher_notes에는 교사용 주의 메모를 짧게 정리합니다.
 
 반드시 아래 JSON 형태만 반환하세요:
 {
@@ -116,6 +117,13 @@ ${referenceContext ? `\n${referenceContext}` : ''}
     "dro_candidate": "string",
     "student_registration_summary": "string",
     "ai_plan_one_liner": "string",
+    "public_cue": {
+      "todayGoal": "string",
+      "replacementBehavior": "string",
+      "selfCheckPrompts": ["string"],
+      "reinforcerLabel": "string",
+      "encouragementTone": "cheer|calm|focus"
+    },
     "public_safe_summary": "string",
     "private_teacher_notes": "string"
   },

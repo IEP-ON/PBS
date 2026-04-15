@@ -14,7 +14,7 @@ interface Transaction {
 
 const TYPE_LABELS: Record<string, string> = {
   salary_basic: '출석 기본급',
-  salary_pbs: 'PBS 성과급',
+  salary_pbs: '행동 목표 성과급',
   salary_bonus: '개근 보너스',
   salary_interest: '이자',
   purchase: '가게 구매',

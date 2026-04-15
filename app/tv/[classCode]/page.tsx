@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import { formatCurrency } from '@/lib/utils'
+import type { PublicCue, TvSettings } from '@/types'
 
 interface StudentRanking {
   id: string
@@ -11,6 +12,7 @@ interface StudentRanking {
   balance: number
   todayEarned: number
   rank: number
+  publicCue: Pick<PublicCue, 'todayGoal' | 'encouragementTone'> | null
 }
 
 interface ShopItem {
@@ -34,6 +36,10 @@ interface StockSnapshot {
 }
 
 type SortMode = 'balance' | 'today'
+const DEFAULT_TV_SETTINGS: TvSettings = {
+  anonymizeName: false,
+  showTicker: true,
+}
 
 const MEDAL = ['🥇', '🥈', '🥉']
 
@@ -50,6 +56,18 @@ function getStockChange(stock: StockSnapshot) {
   return { change, percent }
 }
 
+function maskStudentName(name: string) {
+  if (!name) return ''
+  if (name.length <= 1) return '○'
+  return `${name[0]}${'○'.repeat(name.length - 1)}`
+}
+
+function getTickerToneClass(tone?: PublicCue['encouragementTone']) {
+  if (tone === 'focus') return 'text-amber-200'
+  if (tone === 'calm') return 'text-sky-200'
+  return 'text-emerald-200'
+}
+
 export default function TvModePage() {
   const params = useParams()
   const classCode = params.classCode as string
@@ -61,6 +79,8 @@ export default function TvModePage() {
   const [loading, setLoading] = useState(true)
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date())
   const [className, setClassName] = useState('')
+  const [tvSettings, setTvSettings] = useState<TvSettings>(DEFAULT_TV_SETTINGS)
+  const [tickerIndex, setTickerIndex] = useState(0)
 
   const loadRankings = useCallback(async () => {
     try {
@@ -71,6 +91,7 @@ export default function TvModePage() {
       setShopItems(data.shopItems || [])
       setStocks(data.stocks || [])
       setClassName(data.className || '')
+      setTvSettings(data.tvSettings || DEFAULT_TV_SETTINGS)
       setLastUpdated(new Date())
     } catch {
       // silent
@@ -93,6 +114,26 @@ export default function TvModePage() {
   const rest = sorted.slice(3)
   const visibleShopItems = shopItems.slice(0, 6)
   const visibleStocks = stocks.slice(0, 6)
+  const tickerItems = sorted.filter((student) => student.publicCue?.todayGoal)
+  const currentTicker = tickerItems.length > 0 ? tickerItems[tickerIndex % tickerItems.length] : null
+
+  useEffect(() => {
+    if (!tvSettings.showTicker || tickerItems.length <= 1) return
+
+    const interval = window.setInterval(() => {
+      setTickerIndex((prev) => (prev + 1) % tickerItems.length)
+    }, 10000)
+
+    return () => window.clearInterval(interval)
+  }, [tickerItems.length, tvSettings.showTicker])
+
+  useEffect(() => {
+    setTickerIndex(0)
+  }, [tvSettings.showTicker, rankings.length])
+
+  const displayName = useCallback((name: string) => {
+    return tvSettings.anonymizeName ? maskStudentName(name) : name
+  }, [tvSettings.anonymizeName])
 
   if (loading) {
     return (
@@ -207,7 +248,7 @@ export default function TvModePage() {
                           {MEDAL[origIdx]}
                         </span>
                         <p className={`font-black text-center leading-snug tracking-tight ${isFirst ? 'text-[1.4rem] text-amber-100' : 'text-xl text-white/85'}`}>
-                          {student.name}
+                          {displayName(student.name)}
                         </p>
                         <p className="text-[11px] text-white/30 font-semibold">LV.{student.pbs_stage}</p>
                         <p className={`font-black tabular-nums ${isFirst ? 'text-2xl text-amber-300' : 'text-xl text-white/75'}`}>
@@ -245,7 +286,7 @@ export default function TvModePage() {
                           {idx + 4}
                         </span>
                         <div className="flex-1 min-w-0">
-                          <p className="font-bold text-white/85 text-sm truncate leading-tight">{student.name}</p>
+                          <p className="font-bold text-white/85 text-sm truncate leading-tight">{displayName(student.name)}</p>
                           <p className="text-[10px] text-white/30 font-semibold">LV.{student.pbs_stage}</p>
                         </div>
                         <p className="text-sm font-black text-white/75 tabular-nums shrink-0">
@@ -362,6 +403,24 @@ export default function TvModePage() {
 
         </aside>
       </div>
+
+      {tvSettings.showTicker && currentTicker?.publicCue?.todayGoal && (
+        <footer className="shrink-0 flex items-center gap-4 border-t border-white/[0.05] px-5 py-3">
+          <span className="rounded-full bg-white/10 px-3 py-1 text-[10px] font-bold tracking-[0.28em] text-white/55 uppercase">
+            Today Goal
+          </span>
+          <p className="min-w-0 flex-1 truncate text-sm font-semibold text-white/85">
+            <span className="text-white">{displayName(currentTicker.name)}</span>
+            <span className="mx-2 text-white/25">·</span>
+            <span className={getTickerToneClass(currentTicker.publicCue.encouragementTone)}>
+              {currentTicker.publicCue.todayGoal}
+            </span>
+          </p>
+          <span className="text-[10px] text-white/25">
+            {tickerItems.length > 1 ? `${tickerIndex + 1}/${tickerItems.length}` : '1/1'}
+          </span>
+        </footer>
+      )}
     </div>
   )
 }

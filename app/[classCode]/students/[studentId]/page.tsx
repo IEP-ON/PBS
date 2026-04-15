@@ -9,7 +9,10 @@ import LevelUpButton from './LevelUpButton'
 import AiBehaviorPlan from './AiBehaviorPlan'
 import GoalDeleteButton from './GoalDeleteButton'
 import InterventionDeleteButton from './InterventionDeleteButton'
+import StudentSupportTabs from './StudentSupportTabs'
+import PrintableSupportPlan from './PrintableSupportPlan'
 import { buildFeatureOutputs, mapStudentAiProfile } from '@/lib/ai-profile'
+import { redactForParent } from '@/lib/support/sanitize-for-parent'
 
 export default async function StudentDetailPage({
   params,
@@ -40,6 +43,7 @@ export default async function StudentDetailPage({
 
   const aiProfile = aiProfileRow ? mapStudentAiProfile(aiProfileRow as Record<string, unknown>) : null
   const aiFeatureOutputs = buildFeatureOutputs(aiProfile)
+  const parentSafeProfile = aiProfile ? redactForParent(aiProfile) : null
 
   // PBS 목표
   const { data: goals } = await supabase
@@ -89,6 +93,422 @@ export default async function StudentDetailPage({
     .select('contract_title, target_behavior, achievement_criteria, reward_amount, is_active')
     .eq('student_id', studentId)
     .eq('is_active', true)
+
+  const fourteenDaysAgo = new Date()
+  fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 13)
+  const fourteenDayKey = fourteenDaysAgo.toISOString().split('T')[0]
+
+  const [{ data: fbaRecords }, { data: alerts }, { data: reviewRecords }, { data: runningDroTimer }] = await Promise.all([
+    supabase
+      .from('pbs_fba_records')
+      .select('id, behavior_description, estimated_function, confidence, created_at')
+      .eq('student_id', studentId)
+      .order('created_at', { ascending: false })
+      .limit(5),
+    supabase
+      .from('pbs_extinction_alerts')
+      .select('id, risk_level, description, created_at')
+      .eq('student_id', studentId)
+      .eq('is_resolved', false)
+      .order('created_at', { ascending: false })
+      .limit(5),
+    supabase
+      .from('pbs_records')
+      .select('record_date, occurrence_count, token_granted')
+      .eq('student_id', studentId)
+      .gte('record_date', fourteenDayKey)
+      .order('record_date', { ascending: false }),
+    supabase
+      .from('pbs_dro_timers')
+      .select('id, started_at, ends_at, reset_count, pbs_goals(behavior_name, token_per_occurrence)')
+      .eq('student_id', studentId)
+      .eq('status', 'running')
+      .order('started_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ])
+
+  const trendMap = new Map<string, { date: string; tokens: number; occurrences: number }>()
+  for (const record of reviewRecords || []) {
+    const current = trendMap.get(record.record_date) || {
+      date: record.record_date,
+      tokens: 0,
+      occurrences: 0,
+    }
+    current.tokens += record.token_granted || 0
+    current.occurrences += record.occurrence_count || 0
+    trendMap.set(record.record_date, current)
+  }
+  const trendRows = Array.from(trendMap.values()).sort((a, b) => a.date.localeCompare(b.date))
+  const reviewTotalTokens = trendRows.reduce((sum, row) => sum + row.tokens, 0)
+  const reviewTotalOccurrences = trendRows.reduce((sum, row) => sum + row.occurrences, 0)
+  const createdDate = new Date().toLocaleDateString('ko-KR')
+
+  const runningDroGoal = (() => {
+    const raw = runningDroTimer?.pbs_goals as unknown
+    if (!raw) return null
+    if (Array.isArray(raw)) return raw[0] as { behavior_name: string; token_per_occurrence: number } | undefined
+    return raw as { behavior_name: string; token_per_occurrence: number }
+  })()
+
+  const overviewContent = (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="bg-white rounded-2xl border border-gray-100 p-4 text-center">
+          <p className="text-xs text-gray-500">총 수입</p>
+          <p className="text-lg font-bold text-green-600">{formatCurrency(account?.total_earned || 0)}</p>
+        </div>
+        <div className="bg-white rounded-2xl border border-gray-100 p-4 text-center">
+          <p className="text-xs text-gray-500">총 지출</p>
+          <p className="text-lg font-bold text-red-500">{formatCurrency(account?.total_spent || 0)}</p>
+        </div>
+        <div className="bg-white rounded-2xl border border-gray-100 p-4 text-center">
+          <p className="text-xs text-gray-500">오늘 획득</p>
+          <p className="text-lg font-bold text-amber-600">{formatCurrency(todayEarned)}</p>
+        </div>
+      </div>
+
+      <div>
+        <h2 className="text-lg font-bold text-gray-900 mb-3">오늘 행동 체크 기록</h2>
+        {todayRecords && todayRecords.length > 0 ? (
+          <div className="bg-white rounded-2xl border border-gray-100 divide-y divide-gray-50">
+            {todayRecords.map((record) => (
+              <div key={record.id} className="px-4 py-3 flex items-center justify-between">
+                <div>
+                  <p className="font-medium text-gray-900">{record.pbs_goals?.behavior_name}</p>
+                  <p className="text-sm text-gray-500">{record.occurrence_count}회</p>
+                </div>
+                <p className="font-bold text-green-600">+{formatCurrency(record.token_granted)}</p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="bg-white rounded-2xl border border-gray-100 p-8 text-center">
+            <p className="text-gray-400 text-sm">오늘 기록된 행동 체크가 없습니다.</p>
+          </div>
+        )}
+      </div>
+
+      <div className="bg-white rounded-2xl border border-gray-100 p-4 text-center space-y-3">
+        <p className="text-xs text-gray-500">QR코드: <span className="font-mono">{student.qr_code}</span></p>
+        <QrCardButton studentId={studentId} />
+      </div>
+    </div>
+  )
+
+  const assessmentContent = (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-lg font-bold text-gray-900 mb-3">행동 원인 분석 기록</h2>
+        {fbaRecords && fbaRecords.length > 0 ? (
+          <div className="space-y-3">
+            {fbaRecords.map((record) => (
+              <div key={record.id} className="bg-white rounded-2xl border border-gray-100 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-semibold text-gray-900">{record.behavior_description}</p>
+                    <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                      {record.estimated_function && (
+                        <span className="rounded-full bg-purple-100 px-2 py-0.5 font-medium text-purple-700">
+                          기능: {record.estimated_function}
+                        </span>
+                      )}
+                      {record.confidence && (
+                        <span className="rounded-full bg-gray-100 px-2 py-0.5 font-medium text-gray-600">
+                          신뢰도: {record.confidence}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-400 whitespace-nowrap">
+                    {new Date(record.created_at).toLocaleDateString('ko-KR', {
+                      month: 'short',
+                      day: 'numeric',
+                    })}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="bg-white rounded-2xl border border-gray-100 p-8 text-center">
+            <p className="text-gray-400 text-sm">아직 기록된 행동 원인 분석이 없습니다.</p>
+            <Link href={`/${classCode}/fba`} className="inline-block mt-3 text-sm text-blue-600 hover:text-blue-700">
+              행동 원인 분석 기록하기 →
+            </Link>
+          </div>
+        )}
+      </div>
+
+      <AiBehaviorPlan
+        studentId={studentId}
+        studentName={student.name}
+        grade={student.grade}
+        classCode={classCode}
+        initialProfile={aiProfile}
+      />
+    </div>
+  )
+
+  const planContent = (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-lg font-bold text-gray-900 mb-3">행동 목표</h2>
+        {(!goals || goals.length === 0) ? (
+          <div className="bg-white rounded-2xl border border-gray-100 p-8 text-center">
+            <p className="text-gray-400 text-sm">등록된 목표가 없습니다.</p>
+            <Link
+              href={`/${classCode}/pbs`}
+              className="inline-block mt-3 text-sm text-blue-600 hover:text-blue-700"
+            >
+              행동 목표 체크에서 추가 →
+            </Link>
+          </div>
+        ) : (
+          <div className="grid gap-3">
+            {goals.map((goal) => (
+              <div key={goal.id} className="bg-white rounded-2xl border border-gray-100 p-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <p className="font-bold text-gray-900">{goal.behavior_name}</p>
+                  {goal.strategy_type && (
+                    <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">
+                      {goal.strategy_type}
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-3 self-start md:self-auto">
+                  <p className="font-bold text-blue-600">{formatCurrency(goal.token_per_occurrence)}/회</p>
+                  <GoalDeleteButton goalId={goal.id} goalName={goal.behavior_name} />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div>
+        <h2 className="text-lg font-bold text-gray-900 mb-3">중재 전략</h2>
+        {(!interventions || interventions.length === 0) ? (
+          <div className="bg-white rounded-2xl border border-gray-100 p-8 text-center">
+            <p className="text-gray-400 text-sm">학생에게 연결된 중재 전략이 없습니다.</p>
+          </div>
+        ) : (
+          <div className="grid gap-3 xl:grid-cols-2">
+            {interventions.map((intervention) => (
+              <div key={intervention.id} className="bg-white rounded-2xl border border-gray-100 p-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <p className="font-bold text-gray-900">{intervention.name_ko}</p>
+                  <p className="mt-1 text-xs text-gray-500">
+                    근거수준: {intervention.evidence_level === 'strong' ? '강함' : intervention.evidence_level === 'moderate' ? '중간' : '신규'}
+                  </p>
+                </div>
+                <InterventionDeleteButton
+                  strategyId={intervention.id}
+                  strategyName={intervention.name_ko}
+                  studentId={studentId}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+
+  const executeContent = (
+    <div className="space-y-6">
+      {runningDroTimer && runningDroGoal && (
+        <div className="bg-white rounded-2xl border border-orange-200 p-4">
+          <p className="text-sm font-bold text-orange-700">⏱️ 실행 중인 강화 타이머</p>
+          <p className="mt-2 text-lg font-bold text-gray-900">{runningDroGoal.behavior_name}</p>
+          <p className="mt-1 text-sm text-gray-600">
+            보상 {formatCurrency(runningDroGoal.token_per_occurrence)} · 리셋 {runningDroTimer.reset_count}회
+          </p>
+          <p className="mt-1 text-xs text-gray-400">
+            시작 {new Date(runningDroTimer.started_at).toLocaleString('ko-KR')} · 종료 {new Date(runningDroTimer.ends_at).toLocaleString('ko-KR')}
+          </p>
+        </div>
+      )}
+
+      {contracts && contracts.length > 0 && (
+        <div>
+          <h2 className="text-lg font-bold text-gray-900 mb-3">행동 약속 계약서</h2>
+          <div className="space-y-3">
+            {contracts.map((c, i) => (
+              <div key={i} className="bg-white rounded-2xl border border-green-200 p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <p className="font-bold text-gray-900">{c.contract_title}</p>
+                  <span className="text-xs bg-green-100 text-green-600 px-2 py-0.5 rounded-full">진행중</span>
+                </div>
+                <p className="text-sm text-gray-600">{c.target_behavior}</p>
+                {c.achievement_criteria && (
+                  <p className="text-xs text-gray-500 mt-1">목표: {c.achievement_criteria}</p>
+                )}
+                {c.reward_amount > 0 && (
+                  <p className="text-xs text-green-600 mt-1">달성 보상: {formatCurrency(c.reward_amount)}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {holdings && holdings.length > 0 && (
+        <div>
+          <h2 className="text-lg font-bold text-gray-900 mb-3">📈 보유 주식</h2>
+          <div className="bg-white rounded-2xl border border-gray-100 divide-y divide-gray-50">
+            {holdings.map((h, i) => (
+              <div key={i} className="px-4 py-3 flex items-center justify-between">
+                <div>
+                  <p className="font-medium text-gray-900">{h.stock_name}</p>
+                  <p className="text-xs text-gray-400">평단 {formatCurrency(h.avg_buy_price)} · {h.stock_type}</p>
+                </div>
+                <p className="font-bold text-blue-600">{h.quantity}주</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div>
+        <h2 className="text-lg font-bold text-gray-900 mb-3">최근 거래내역</h2>
+        {(!transactions || transactions.length === 0) ? (
+          <div className="bg-white rounded-2xl border border-gray-100 p-8 text-center">
+            <p className="text-gray-400 text-sm">거래 내역이 없습니다.</p>
+          </div>
+        ) : (
+          <div className="bg-white rounded-2xl border border-gray-100 divide-y divide-gray-50">
+            {transactions.map((tx) => (
+              <div key={tx.id} className="px-4 py-3 flex items-center justify-between">
+                <div>
+                  <p className="font-medium text-gray-900 text-sm">{tx.description}</p>
+                  <p className="text-xs text-gray-400">
+                    {new Date(tx.created_at).toLocaleDateString('ko-KR', {
+                      month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
+                    })}
+                  </p>
+                </div>
+                <p className={`font-bold text-sm ${tx.amount >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                  {tx.amount >= 0 ? '+' : ''}{formatCurrency(tx.amount)}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+
+  const reviewContent = (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="bg-white rounded-2xl border border-gray-100 p-4 text-center">
+          <p className="text-xs text-gray-500">미해결 알림</p>
+          <p className="text-lg font-bold text-red-500">{alerts?.length || 0}건</p>
+        </div>
+        <div className="bg-white rounded-2xl border border-gray-100 p-4 text-center">
+          <p className="text-xs text-gray-500">14일 토큰 합계</p>
+          <p className="text-lg font-bold text-amber-600">{formatCurrency(reviewTotalTokens)}</p>
+        </div>
+        <div className="bg-white rounded-2xl border border-gray-100 p-4 text-center">
+          <p className="text-xs text-gray-500">14일 체크 횟수</p>
+          <p className="text-lg font-bold text-blue-600">{reviewTotalOccurrences}회</p>
+        </div>
+      </div>
+
+      <div>
+        <h2 className="text-lg font-bold text-gray-900 mb-3">소거 위험 경보</h2>
+        {alerts && alerts.length > 0 ? (
+          <div className="space-y-3">
+            {alerts.map((alert) => (
+              <div key={alert.id} className="bg-white rounded-2xl border border-red-100 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="font-semibold text-gray-900">{alert.description}</p>
+                    <p className="mt-1 text-xs text-gray-500">위험도: {alert.risk_level}</p>
+                  </div>
+                  <p className="text-xs text-gray-400 whitespace-nowrap">
+                    {new Date(alert.created_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="bg-white rounded-2xl border border-gray-100 p-8 text-center">
+            <p className="text-gray-400 text-sm">현재 미해결 소거 위험 경보가 없습니다.</p>
+          </div>
+        )}
+      </div>
+
+      <div>
+        <h2 className="text-lg font-bold text-gray-900 mb-3">최근 14일 기록 추세</h2>
+        {trendRows.length > 0 ? (
+          <div className="bg-white rounded-2xl border border-gray-100 divide-y divide-gray-50">
+            {trendRows.map((row) => (
+              <div key={row.date} className="px-4 py-3 flex items-center justify-between">
+                <div>
+                  <p className="font-medium text-gray-900">{row.date}</p>
+                  <p className="text-xs text-gray-400">{row.occurrences}회 체크</p>
+                </div>
+                <p className="font-bold text-amber-600">+{formatCurrency(row.tokens)}</p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="bg-white rounded-2xl border border-gray-100 p-8 text-center">
+            <p className="text-gray-400 text-sm">최근 14일 기록 추세가 없습니다.</p>
+          </div>
+        )}
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-3">
+        <Link href={`/${classCode}/support?view=alerts`} className="bg-white rounded-2xl border border-gray-100 p-4 hover:shadow-sm transition-shadow">
+          <p className="text-sm font-bold text-gray-900">🚨 경보 관리</p>
+          <p className="mt-1 text-xs text-gray-500">소거 위험 경보 페이지로 이동</p>
+        </Link>
+        <Link href={`/${classCode}/token-economy`} className="bg-white rounded-2xl border border-gray-100 p-4 hover:shadow-sm transition-shadow">
+          <p className="text-sm font-bold text-gray-900">💰 경제 건강도</p>
+          <p className="mt-1 text-xs text-gray-500">토큰 경제 점검 보기</p>
+        </Link>
+        <Link href={`/${classCode}/support`} className="bg-white rounded-2xl border border-gray-100 p-4 hover:shadow-sm transition-shadow">
+          <p className="text-sm font-bold text-gray-900">🧠 행동 지원 계획</p>
+          <p className="mt-1 text-xs text-gray-500">학생 지원 허브로 바로가기</p>
+        </Link>
+      </div>
+
+      <PrintableSupportPlan
+        studentName={student.name}
+        grade={student.grade}
+        createdDate={createdDate}
+        currentLevelSummary={parentSafeProfile?.current_level_summary || null}
+        strengths={parentSafeProfile?.strengths || []}
+        preferences={parentSafeProfile?.preferences || []}
+        goals={(goals || []).map((goal) => ({
+          id: goal.id,
+          behaviorName: goal.behavior_name,
+          tokenPerOccurrence: goal.token_per_occurrence,
+          dailyTarget: goal.daily_target,
+          strategyType: goal.strategy_type || null,
+        }))}
+        contracts={(contracts || []).map((contract) => ({
+          title: contract.contract_title,
+          targetBehavior: contract.target_behavior,
+          achievementCriteria: contract.achievement_criteria,
+          rewardAmount: contract.reward_amount,
+        }))}
+        todayEarned={todayEarned}
+        fourteenDayTokens={reviewTotalTokens}
+        fourteenDayOccurrences={reviewTotalOccurrences}
+        runningDro={runningDroGoal && runningDroTimer ? {
+          behaviorName: runningDroGoal.behavior_name,
+          rewardAmount: runningDroGoal.token_per_occurrence,
+          resetCount: runningDroTimer.reset_count,
+        } : null}
+        trendRows={trendRows}
+      />
+    </div>
+  )
 
   return (
     <div className="tablet-page space-y-6">
@@ -157,186 +577,13 @@ export default async function StudentDetailPage({
         )}
       </div>
 
-      {/* 요약 카드 */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        <div className="bg-white rounded-2xl border border-gray-100 p-4 text-center">
-          <p className="text-xs text-gray-500">총 수입</p>
-          <p className="text-lg font-bold text-green-600">{formatCurrency(account?.total_earned || 0)}</p>
-        </div>
-        <div className="bg-white rounded-2xl border border-gray-100 p-4 text-center">
-          <p className="text-xs text-gray-500">총 지출</p>
-          <p className="text-lg font-bold text-red-500">{formatCurrency(account?.total_spent || 0)}</p>
-        </div>
-        <div className="bg-white rounded-2xl border border-gray-100 p-4 text-center">
-          <p className="text-xs text-gray-500">오늘 획득</p>
-          <p className="text-lg font-bold text-amber-600">{formatCurrency(todayEarned)}</p>
-        </div>
-      </div>
-
-      {/* PBS 목표 */}
-      <div>
-        <h2 className="text-lg font-bold text-gray-900 mb-3">PBS 행동 목표</h2>
-        {(!goals || goals.length === 0) ? (
-          <div className="bg-white rounded-2xl border border-gray-100 p-8 text-center">
-            <p className="text-gray-400 text-sm">등록된 목표가 없습니다.</p>
-            <Link
-              href={`/${classCode}/pbs`}
-              className="inline-block mt-3 text-sm text-blue-600 hover:text-blue-700"
-            >
-              PBS 체크에서 목표 추가 →
-            </Link>
-          </div>
-        ) : (
-          <div className="grid gap-3">
-            {goals.map((goal) => (
-              <div key={goal.id} className="bg-white rounded-2xl border border-gray-100 p-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                <div>
-                  <p className="font-bold text-gray-900">{goal.behavior_name}</p>
-                  {goal.strategy_type && (
-                    <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">
-                      {goal.strategy_type}
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-center gap-3 self-start md:self-auto">
-                  <p className="font-bold text-blue-600">{formatCurrency(goal.token_per_occurrence)}/회</p>
-                  <GoalDeleteButton goalId={goal.id} goalName={goal.behavior_name} />
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div>
-        <h2 className="text-lg font-bold text-gray-900 mb-3">행동 중재</h2>
-        {(!interventions || interventions.length === 0) ? (
-          <div className="bg-white rounded-2xl border border-gray-100 p-8 text-center">
-            <p className="text-gray-400 text-sm">학생에게 연결된 중재 전략이 없습니다.</p>
-          </div>
-        ) : (
-          <div className="grid gap-3 xl:grid-cols-2">
-            {interventions.map((intervention) => (
-              <div key={intervention.id} className="bg-white rounded-2xl border border-gray-100 p-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                <div>
-                  <p className="font-bold text-gray-900">{intervention.name_ko}</p>
-                  <p className="mt-1 text-xs text-gray-500">
-                    근거수준: {intervention.evidence_level === 'strong' ? '강함' : intervention.evidence_level === 'moderate' ? '중간' : '신규'}
-                  </p>
-                </div>
-                <InterventionDeleteButton
-                  strategyId={intervention.id}
-                  strategyName={intervention.name_ko}
-                  studentId={studentId}
-                />
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* 오늘 PBS 기록 */}
-      {todayRecords && todayRecords.length > 0 && (
-        <div>
-          <h2 className="text-lg font-bold text-gray-900 mb-3">오늘 PBS 기록</h2>
-          <div className="bg-white rounded-2xl border border-gray-100 divide-y divide-gray-50">
-            {todayRecords.map((record) => (
-              <div key={record.id} className="px-4 py-3 flex items-center justify-between">
-                <div>
-                  <p className="font-medium text-gray-900">{record.pbs_goals?.behavior_name}</p>
-                  <p className="text-sm text-gray-500">{record.occurrence_count}회</p>
-                </div>
-                <p className="font-bold text-green-600">+{formatCurrency(record.token_granted)}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* 보유 주식 */}
-      {holdings && holdings.length > 0 && (
-        <div>
-          <h2 className="text-lg font-bold text-gray-900 mb-3">📈 보유 주식</h2>
-          <div className="bg-white rounded-2xl border border-gray-100 divide-y divide-gray-50">
-            {holdings.map((h, i) => (
-              <div key={i} className="px-4 py-3 flex items-center justify-between">
-                <div>
-                  <p className="font-medium text-gray-900">{h.stock_name}</p>
-                  <p className="text-xs text-gray-400">평단 {formatCurrency(h.avg_buy_price)} · {h.stock_type}</p>
-                </div>
-                <p className="font-bold text-blue-600">{h.quantity}주</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* 활성 계약서 */}
-      {contracts && contracts.length > 0 && (
-        <div>
-          <h2 className="text-lg font-bold text-gray-900 mb-3">📝 행동계약서</h2>
-          <div className="space-y-3">
-            {contracts.map((c, i) => (
-              <div key={i} className="bg-white rounded-2xl border border-green-200 p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <p className="font-bold text-gray-900">{c.contract_title}</p>
-                  <span className="text-xs bg-green-100 text-green-600 px-2 py-0.5 rounded-full">진행중</span>
-                </div>
-                <p className="text-sm text-gray-600">{c.target_behavior}</p>
-                {c.achievement_criteria && (
-                  <p className="text-xs text-gray-500 mt-1">목표: {c.achievement_criteria}</p>
-                )}
-                {c.reward_amount > 0 && (
-                  <p className="text-xs text-green-600 mt-1">달성 보상: {formatCurrency(c.reward_amount)}</p>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* 최근 거래내역 */}
-      <div>
-        <h2 className="text-lg font-bold text-gray-900 mb-3">최근 거래내역</h2>
-        {(!transactions || transactions.length === 0) ? (
-          <div className="bg-white rounded-2xl border border-gray-100 p-8 text-center">
-            <p className="text-gray-400 text-sm">거래 내역이 없습니다.</p>
-          </div>
-        ) : (
-          <div className="bg-white rounded-2xl border border-gray-100 divide-y divide-gray-50">
-            {transactions.map((tx) => (
-              <div key={tx.id} className="px-4 py-3 flex items-center justify-between">
-                <div>
-                  <p className="font-medium text-gray-900 text-sm">{tx.description}</p>
-                  <p className="text-xs text-gray-400">
-                    {new Date(tx.created_at).toLocaleDateString('ko-KR', {
-                      month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
-                    })}
-                  </p>
-                </div>
-                <p className={`font-bold text-sm ${tx.amount >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-                  {tx.amount >= 0 ? '+' : ''}{formatCurrency(tx.amount)}
-                </p>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* AI 행동 지원 계획 */}
-      <AiBehaviorPlan
-        studentId={studentId}
-        studentName={student.name}
-        grade={student.grade}
-        classCode={classCode}
-        initialProfile={aiProfile}
+      <StudentSupportTabs
+        overview={overviewContent}
+        assessment={assessmentContent}
+        plan={planContent}
+        execute={executeContent}
+        review={reviewContent}
       />
-
-      {/* QR 코드 */}
-      <div className="bg-white rounded-2xl border border-gray-100 p-4 text-center space-y-3">
-        <p className="text-xs text-gray-500">QR코드: <span className="font-mono">{student.qr_code}</span></p>
-        <QrCardButton studentId={studentId} />
-      </div>
     </div>
   )
 }

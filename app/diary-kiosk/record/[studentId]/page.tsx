@@ -1,9 +1,24 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
+import type { PublicCue } from '@/types'
 
 type RecordingState = 'idle' | 'recording' | 'processing'
+
+function readStoredPublicCue(studentId: string): PublicCue | null {
+  if (typeof window === 'undefined') return null
+
+  try {
+    const raw = sessionStorage.getItem('speech-diary-student')
+    if (!raw) return null
+
+    const parsed = JSON.parse(raw) as { studentId?: string; publicCue?: PublicCue | null }
+    return parsed.studentId === studentId ? parsed.publicCue || null : null
+  } catch {
+    return null
+  }
+}
 
 export default function DiaryRecordPage() {
   const AUTO_START_COUNTDOWN = 5
@@ -21,6 +36,7 @@ export default function DiaryRecordPage() {
   const [cameraReady, setCameraReady] = useState(false)
   const [snapshotCaptured, setSnapshotCaptured] = useState(false)
   const [error, setError] = useState('')
+  const publicCue = useMemo(() => readStoredPublicCue(studentId), [studentId])
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
@@ -244,6 +260,24 @@ export default function DiaryRecordPage() {
           <div className="mt-5 w-full rounded-[1.8rem] bg-white/80 px-6 py-5 text-center shadow-sm ring-1 ring-white/90 lg:text-left">
             <p className="text-lg font-black text-slate-900">오늘 있었던 일을 짧게 말해보세요</p>
             <p className="mt-2 text-sm text-slate-500">학교, 집, 급식, 친구, 주말 이야기 모두 괜찮아요.</p>
+            {publicCue?.todayGoal && (
+              <p className="mt-3 rounded-2xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
+                오늘의 목표 · {publicCue.todayGoal}
+              </p>
+            )}
+            {publicCue?.replacementBehavior && (
+              <p className="mt-2 text-sm text-emerald-700">대체행동 · {publicCue.replacementBehavior}</p>
+            )}
+            {publicCue?.selfCheckPrompts?.length ? (
+              <div className="mt-4 rounded-2xl bg-slate-50 px-4 py-3">
+                <p className="text-xs font-black uppercase tracking-[0.22em] text-slate-500">생각해볼 질문</p>
+                <ul className="mt-2 space-y-1 text-sm text-slate-700">
+                  {publicCue.selfCheckPrompts.map((prompt) => (
+                    <li key={prompt}>• {prompt}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
           </div>
         </div>
 
@@ -266,6 +300,16 @@ export default function DiaryRecordPage() {
                 <div className="flex h-28 w-28 items-center justify-center rounded-full bg-white text-5xl font-black text-slate-900 shadow-2xl">
                   {countdown}
                 </div>
+                {publicCue?.selfCheckPrompts?.length ? (
+                  <div className="mt-5 max-w-md rounded-2xl bg-white/92 px-5 py-4 text-left shadow-xl">
+                    <p className="text-xs font-black uppercase tracking-[0.22em] text-slate-500">생각해보고 말해요</p>
+                    <ul className="mt-2 space-y-1.5 text-sm font-medium text-slate-800">
+                      {publicCue.selfCheckPrompts.map((prompt) => (
+                        <li key={prompt}>• {prompt}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
               </div>
             )}
 

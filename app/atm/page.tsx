@@ -4,6 +4,7 @@ import type { FormEvent } from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { formatClassCodeInput, formatCurrency, normalizeClassCode } from '@/lib/utils'
+import type { PublicCue } from '@/types'
 
 type Mode = 'setup' | 'login' | 'dashboard' | 'scan_token' | 'scan_student' | 'shop' | 'stocks'
 type ScanTarget = 'student' | 'token' | null
@@ -14,6 +15,7 @@ interface StudentSession {
   studentName: string
   classCode: string
   balance: number
+  publicCue: PublicCue | null
 }
 
 interface ShopItem {
@@ -180,6 +182,7 @@ export default function AtmPage() {
             studentName: result.studentName,
             classCode: savedClassCode,
             balance: result.balance,
+            publicCue: result.publicCue || null,
           })
           setMode('dashboard')
           setStudentName('')
@@ -311,6 +314,7 @@ export default function AtmPage() {
           studentName: data.studentName,
           classCode: savedClassCode,
           balance: data.balance,
+          publicCue: data.publicCue || null,
         })
         setMode('dashboard')
         setStudentName('')
@@ -790,7 +794,16 @@ export default function AtmPage() {
           <p className="text-5xl font-bold text-blue-600">
             {session ? formatCurrency(session.balance) : '—'}
           </p>
-          <p className="text-xs text-gray-400">행복은행 토큰 경제</p>
+          <p className="text-xs text-gray-400">학급 보상 · 토큰 통장</p>
+          {session?.publicCue?.todayGoal && (
+            <div className="mt-4 rounded-2xl bg-blue-50 px-4 py-3 text-left">
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-500">오늘의 목표</p>
+              <p className="mt-1 text-sm font-semibold text-blue-900">{session.publicCue.todayGoal}</p>
+              {session.publicCue.replacementBehavior && (
+                <p className="mt-2 text-xs text-emerald-700">대체행동 · {session.publicCue.replacementBehavior}</p>
+              )}
+            </div>
+          )}
         </div>
 
         {/* 충전 결과 */}

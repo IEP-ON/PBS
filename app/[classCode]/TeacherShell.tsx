@@ -103,8 +103,8 @@ export default function TeacherShell({
                 ☰
               </button>
               <div className="min-w-0">
-                <p className="truncate text-sm font-black text-slate-900">교사 운영 화면</p>
-                <p className="truncate text-xs text-slate-500">갤럭시탭 가로 PWA 기준 레이아웃</p>
+                <p className="truncate text-sm font-black text-slate-900">PBS 토큰 이코노미</p>
+                <p className="truncate text-xs text-slate-500">{classCode} · 교사 운영</p>
               </div>
             </div>
 

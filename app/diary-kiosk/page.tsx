@@ -3,10 +3,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import type { PublicCue } from '@/types'
 
 type StudentLookup = {
   studentId: string
   name: string
+  publicCue?: PublicCue | null
 }
 
 export default function DiaryKioskPage() {
@@ -41,6 +43,11 @@ export default function DiaryKioskPage() {
     try {
       const cachedStudent = lookupCacheRef.current.get(qrCode)
       if (cachedStudent) {
+        sessionStorage.setItem('speech-diary-student', JSON.stringify({
+          studentId: cachedStudent.studentId,
+          name: cachedStudent.name,
+          publicCue: cachedStudent.publicCue || null,
+        }))
         router.push(`/diary-kiosk/record/${cachedStudent.studentId}?name=${encodeURIComponent(cachedStudent.name)}`)
         return
       }
@@ -59,7 +66,13 @@ export default function DiaryKioskPage() {
       lookupCacheRef.current.set(qrCode, {
         studentId: data.studentId,
         name: data.name,
+        publicCue: data.publicCue || null,
       })
+      sessionStorage.setItem('speech-diary-student', JSON.stringify({
+        studentId: data.studentId,
+        name: data.name,
+        publicCue: data.publicCue || null,
+      }))
       router.push(`/diary-kiosk/record/${data.studentId}?name=${encodeURIComponent(data.name)}`)
     } catch {
       setError('학생 조회 중 오류가 발생했습니다.')

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { getSession } from '@/lib/session'
 
-// PATCH /api/pbs/goals/[goalId] — PBS 목표 수정
+// PATCH /api/pbs/goals/[goalId] — 행동 목표 수정
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ goalId: string }> }
@@ -49,7 +49,7 @@ export async function PATCH(
       .single()
 
     if (error || !goal) {
-      return NextResponse.json({ error: 'PBS 목표 수정에 실패했습니다.' }, { status: 500 })
+      return NextResponse.json({ error: '행동 목표 수정에 실패했습니다.' }, { status: 500 })
     }
 
     return NextResponse.json({ goal })
@@ -58,7 +58,7 @@ export async function PATCH(
   }
 }
 
-// DELETE /api/pbs/goals/[goalId] — PBS 목표 완전 삭제
+// DELETE /api/pbs/goals/[goalId] — 행동 목표 완전 삭제
 export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ goalId: string }> }
@@ -80,7 +80,7 @@ export async function DELETE(
       .single()
 
     if (!goal) {
-      return NextResponse.json({ error: 'PBS 목표를 찾을 수 없습니다.' }, { status: 404 })
+      return NextResponse.json({ error: '행동 목표를 찾을 수 없습니다.' }, { status: 404 })
     }
 
     await supabase.from('pbs_extinction_alerts').delete().eq('goal_id', goalId)
@@ -94,7 +94,7 @@ export async function DELETE(
       .eq('class_code_id', session.classroomId)
 
     if (error) {
-      return NextResponse.json({ error: 'PBS 목표 삭제에 실패했습니다.' }, { status: 500 })
+      return NextResponse.json({ error: '행동 목표 삭제에 실패했습니다.' }, { status: 500 })
     }
 
     return NextResponse.json({ ok: true, goalName: goal.behavior_name })

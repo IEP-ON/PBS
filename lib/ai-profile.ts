@@ -1,4 +1,5 @@
 import type {
+  PublicCue,
   StudentAiFollowUpQuestion,
   StudentAiProfile,
   StudentFeatureOutputs,
@@ -26,6 +27,7 @@ const AI_PROFILE_ARRAY_FIELDS = [
 ] as const
 
 type AiProfileArrayField = (typeof AI_PROFILE_ARRAY_FIELDS)[number]
+const PUBLIC_CUE_TONES = ['cheer', 'calm', 'focus'] as const
 
 const EMPTY_PROFILE_ARRAYS = Object.fromEntries(
   AI_PROFILE_ARRAY_FIELDS.map((field) => [field, []])
@@ -70,6 +72,12 @@ export function sanitizeText(value: unknown): string | null {
   return trimmed ? trimmed : null
 }
 
+function sanitizeLimitedText(value: unknown, maxLength: number): string | null {
+  const text = sanitizeText(value)
+  if (!text) return null
+  return text.slice(0, maxLength)
+}
+
 export function sanitizeConfidenceMap(value: unknown): Record<string, string> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
 
@@ -78,6 +86,69 @@ export function sanitizeConfidenceMap(value: unknown): Record<string, string> {
       .map(([key, raw]) => [key, typeof raw === 'string' ? raw.trim() : ''])
       .filter(([key, raw]) => key && raw)
   )
+}
+
+export function sanitizePublicCue(value: unknown): PublicCue | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null
+
+  const raw = value as Record<string, unknown>
+  const todayGoal =
+    sanitizeLimitedText(raw.todayGoal ?? raw.today_goal, 60) ??
+    '오늘의 목표를 선생님과 함께 확인해 보세요.'
+  const replacementBehavior =
+    sanitizeLimitedText(raw.replacementBehavior ?? raw.replacement_behavior, 80) ?? ''
+  const selfCheckPrompts = normalizeStringArray(
+    raw.selfCheckPrompts ?? raw.self_check_prompts
+  )
+    .map((prompt) => prompt.slice(0, 80))
+    .slice(0, 3)
+  const reinforcerLabel =
+    sanitizeLimitedText(raw.reinforcerLabel ?? raw.reinforcer_label, 40) ?? undefined
+  const encouragementToneRaw = sanitizeText(
+    raw.encouragementTone ?? raw.encouragement_tone
+  )
+  const encouragementTone = PUBLIC_CUE_TONES.includes(
+    encouragementToneRaw as (typeof PUBLIC_CUE_TONES)[number]
+  )
+    ? (encouragementToneRaw as PublicCue['encouragementTone'])
+    : undefined
+
+  if (!todayGoal && !replacementBehavior && selfCheckPrompts.length === 0 && !reinforcerLabel) {
+    return null
+  }
+
+  return {
+    todayGoal,
+    replacementBehavior,
+    selfCheckPrompts,
+    ...(reinforcerLabel ? { reinforcerLabel } : {}),
+    ...(encouragementTone ? { encouragementTone } : {}),
+  }
+}
+
+export function buildFallbackPublicCue({
+  classModeTargets,
+  replacementBehaviors,
+  preferences,
+}: {
+  classModeTargets: string[]
+  replacementBehaviors: string[]
+  preferences: string[]
+}): PublicCue {
+  const todayGoal =
+    classModeTargets[0] ? `오늘의 목표는 ${classModeTargets[0]}예요.` : '오늘의 목표를 선생님과 함께 확인해 보세요.'
+  const replacementBehavior = replacementBehaviors[0] || ''
+  const selfCheckPrompts = classModeTargets[0]
+    ? [`오늘 ${classModeTargets[0]}를 해 보았나요?`]
+    : []
+
+  return {
+    todayGoal,
+    replacementBehavior,
+    selfCheckPrompts,
+    ...(preferences[0] ? { reinforcerLabel: preferences[0] } : {}),
+    encouragementTone: 'focus',
+  }
 }
 
 export function sanitizeAiProfilePayload(
@@ -119,6 +190,13 @@ export function sanitizeAiProfilePayload(
         currentLevelSummary: sanitizeText(payload.current_level_summary),
         observableBehaviors: arrays.observable_behaviors,
         supportNeeds: arrays.support_needs,
+      }),
+    public_cue:
+      sanitizePublicCue(payload.public_cue) ??
+      buildFallbackPublicCue({
+        classModeTargets: arrays.class_mode_targets,
+        replacementBehaviors: arrays.replacement_behaviors,
+        preferences: arrays.preferences,
       }),
     public_safe_summary:
       sanitizeText(payload.public_safe_summary) ??
@@ -165,6 +243,7 @@ export function mapStudentAiProfile(row: Record<string, unknown>): StudentAiProf
     dro_candidate: payload.dro_candidate,
     student_registration_summary: payload.student_registration_summary,
     ai_plan_one_liner: payload.ai_plan_one_liner,
+    public_cue: payload.public_cue,
     public_safe_summary: payload.public_safe_summary,
     private_teacher_notes: payload.private_teacher_notes,
     teacher_verified: Boolean(row.teacher_verified),
@@ -245,7 +324,14 @@ export function buildFeatureOutputs(profile: StudentAiProfile | null): StudentFe
     classModeTargets: profile?.class_mode_targets || [],
     pPromptOptions: profile?.p_prompt_options || [],
     incidentTags: profile?.incident_tags || [],
-    droCandidate: profile?.dro_candidate || 'DRO 후보 정보가 아직 없습니다.',
+    droCandidate: profile?.dro_candidate || '강화 타이머 후보 정보가 아직 없습니다.',
+    publicCue:
+      profile?.public_cue ||
+      buildFallbackPublicCue({
+        classModeTargets: profile?.class_mode_targets || [],
+        replacementBehaviors: profile?.replacement_behaviors || [],
+        preferences: profile?.preferences || [],
+      }),
     publicSafeSummary:
       profile?.public_safe_summary ||
       buildPublicSafeSummary({

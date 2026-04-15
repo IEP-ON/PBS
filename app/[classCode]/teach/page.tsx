@@ -292,7 +292,7 @@ export default function TeachPage() {
         <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 bg-green-700 text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 animate-in slide-in-from-top-2">
           <span className="text-2xl">⏱</span>
           <div>
-            <p className="font-bold text-sm">DRO 완료!</p>
+            <p className="font-bold text-sm">강화 타이머 완료!</p>
             <p className="text-xs text-green-200">
               {students.find(s => s.id === droAlert.studentId)?.name} · {droAlert.goalName}
             </p>
@@ -382,7 +382,7 @@ export default function TeachPage() {
                     <button
                       onClick={() => { openIncident(student.id); handleDroReset(student) }}
                       className="text-[10px] px-2 py-1 bg-gray-100 text-gray-500 rounded-lg"
-                      title="사건 기록 + DRO 리셋"
+                      title="사건 기록 + 강화 타이머 리셋"
                     >
                       📝
                     </button>
@@ -457,7 +457,7 @@ export default function TeachPage() {
               {/* 목표 없음 */}
               {student.goals.length === 0 && (
                 <div className="px-3 pb-3 text-center">
-                  <p className="text-xs text-gray-400">PBS 목표 없음</p>
+                  <p className="text-xs text-gray-400">행동 목표 없음</p>
                   <a href={`/${classCode}/pbs`} className="text-xs text-blue-500 underline">목표 추가 →</a>
                 </div>
               )}
@@ -563,7 +563,7 @@ export default function TeachPage() {
           <div className="w-full bg-white rounded-t-3xl p-5 space-y-4 animate-in slide-in-from-bottom-4 lg:max-h-[85dvh] lg:max-w-3xl lg:overflow-y-auto lg:rounded-[2rem]">
             <div className="w-12 h-1 bg-gray-300 rounded-full mx-auto mb-2" />
             <h2 className="text-lg font-bold text-gray-900">⚠️ 행동 사건 기록</h2>
-            <p className="text-xs text-gray-400">수업 중 즉시 기록 — FBA 탭에 자동 저장됩니다.</p>
+            <p className="text-xs text-gray-400">수업 중 즉시 기록 — 행동 원인 분석 화면에 자동 저장됩니다.</p>
 
             {/* 학생 선택 */}
             <div className="flex gap-2 overflow-x-auto pb-1">

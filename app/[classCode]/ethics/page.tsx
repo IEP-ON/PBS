@@ -246,7 +246,7 @@ export default function EthicsPage() {
                   >
                     <option value="behavior_contract">행동계약서</option>
                     <option value="response_cost">반응대가 동의서</option>
-                    <option value="fba_consent">FBA 동의서</option>
+                    <option value="fba_consent">행동 원인 분석(사정) 동의서</option>
                     <option value="data_privacy">개인정보 동의서</option>
                   </select>
                 </label>

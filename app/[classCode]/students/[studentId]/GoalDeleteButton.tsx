@@ -14,7 +14,7 @@ export default function GoalDeleteButton({
   const [deleting, setDeleting] = useState(false)
 
   const handleDelete = async () => {
-    if (!confirm(`'${goalName}' 목표를 삭제할까요? 관련 PBS 기록과 DRO/알림도 함께 삭제됩니다.`)) {
+    if (!confirm(`'${goalName}' 목표를 삭제할까요? 관련 행동 체크 기록과 강화 타이머·경보도 함께 삭제됩니다.`)) {
       return
     }
 

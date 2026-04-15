@@ -6,6 +6,7 @@ import {
   buildFeatureOutputs,
   normalizeStringArray,
   sanitizeConfidenceMap,
+  sanitizePublicCue,
   sanitizeText,
 } from '@/lib/ai-profile'
 import type { StudentAiFollowUpQuestion, StudentAiProfile } from '@/types'
@@ -123,6 +124,7 @@ function createEmptyProfile(sourceText = ''): EditableStudentAiProfile {
     dro_candidate: null,
     student_registration_summary: null,
     ai_plan_one_liner: null,
+    public_cue: null,
     public_safe_summary: null,
     private_teacher_notes: null,
     teacher_verified: false,
@@ -156,6 +158,7 @@ function profileToEditable(profile: StudentAiProfile | null): EditableStudentAiP
     dro_candidate: profile.dro_candidate,
     student_registration_summary: profile.student_registration_summary,
     ai_plan_one_liner: profile.ai_plan_one_liner,
+    public_cue: profile.public_cue,
     public_safe_summary: profile.public_safe_summary,
     private_teacher_notes: profile.private_teacher_notes,
     teacher_verified: profile.teacher_verified,
@@ -210,6 +213,7 @@ function normalizeEditableProfile(
     dro_candidate: sanitizeText(profile.dro_candidate),
     student_registration_summary: sanitizeText(profile.student_registration_summary),
     ai_plan_one_liner: sanitizeText(profile.ai_plan_one_liner),
+    public_cue: sanitizePublicCue(profile.public_cue),
     public_safe_summary: sanitizeText(profile.public_safe_summary),
     private_teacher_notes: sanitizeText(profile.private_teacher_notes),
     teacher_verified: Boolean(profile.teacher_verified),
@@ -439,8 +443,8 @@ export default function AiBehaviorPlan({
         rationale: fba.rationale,
       }),
     })
-    if (res.ok) setStatus('fba', 'done', `FBA 저장 완료 (${FUNCTION_LABELS[fba.estimatedFunction] || fba.estimatedFunction})`)
-    else setStatus('fba', 'error', 'FBA 저장 실패')
+    if (res.ok) setStatus('fba', 'done', `행동 원인 분석 저장 완료 (${FUNCTION_LABELS[fba.estimatedFunction] || fba.estimatedFunction})`)
+    else setStatus('fba', 'error', '행동 원인 분석 저장 실패')
   }
 
   const savePbsGoals = async (currentPlan = editedPlan) => {
@@ -471,7 +475,7 @@ export default function AiBehaviorPlan({
     setStatus(
       'pbs',
       success === currentPlan.pbsGoals.length ? 'done' : 'error',
-      `PBS 목표 ${success}/${currentPlan.pbsGoals.length}개 저장`
+      `행동 목표 ${success}/${currentPlan.pbsGoals.length}개 저장`
     )
   }
 
@@ -597,6 +601,71 @@ export default function AiBehaviorPlan({
       [field]: textToArray(value),
       teacher_verified: false,
     }))
+  }
+
+  const updatePublicCueText = (
+    field: 'todayGoal' | 'replacementBehavior' | 'reinforcerLabel',
+    value: string
+  ) => {
+    setProfile((prev) => {
+      const baseCue = prev.public_cue || featureOutputs.publicCue || {
+        todayGoal: '',
+        replacementBehavior: '',
+        selfCheckPrompts: [],
+        encouragementTone: 'cheer' as const,
+      }
+
+      return {
+        ...prev,
+        public_cue: {
+          ...baseCue,
+          ...(field === 'todayGoal' ? { todayGoal: value } : {}),
+          ...(field === 'replacementBehavior' ? { replacementBehavior: value } : {}),
+          ...(field === 'reinforcerLabel' ? { reinforcerLabel: value.trim() || undefined } : {}),
+        },
+        teacher_verified: false,
+      }
+    })
+  }
+
+  const updatePublicCuePrompts = (value: string) => {
+    setProfile((prev) => {
+      const baseCue = prev.public_cue || featureOutputs.publicCue || {
+        todayGoal: '',
+        replacementBehavior: '',
+        selfCheckPrompts: [],
+        encouragementTone: 'cheer' as const,
+      }
+
+      return {
+        ...prev,
+        public_cue: {
+          ...baseCue,
+          selfCheckPrompts: textToArray(value).slice(0, 3),
+        },
+        teacher_verified: false,
+      }
+    })
+  }
+
+  const updatePublicCueTone = (value: 'cheer' | 'calm' | 'focus') => {
+    setProfile((prev) => {
+      const baseCue = prev.public_cue || featureOutputs.publicCue || {
+        todayGoal: '',
+        replacementBehavior: '',
+        selfCheckPrompts: [],
+        encouragementTone: 'cheer' as const,
+      }
+
+      return {
+        ...prev,
+        public_cue: {
+          ...baseCue,
+          encouragementTone: value,
+        },
+        teacher_verified: false,
+      }
+    })
   }
 
   const updateGoal = (index: number, field: keyof PbsGoalDraft, value: string | number) => {
@@ -762,7 +831,7 @@ export default function AiBehaviorPlan({
                       <textarea rows={4} value={arrayToText(profile.incident_tags)} onChange={(event) => updateProfileArray('incident_tags', event.target.value)} className="mt-1 block w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-300 resize-none" />
                     </label>
                     <label className="block">
-                      <span className="text-xs font-semibold text-gray-600">DRO 후보</span>
+                      <span className="text-xs font-semibold text-gray-600">강화 타이머 후보</span>
                       <textarea rows={4} value={profile.dro_candidate || ''} onChange={(event) => updateProfileText('dro_candidate', event.target.value)} className="mt-1 block w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-300 resize-none" />
                     </label>
                   </div>
@@ -779,6 +848,64 @@ export default function AiBehaviorPlan({
                     <span className="text-xs font-semibold text-gray-600">학생 공개용 안전 요약</span>
                     <textarea rows={3} value={profile.public_safe_summary || ''} onChange={(event) => updateProfileText('public_safe_summary', event.target.value)} className="mt-1 block w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-300 resize-none" />
                   </label>
+                  <div className="rounded-2xl border border-sky-200 bg-sky-50 p-4">
+                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-sky-500">학생 채널 공용 문구 (publicCue)</p>
+                    <p className="mt-2 text-xs leading-5 text-sky-700">
+                      학생 홈, ATM, TV, 말 일기 키오스크에서 공통으로 쓰는 안전한 문구입니다. 진행률·잔액 같은 동적 값은 저장하지 않습니다.
+                    </p>
+                    <div className="mt-4 grid gap-4 md:grid-cols-2">
+                      <label className="block">
+                        <span className="text-xs font-semibold text-gray-600">오늘의 목표</span>
+                        <textarea
+                          rows={3}
+                          value={profile.public_cue?.todayGoal || featureOutputs.publicCue?.todayGoal || ''}
+                          onChange={(event) => updatePublicCueText('todayGoal', event.target.value)}
+                          className="mt-1 block w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-sky-300 resize-none"
+                        />
+                      </label>
+                      <label className="block">
+                        <span className="text-xs font-semibold text-gray-600">대체행동 문구</span>
+                        <textarea
+                          rows={3}
+                          value={profile.public_cue?.replacementBehavior || featureOutputs.publicCue?.replacementBehavior || ''}
+                          onChange={(event) => updatePublicCueText('replacementBehavior', event.target.value)}
+                          className="mt-1 block w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-sky-300 resize-none"
+                        />
+                      </label>
+                      <label className="block">
+                        <span className="text-xs font-semibold text-gray-600">스스로 체크 질문 (최대 3개)</span>
+                        <textarea
+                          rows={4}
+                          value={arrayToText(profile.public_cue?.selfCheckPrompts || featureOutputs.publicCue?.selfCheckPrompts || [])}
+                          onChange={(event) => updatePublicCuePrompts(event.target.value)}
+                          className="mt-1 block w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-sky-300 resize-none"
+                        />
+                      </label>
+                      <div className="space-y-4">
+                        <label className="block">
+                          <span className="text-xs font-semibold text-gray-600">강화 라벨</span>
+                          <input
+                            value={profile.public_cue?.reinforcerLabel || featureOutputs.publicCue?.reinforcerLabel || ''}
+                            onChange={(event) => updatePublicCueText('reinforcerLabel', event.target.value)}
+                            className="mt-1 block w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-sky-300"
+                            placeholder="예: 좋아하는 활동 시간"
+                          />
+                        </label>
+                        <label className="block">
+                          <span className="text-xs font-semibold text-gray-600">표현 톤</span>
+                          <select
+                            value={profile.public_cue?.encouragementTone || featureOutputs.publicCue?.encouragementTone || 'cheer'}
+                            onChange={(event) => updatePublicCueTone(event.target.value as 'cheer' | 'calm' | 'focus')}
+                            className="mt-1 block w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-sky-300"
+                          >
+                            <option value="cheer">cheer · 활기 있게</option>
+                            <option value="calm">calm · 차분하게</option>
+                            <option value="focus">focus · 집중 유도</option>
+                          </select>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
                   <label className="block">
                     <span className="text-xs font-semibold text-gray-600">교사 전용 메모</span>
                     <textarea rows={3} value={profile.private_teacher_notes || ''} onChange={(event) => updateProfileText('private_teacher_notes', event.target.value)} className="mt-1 block w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-300 resize-none" />
@@ -837,7 +964,22 @@ export default function AiBehaviorPlan({
                     <p className="mt-2 text-sm leading-6 text-gray-700">{featureOutputs.publicSafeSummary}</p>
                   </div>
                   <div className="rounded-xl bg-white p-3">
-                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-400">DRO 후보</p>
+                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-400">학생 채널 공용 문구</p>
+                    {featureOutputs.publicCue ? (
+                      <div className="mt-2 space-y-2 text-sm text-gray-700">
+                        <p><strong className="text-gray-900">오늘의 목표:</strong> {featureOutputs.publicCue.todayGoal || '없음'}</p>
+                        <p><strong className="text-gray-900">대체행동:</strong> {featureOutputs.publicCue.replacementBehavior || '없음'}</p>
+                        <p><strong className="text-gray-900">스스로 체크:</strong> {featureOutputs.publicCue.selfCheckPrompts.length > 0 ? featureOutputs.publicCue.selfCheckPrompts.join(' / ') : '없음'}</p>
+                        {featureOutputs.publicCue.reinforcerLabel && (
+                          <p><strong className="text-gray-900">강화 라벨:</strong> {featureOutputs.publicCue.reinforcerLabel}</p>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="mt-2 text-sm text-gray-500">학생 채널 문구가 아직 없습니다.</p>
+                    )}
+                  </div>
+                  <div className="rounded-xl bg-white p-3">
+                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-400">강화 타이머 후보</p>
                     <p className="mt-2 text-sm leading-6 text-gray-700">{featureOutputs.droCandidate}</p>
                   </div>
                 </div>
@@ -845,7 +987,7 @@ export default function AiBehaviorPlan({
 
               <div className="rounded-2xl border border-indigo-200 bg-indigo-50 p-4">
                 <p className="text-sm font-bold text-indigo-900">행동 지원 계획 생성</p>
-                <p className="mt-1 text-xs text-indigo-700">학생 AI 프로필을 기준으로 FBA, PBS 목표, 계약서, 중재 전략, DRO를 생성합니다.</p>
+                <p className="mt-1 text-xs text-indigo-700">학생 AI 프로필을 기준으로 행동 원인 분석, 행동 목표, 계약서, 중재 전략, 강화 타이머 설정을 생성합니다.</p>
                 <textarea
                   rows={3}
                   value={optionalPrompt}
@@ -879,11 +1021,11 @@ export default function AiBehaviorPlan({
 
               <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 space-y-2">
                 <div className="flex items-center justify-between">
-                  <p className="font-bold text-sm text-purple-900">🔍 FBA 기능행동분석</p>
+                  <p className="font-bold text-sm text-purple-900">🔍 행동 원인 분석</p>
                   <div className="flex items-center gap-2">
                     {saveMsg.fba && <span className="text-xs text-gray-500">{saveMsg.fba}</span>}
                     <SaveBtn skey="fba" onClick={() => void saveFba()} />
-                    <Link href={`/${classCode}/fba`} className="text-xs text-purple-500 hover:text-purple-700">FBA 탭 →</Link>
+                    <Link href={`/${classCode}/fba`} className="text-xs text-purple-500 hover:text-purple-700">분석 화면 →</Link>
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -900,11 +1042,11 @@ export default function AiBehaviorPlan({
 
               <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-3">
                 <div className="flex items-center justify-between">
-                  <p className="font-bold text-sm text-blue-900">✅ PBS 행동 목표 ({editedPlan.pbsGoals.length}개)</p>
+                  <p className="font-bold text-sm text-blue-900">✅ 행동 목표 ({editedPlan.pbsGoals.length}개)</p>
                   <div className="flex items-center gap-2">
                     {saveMsg.pbs && <span className="text-xs text-gray-500">{saveMsg.pbs}</span>}
                     <SaveBtn skey="pbs" onClick={() => void savePbsGoals()} />
-                    <Link href={`/${classCode}/pbs`} className="text-xs text-blue-500 hover:text-blue-700">PBS 탭 →</Link>
+                    <Link href={`/${classCode}/pbs`} className="text-xs text-blue-500 hover:text-blue-700">체크 화면 →</Link>
                   </div>
                 </div>
                 {editedPlan.pbsGoals.map((goal, index) => (
@@ -939,7 +1081,7 @@ export default function AiBehaviorPlan({
 
               <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-3">
                 <div className="flex items-center justify-between">
-                  <p className="font-bold text-sm text-amber-900">📝 행동계약서 초안</p>
+                  <p className="font-bold text-sm text-amber-900">📝 행동 약속 계약서 초안</p>
                   <div className="flex items-center gap-2">
                     {saveMsg.contract && <span className="text-xs text-gray-500">{saveMsg.contract}</span>}
                     <SaveBtn skey="contract" onClick={() => void saveContract()} />
@@ -992,8 +1134,8 @@ export default function AiBehaviorPlan({
               <div className="grid gap-3 md:grid-cols-2">
                 <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 space-y-2">
                   <div className="flex items-center justify-between">
-                    <p className="font-bold text-sm text-orange-900">⏱️ DRO 권장 설정</p>
-                    <Link href={`/${classCode}/dro`} className="text-xs text-orange-500 hover:text-orange-700">DRO 탭 →</Link>
+                    <p className="font-bold text-sm text-orange-900">⏱️ 강화 타이머 권장 설정</p>
+                    <Link href={`/${classCode}/dro`} className="text-xs text-orange-500 hover:text-orange-700">타이머 화면 →</Link>
                   </div>
                   <p className="text-2xl font-bold text-orange-700">{editedPlan.dro.intervalMinutes}분</p>
                   <p className="text-xs text-gray-500">간격 · 보상 {editedPlan.dro.tokenReward}원</p>
@@ -1001,8 +1143,8 @@ export default function AiBehaviorPlan({
                 </div>
                 <div className="bg-red-50 border border-red-200 rounded-xl p-4 space-y-2">
                   <div className="flex items-center justify-between">
-                    <p className="font-bold text-sm text-red-900">🚨 소거 알림 기준</p>
-                    <Link href={`/${classCode}/extinction-alerts`} className="text-xs text-red-500 hover:text-red-700">알림 탭 →</Link>
+                    <p className="font-bold text-sm text-red-900">🚨 소거 위험 경보 기준</p>
+                    <Link href={`/${classCode}/extinction-alerts`} className="text-xs text-red-500 hover:text-red-700">경보 화면 →</Link>
                   </div>
                   <p className="text-xs text-gray-600">
                     기저선 <strong>{editedPlan.extinctionAlert.baselineCount}회</strong>/일 · 임계값 <strong className="text-red-600">{editedPlan.extinctionAlert.alertThreshold}회</strong>

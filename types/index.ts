@@ -2,7 +2,7 @@
 
 export type TransactionType =
   | 'salary_basic'      // 출석·역할 기본급
-  | 'salary_pbs'        // PBS 성과급
+  | 'salary_pbs'        // 행동 목표 성과급
   | 'salary_bonus'      // 주간 보너스
   | 'purchase'          // 가게 구매
   | 'gift_sent'         // 선물 보냄
@@ -11,7 +11,7 @@ export type TransactionType =
   | 'stock_sell'        // 주식 매도
   | 'interest'          // 저축 이자
   | 'response_cost'     // 반응대가 차감
-  | 'dro_reward'        // DRO 타이머 보상
+  | 'dro_reward'        // 강화 타이머 보상
   | 'contract_bonus'    // 계약 달성 보너스
   | 'level_up_bonus'    // 행동형성 레벨업 보너스
   | 'class_reward'      // 학급 공동 보상
@@ -239,6 +239,21 @@ export interface StudentAiFollowUpQuestion {
   target_field: string
 }
 
+export type PublicCueTone = 'cheer' | 'calm' | 'focus'
+
+export interface PublicCue {
+  todayGoal: string
+  replacementBehavior: string
+  selfCheckPrompts: string[]
+  reinforcerLabel?: string
+  encouragementTone?: PublicCueTone
+}
+
+export interface TvSettings {
+  anonymizeName: boolean
+  showTicker: boolean
+}
+
 export interface StudentAiProfile {
   id: string
   student_id: string
@@ -264,6 +279,7 @@ export interface StudentAiProfile {
   dro_candidate: string | null
   student_registration_summary: string | null
   ai_plan_one_liner: string | null
+  public_cue: PublicCue | null
   public_safe_summary: string | null
   private_teacher_notes: string | null
   teacher_verified: boolean
@@ -288,7 +304,149 @@ export interface StudentFeatureOutputs {
   pPromptOptions: string[]
   incidentTags: string[]
   droCandidate: string
+  publicCue: PublicCue | null
   publicSafeSummary: string
+}
+
+export interface TodayProgressGoal {
+  goalId: string
+  behaviorName: string
+  todayCount: number
+  dailyTarget: number | null
+}
+
+export interface TodayProgressContract {
+  contractId: string
+  title: string
+  progressPercent: number
+}
+
+export interface TodayProgress {
+  studentId: string
+  date: string
+  todayTokens: number
+  goals: TodayProgressGoal[]
+  activeContracts: TodayProgressContract[]
+}
+
+export type SupportBucketKey = 'uncategorized' | 'planNeeded' | 'executing' | 'reviewNeeded'
+export type SupportRiskBadge = 'extinction' | 'stagnant' | 'over_reinforced'
+export type SupportPtrStage = 'assess' | 'plan' | 'execute' | 'review'
+
+export interface SupportOverviewStudentBrief {
+  id: string
+  name: string
+  currentBucket: SupportBucketKey
+  riskBadges: SupportRiskBadge[]
+  ptrStage: SupportPtrStage
+  lastActivityAt: string | null
+}
+
+export interface SupportOverviewStats {
+  totalStudents: number
+  activeContracts: number
+  runningDroTimers: number
+  unresolvedAlerts: number
+}
+
+export interface SupportOverviewResponse {
+  buckets: Record<SupportBucketKey, SupportOverviewStudentBrief[]>
+  stats: SupportOverviewStats
+}
+
+export interface SupportWorkspaceAssessmentRecord {
+  id: string
+  behavior_description: string
+  estimated_function: string | null
+  confidence: string | null
+  created_at: string
+}
+
+export interface SupportWorkspaceIntervention {
+  id: string
+  name_ko: string
+  evidence_level: string | null
+  abbreviation: string | null
+}
+
+export interface SupportWorkspaceContractSummary {
+  id: string
+  contract_title: string
+  target_behavior: string
+  achievement_criteria: string | null
+  reward_amount: number
+  is_active: boolean
+  created_at: string
+}
+
+export interface SupportWorkspaceDroTimer {
+  id: string
+  goal_id: string
+  started_at: string
+  ends_at: string
+  reset_count: number
+  status: string
+  goal_name: string | null
+  token_reward: number | null
+}
+
+export interface SupportWorkspaceTodayReinforcement {
+  goalId: string
+  behaviorName: string
+  todayCount: number
+  targetPerDay: number | null
+  todayTokens: number
+}
+
+export interface SupportWorkspaceTrendPoint {
+  date: string
+  tokens: number
+  occurrences: number
+}
+
+export interface SupportWorkspaceAlert {
+  id: string
+  risk_level: string
+  description: string
+  gpt_recommendation: string | null
+  created_at: string
+}
+
+export interface SupportWorkspace {
+  student: {
+    id: string
+    name: string
+    grade: number | null
+    pbs_stage: number
+  }
+  ptrStage: SupportPtrStage
+  assessment: {
+    aiProfile: StudentAiProfile | null
+    fbaRecords: SupportWorkspaceAssessmentRecord[]
+    hypothesizedFunctions: string[]
+  }
+  plan: {
+    goals: Array<{
+      id: string
+      behavior_name: string
+      behavior_definition: string | null
+      token_per_occurrence: number
+      daily_target: number | null
+      strategy_type: string | null
+    }>
+    interventions: SupportWorkspaceIntervention[]
+    contractDrafts: SupportWorkspaceContractSummary[]
+  }
+  execute: {
+    activeContracts: SupportWorkspaceContractSummary[]
+    runningDroTimers: SupportWorkspaceDroTimer[]
+    todayReinforcement: SupportWorkspaceTodayReinforcement[]
+  }
+  review: {
+    extinctionAlerts: SupportWorkspaceAlert[]
+    last14DaysTrend: SupportWorkspaceTrendPoint[]
+    economyHealthLink: string
+  }
 }
 
 export type TokenEconomyHealthStatus =

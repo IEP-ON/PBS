@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { EconomyConfigNotice, useTokenEconomyHealth } from '../token-economy/health-ui'
+import type { TvSettings } from '@/types'
 
 interface Settings {
   currency_unit: number
@@ -13,6 +14,7 @@ interface Settings {
   balance_carryover: boolean
   data_retention_months: number
   weather_location: string
+  tv_settings?: TvSettings | null
 }
 
 interface SalaryRule {
@@ -22,10 +24,12 @@ interface SalaryRule {
 }
 
 export default function SettingsPage() {
+  const defaultTvSettings: TvSettings = {
+    anonymizeName: false,
+    showTicker: true,
+  }
   const params = useParams()
   const classCode = params.classCode as string
-  const [settings, setSettings] = useState<Settings | null>(null)
-  const [salaryRules, setSalaryRules] = useState<SalaryRule[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
@@ -42,6 +46,7 @@ export default function SettingsPage() {
     weatherLocation: '대구',
     attendanceSalary: '500',
     weeklyBonus: '1000',
+    tvSettings: defaultTvSettings,
   })
 
   useEffect(() => {
@@ -50,8 +55,7 @@ export default function SettingsPage() {
       if (res.ok) {
         const data = await res.json()
         if (data.settings) {
-          const s = data.settings
-          setSettings(s)
+          const s = data.settings as Settings
           setForm({
             currencyUnit: String(s.currency_unit),
             startingBalance: String(s.starting_balance),
@@ -63,9 +67,12 @@ export default function SettingsPage() {
             weatherLocation: s.weather_location || '대구',
             attendanceSalary: String(data.salaryRules?.find((r: SalaryRule) => r.rule_type === 'attendance')?.amount || 500),
             weeklyBonus: String(data.salaryRules?.find((r: SalaryRule) => r.rule_type === 'weekly_perfect')?.amount || 1000),
+            tvSettings: {
+              anonymizeName: Boolean(s.tv_settings?.anonymizeName),
+              showTicker: s.tv_settings?.showTicker !== false,
+            },
           })
         }
-        setSalaryRules(data.salaryRules || [])
       }
       setLoading(false)
     }
@@ -90,6 +97,7 @@ export default function SettingsPage() {
           weatherLocation: form.weatherLocation,
           attendanceSalary: Number(form.attendanceSalary),
           weeklyBonus: Number(form.weeklyBonus),
+          tvSettings: form.tvSettings,
         }),
       })
       if (res.ok) {
@@ -158,7 +166,7 @@ export default function SettingsPage() {
 
       {/* 급여 설정 */}
       <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-4">
-        <h2 className="font-bold text-gray-900">� 급여 설정</h2>
+        <h2 className="font-bold text-gray-900">💵 급여 설정</h2>
         <div className="grid grid-cols-2 gap-4">
           <Field label="출석 기본급" value={form.attendanceSalary} field="attendanceSalary" suffix="원/일" />
           <Field label="주간 개근 보너스" value={form.weeklyBonus} field="weeklyBonus" suffix="원/주" />
@@ -190,6 +198,49 @@ export default function SettingsPage() {
         </label>
       </div>
 
+      <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-4">
+        <h2 className="font-bold text-gray-900">📺 TV 디스플레이</h2>
+        <div className="rounded-xl bg-blue-50 px-4 py-3 text-sm text-blue-800">
+          TV 순위판에서 이름 마스킹과 목표 티커 노출 방식을 조정합니다.
+        </div>
+        <label className="flex items-center justify-between gap-4 rounded-xl border border-gray-100 px-4 py-3">
+          <div>
+            <p className="text-sm font-medium text-gray-900">이름 익명화</p>
+            <p className="text-xs text-gray-500 mt-1">TV에서 학생 이름을 성+○○ 형식으로 표시합니다.</p>
+          </div>
+          <input
+            type="checkbox"
+            checked={form.tvSettings.anonymizeName}
+            onChange={(e) => setForm({
+              ...form,
+              tvSettings: {
+                ...form.tvSettings,
+                anonymizeName: e.target.checked,
+              },
+            })}
+            className="h-5 w-5 rounded border-gray-300"
+          />
+        </label>
+        <label className="flex items-center justify-between gap-4 rounded-xl border border-gray-100 px-4 py-3">
+          <div>
+            <p className="text-sm font-medium text-gray-900">목표 티커 표시</p>
+            <p className="text-xs text-gray-500 mt-1">학생용 안전 문구인 오늘의 목표를 하단 티커로 순환 표시합니다.</p>
+          </div>
+          <input
+            type="checkbox"
+            checked={form.tvSettings.showTicker}
+            onChange={(e) => setForm({
+              ...form,
+              tvSettings: {
+                ...form.tvSettings,
+                showTicker: e.target.checked,
+              },
+            })}
+            className="h-5 w-5 rounded border-gray-300"
+          />
+        </label>
+      </div>
+
       {/* 윤리/동의 설정 */}
       <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-4">
         <div className="flex items-center justify-between">
@@ -214,7 +265,7 @@ export default function SettingsPage() {
             <li>• 최소 제한 원칙 (Least Restrictive Intervention)</li>
             <li>• 행동계약서 학부모 동의서</li>
             <li>• 반응대가 동의서</li>
-            <li>• FBA 동의서</li>
+            <li>• 행동 원인 분석(사정) 동의서</li>
             <li>• 개인정보 동의서</li>
           </ul>
         </div>

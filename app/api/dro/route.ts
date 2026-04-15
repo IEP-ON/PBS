@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { getSession } from '@/lib/session'
 
-// GET /api/dro — DRO 타이머 목록 조회
+// GET /api/dro — 강화 타이머 목록 조회
 export async function GET(request: Request) {
   try {
     const session = await getSession()
@@ -27,7 +27,7 @@ export async function GET(request: Request) {
     const { data: timers, error } = await query
 
     if (error) {
-      return NextResponse.json({ error: 'DRO 타이머 조회 실패' }, { status: 500 })
+      return NextResponse.json({ error: '강화 타이머 조회 실패' }, { status: 500 })
     }
 
     return NextResponse.json({ timers: timers || [] })
@@ -36,7 +36,7 @@ export async function GET(request: Request) {
   }
 }
 
-// POST /api/dro — DRO 타이머 시작 (교사 전용)
+// POST /api/dro — 강화 타이머 시작 (교사 전용)
 export async function POST(request: Request) {
   try {
     const session = await getSession()
@@ -69,7 +69,7 @@ export async function POST(request: Request) {
       .single()
 
     if (error) {
-      return NextResponse.json({ error: 'DRO 타이머 생성 실패' }, { status: 500 })
+      return NextResponse.json({ error: '강화 타이머 생성 실패' }, { status: 500 })
     }
 
     return NextResponse.json({ timer })

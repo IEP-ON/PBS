@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { getSession } from '@/lib/session'
 
-// DELETE /api/pbs/records/[id] — PBS 체크 기록 취소 (오늘 미정산 기록만 가능)
+// DELETE /api/pbs/records/[id] — 행동 체크 기록 취소 (오늘 미정산 기록만 가능)
 export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ id: string }> }

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createServerSupabase } from '@/lib/supabase/server'
+import { buildFallbackPublicCue, mapStudentAiProfile } from '@/lib/ai-profile'
 import { normalizeClassCode } from '@/lib/utils'
 import bcrypt from 'bcryptjs'
 
@@ -71,11 +72,24 @@ export async function POST(request: Request) {
       .eq('student_id', student.id)
       .single()
 
+    const { data: aiProfileRow } = await supabase
+      .from('pbs_student_ai_profiles')
+      .select('*')
+      .eq('student_id', student.id)
+      .maybeSingle()
+    const aiProfile = aiProfileRow ? mapStudentAiProfile(aiProfileRow as Record<string, unknown>) : null
+    const publicCue = aiProfile?.public_cue || buildFallbackPublicCue({
+      classModeTargets: aiProfile?.class_mode_targets || [],
+      replacementBehaviors: aiProfile?.replacement_behaviors || [],
+      preferences: aiProfile?.preferences || [],
+    })
+
     return NextResponse.json({
       ok: true,
       studentId: student.id,
       studentName: student.name,
       balance: account?.balance ?? 0,
+      publicCue,
     })
   } catch {
     return NextResponse.json({ error: '서버 오류가 발생했습니다.' }, { status: 500 })

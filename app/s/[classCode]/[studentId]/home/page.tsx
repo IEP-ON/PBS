@@ -2,6 +2,7 @@ import { getSession } from '@/lib/session'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { formatCurrency } from '@/lib/utils'
+import { buildFallbackPublicCue, mapStudentAiProfile } from '@/lib/ai-profile'
 import {
   getKstDateRange,
   getKstToday,
@@ -29,11 +30,17 @@ export default async function StudentHomePage({
   if (!student) redirect('/login')
 
   const account = Array.isArray(student.pbs_accounts) ? student.pbs_accounts[0] : student.pbs_accounts
-  const { data: aiProfile } = await supabase
+  const { data: aiProfileRow } = await supabase
     .from('pbs_student_ai_profiles')
-    .select('public_safe_summary, preferences, class_mode_targets')
+    .select('*')
     .eq('student_id', studentId)
     .maybeSingle()
+  const aiProfile = aiProfileRow ? mapStudentAiProfile(aiProfileRow as Record<string, unknown>) : null
+  const publicCue = aiProfile?.public_cue || buildFallbackPublicCue({
+    classModeTargets: aiProfile?.class_mode_targets || [],
+    replacementBehaviors: aiProfile?.replacement_behaviors || [],
+    preferences: aiProfile?.preferences || [],
+  })
   const todayKst = getKstToday()
   const { startIso, endIso } = getKstDateRange(todayKst)
 
@@ -84,7 +91,7 @@ export default async function StudentHomePage({
     .eq('student_id', studentId)
     .gt('quantity', 0)
 
-  // PBS 목표 + 오늘 체크 횟수
+  // 행동 목표 + 오늘 체크 횟수
   const { data: pbsGoals } = await supabase
     .from('pbs_goals')
     .select('id, behavior_name, daily_target')
@@ -106,7 +113,7 @@ export default async function StudentHomePage({
     goalCountMap[rec.goal_id] = (goalCountMap[rec.goal_id] || 0) + rec.occurrence_count
   }
 
-  // 셀프체크 가능 목표 수
+  // 스스로 체크 허용 목표 수
   const { data: selfCheckGoals } = await supabase
     .from('pbs_goals')
     .select('id')
@@ -202,6 +209,14 @@ export default async function StudentHomePage({
       {aiProfile && (
         <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4">
           <p className="text-sm font-bold text-blue-900">🌱 오늘의 나</p>
+          {publicCue?.todayGoal && (
+            <p className="mt-2 text-sm font-semibold text-blue-800">{publicCue.todayGoal}</p>
+          )}
+          {publicCue?.replacementBehavior && (
+            <p className="mt-2 rounded-xl bg-white/80 px-3 py-2 text-sm text-emerald-700">
+              대체행동 · {publicCue.replacementBehavior}
+            </p>
+          )}
           {aiProfile.public_safe_summary && (
             <p className="mt-2 text-sm leading-6 text-gray-700">{aiProfile.public_safe_summary}</p>
           )}
@@ -238,10 +253,10 @@ export default async function StudentHomePage({
         </div>
       )}
 
-      {/* PBS 목표 진행률 */}
+      {/* 행동 목표 진행률 */}
       {pbsGoals && pbsGoals.length > 0 && (
         <div>
-          <h2 className="text-lg font-bold text-gray-900 mb-2">🎯 오늘 목표 진행률</h2>
+          <h2 className="text-lg font-bold text-gray-900 mb-2">🎯 오늘 행동 목표</h2>
           <div className="space-y-2">
             {pbsGoals.map(goal => {
               const count = goalCountMap[goal.id] || 0
@@ -278,13 +293,13 @@ export default async function StudentHomePage({
         </div>
       )}
 
-      {/* 셀프체크 + 계약서 퀵카드 */}
+      {/* 스스로 체크 + 계약서 퀵카드 */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {selfCheckGoals && selfCheckGoals.length > 0 && (
           <div className="bg-green-50 rounded-2xl border border-green-100 p-4 text-center">
             <p className="text-2xl mb-1">✅</p>
-            <p className="text-xs text-gray-500">셀프체크 가능</p>
-            <p className="text-lg font-bold text-green-600">{selfCheckGoals.length}개 목표</p>
+            <p className="text-xs text-gray-500">스스로 체크 가능</p>
+            <p className="text-lg font-bold text-green-600">{selfCheckGoals.length}개 행동 목표</p>
           </div>
         )}
         {activeContracts && activeContracts.length > 0 && (

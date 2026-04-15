@@ -9,6 +9,12 @@
   --tablet-content-max: 1600px;
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-top: env(safe-area-inset-top, 0px);
+  --touch-min: 44px;
+  --ptr-prevent: #3b82f6;
+  --ptr-teach: #10b981;
+  --ptr-reinforce: #f59e0b;
+  --learner-bg: #f8fafc;
+  --learner-fg: #0f172a;
 }
 
 @theme inline {
@@ -61,6 +67,22 @@ html {
   width: 100%;
   max-width: var(--tablet-content-max);
   margin-inline: auto;
+}
+
+.touch-target {
+  min-width: var(--touch-min);
+  min-height: var(--touch-min);
+}
+
+.learner-surface {
+  background: var(--learner-bg);
+  color: var(--learner-fg);
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
 }
 
 @media (min-width: 1024px) and (orientation: landscape) {

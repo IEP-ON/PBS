@@ -63,6 +63,13 @@ export async function PATCH(request: Request) {
       }
     }
 
+    if (body.tvSettings && typeof body.tvSettings === 'object') {
+      updateData.tv_settings = {
+        anonymizeName: Boolean(body.tvSettings.anonymizeName),
+        showTicker: body.tvSettings.showTicker !== false,
+      }
+    }
+
     const { data: settings, error } = await supabase
       .from('pbs_system_settings')
       .update(updateData)

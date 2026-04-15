@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { getSession } from '@/lib/session'
 
-// GET /api/pbs/goals — PBS 목표 목록
+// GET /api/pbs/goals — 행동 목표 목록
 export async function GET(request: Request) {
   try {
     const session = await getSession()
@@ -29,7 +29,7 @@ export async function GET(request: Request) {
     const { data, error } = await query
 
     if (error) {
-      return NextResponse.json({ error: 'PBS 목표 조회 실패' }, { status: 500 })
+      return NextResponse.json({ error: '행동 목표 조회 실패' }, { status: 500 })
     }
 
     return NextResponse.json({ goals: data || [] })
@@ -38,7 +38,7 @@ export async function GET(request: Request) {
   }
 }
 
-// POST /api/pbs/goals — PBS 목표 등록
+// POST /api/pbs/goals — 행동 목표 등록
 export async function POST(request: Request) {
   try {
     const session = await getSession()
@@ -81,8 +81,8 @@ export async function POST(request: Request) {
       .single()
 
     if (error) {
-      console.error('PBS 목표 등록 오류:', error)
-      return NextResponse.json({ error: 'PBS 목표 등록에 실패했습니다.' }, { status: 500 })
+      console.error('행동 목표 등록 오류:', error)
+      return NextResponse.json({ error: '행동 목표 등록에 실패했습니다.' }, { status: 500 })
     }
 
     return NextResponse.json({ goal })

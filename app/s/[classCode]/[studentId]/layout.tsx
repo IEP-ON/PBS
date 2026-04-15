@@ -25,7 +25,7 @@ export default async function StudentLayout({
     { href: `/s/${classCode}/${studentId}/bankbook`, label: '통장', icon: '📒' },
     { href: `/s/${classCode}/${studentId}/stocks`, label: '주식', icon: '📈' },
     { href: `/s/${classCode}/${studentId}/shop`, label: '가게', icon: '🏪' },
-    { href: `/s/${classCode}/${studentId}/selfcheck`, label: '셀프체크', icon: '✅' },
+    { href: `/s/${classCode}/${studentId}/selfcheck`, label: '스스로 체크', icon: '✅' },
   ]
 
   return (
@@ -37,7 +37,7 @@ export default async function StudentLayout({
             <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-600 text-xl text-white shadow-lg shadow-blue-100">🏦</span>
             <div className="min-w-0">
               <p className="truncate text-base font-black text-slate-900">{session.studentName}의 은행</p>
-              <p className="truncate text-xs text-slate-500">통장, 주식, 가게, 셀프체크를 한 번에</p>
+              <p className="truncate text-xs text-slate-500">통장 · 주식 · 가게 · 스스로 행동 체크</p>
             </div>
           </div>
           <div className="hidden rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-500 md:block">
