@@ -1,4 +1,5 @@
 import { getSession } from '@/lib/session'
+import { withStudentRosterOrder } from '@/lib/student-roster-order'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
@@ -26,12 +27,13 @@ export default async function DashboardPage({
     .single()
 
   // 학생 + 계좌 정보
-  const { data: students } = await supabase
-    .from('pbs_students')
-    .select('*, pbs_accounts(*)')
-    .eq('class_code_id', session.classroomId)
-    .eq('is_active', true)
-    .order('name')
+  const { data: students } = await withStudentRosterOrder(
+    supabase
+      .from('pbs_students')
+      .select('*, pbs_accounts(*)')
+      .eq('class_code_id', session.classroomId)
+      .eq('is_active', true)
+  )
 
   // 오늘 PBS 기록
   const today = new Date().toISOString().split('T')[0]

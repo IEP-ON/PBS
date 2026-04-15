@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { getSession } from '@/lib/session'
+import { withStudentRosterOrder } from '@/lib/student-roster-order'
 
 export interface TeachGoal {
   id: string
@@ -46,12 +47,13 @@ export async function GET() {
     const today = new Date().toISOString().split('T')[0]
 
     const [studentsRes, goalsRes, timersRes] = await Promise.all([
-      supabase
-        .from('pbs_students')
-        .select('id, name, pbs_stage, pbs_accounts(balance)')
-        .eq('class_code_id', session.classroomId)
-        .eq('is_active', true)
-        .order('name'),
+      withStudentRosterOrder(
+        supabase
+          .from('pbs_students')
+          .select('id, name, pbs_stage, pbs_accounts(balance)')
+          .eq('class_code_id', session.classroomId)
+          .eq('is_active', true)
+      ),
 
       supabase
         .from('pbs_goals')

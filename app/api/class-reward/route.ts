@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { getSession } from '@/lib/session'
+import { withStudentRosterOrder } from '@/lib/student-roster-order'
 
 // GET /api/class-reward — 학급 보상 기록 조회
 export async function GET() {
@@ -42,11 +43,13 @@ export async function POST(request: Request) {
     const supabase = await createServerSupabase()
 
     // 활성 학생 조회
-    const { data: students } = await supabase
-      .from('pbs_students')
-      .select('id, name, pbs_accounts(id, balance, total_earned)')
-      .eq('class_code_id', session.classroomId)
-      .eq('is_active', true)
+    const { data: students } = await withStudentRosterOrder(
+      supabase
+        .from('pbs_students')
+        .select('id, name, pbs_accounts(id, balance, total_earned)')
+        .eq('class_code_id', session.classroomId)
+        .eq('is_active', true)
+    )
 
     if (!students || students.length === 0) {
       return NextResponse.json({ error: '활성 학생이 없습니다.' }, { status: 404 })

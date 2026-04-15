@@ -1,5 +1,6 @@
 import { getKstToday } from '@/lib/speech-diary'
 import { createServerSupabase } from '@/lib/supabase/server'
+import { withStudentRosterOrder } from '@/lib/student-roster-order'
 import type {
   SupportBucketKey,
   SupportOverviewResponse,
@@ -46,12 +47,13 @@ export async function getSupportOverview(
   supabase: ServerSupabase,
   classroomId: string
 ): Promise<SupportOverviewResponse> {
-  const { data: students } = await supabase
-    .from('pbs_students')
-    .select('id, name')
-    .eq('class_code_id', classroomId)
-    .eq('is_active', true)
-    .order('name')
+  const { data: students } = await withStudentRosterOrder(
+    supabase
+      .from('pbs_students')
+      .select('id, name, grade')
+      .eq('class_code_id', classroomId)
+      .eq('is_active', true)
+  )
 
   if (!students || students.length === 0) {
     return {

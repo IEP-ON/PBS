@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getSession } from '@/lib/session'
 import { createServerSupabase } from '@/lib/supabase/server'
+import { withStudentRosterOrder } from '@/lib/student-roster-order'
 import {
   getKstDateRange,
   getKstToday,
@@ -25,12 +26,13 @@ export async function GET(request: Request) {
     const targetStudentId = session.role === 'student' ? session.studentId : requestedStudentId
     const supabase = await createServerSupabase()
 
-    let studentQuery = supabase
-      .from('pbs_students')
-      .select('id, name')
-      .eq('class_code_id', session.classroomId)
-      .eq('is_active', true)
-      .order('name')
+    let studentQuery = withStudentRosterOrder(
+      supabase
+        .from('pbs_students')
+        .select('id, name')
+        .eq('class_code_id', session.classroomId)
+        .eq('is_active', true)
+    )
 
     if (targetStudentId) {
       studentQuery = studentQuery.eq('id', targetStudentId)

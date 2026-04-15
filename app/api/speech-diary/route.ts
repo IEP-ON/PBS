@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { getSession } from '@/lib/session'
+import { withStudentRosterOrder } from '@/lib/student-roster-order'
 
 // GET /api/speech-diary?studentId=...
 export async function GET(request: Request) {
@@ -14,12 +15,13 @@ export async function GET(request: Request) {
     const studentId = searchParams.get('studentId')
 
     const supabase = await createServerSupabase()
-    let studentQuery = supabase
-      .from('pbs_students')
-      .select('id, name')
-      .eq('class_code_id', session.classroomId)
-      .eq('is_active', true)
-      .order('name')
+    let studentQuery = withStudentRosterOrder(
+      supabase
+        .from('pbs_students')
+        .select('id, name')
+        .eq('class_code_id', session.classroomId)
+        .eq('is_active', true)
+    )
 
     if (studentId) {
       studentQuery = studentQuery.eq('id', studentId)

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { getSession } from '@/lib/session'
+import { withStudentRosterOrder } from '@/lib/student-roster-order'
 import { buildFallbackPublicCue, sanitizePublicCue } from '@/lib/ai-profile'
 import { getKstToday } from '@/lib/speech-diary'
 import type { PublicCue, TvSettings } from '@/types'
@@ -32,12 +33,13 @@ export async function GET() {
         .select('class_name')
         .eq('id', session.classroomId)
         .single(),
-      supabase
-        .from('pbs_students')
-        .select('id, name, pbs_stage, pbs_accounts(balance)')
-        .eq('class_code_id', session.classroomId)
-        .eq('is_active', true)
-        .order('name'),
+      withStudentRosterOrder(
+        supabase
+          .from('pbs_students')
+          .select('id, name, pbs_stage, pbs_accounts(balance)')
+          .eq('class_code_id', session.classroomId)
+          .eq('is_active', true)
+      ),
       supabase
         .from('pbs_shop_items')
         .select('id, name, emoji, price, stock, category')

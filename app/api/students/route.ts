@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { getSession } from '@/lib/session'
+import { withStudentRosterOrder } from '@/lib/student-roster-order'
 import { generateQrCode } from '@/lib/utils'
 import bcrypt from 'bcryptjs'
 
@@ -14,12 +15,13 @@ export async function GET() {
 
     const supabase = await createServerSupabase()
 
-    const { data: students, error } = await supabase
-      .from('pbs_students')
-      .select('*, pbs_accounts(*)')
-      .eq('class_code_id', session.classroomId)
-      .eq('is_active', true)
-      .order('name')
+    const { data: students, error } = await withStudentRosterOrder(
+      supabase
+        .from('pbs_students')
+        .select('*, pbs_accounts(*)')
+        .eq('class_code_id', session.classroomId)
+        .eq('is_active', true)
+    )
 
     if (error) {
       return NextResponse.json({ error: '학생 목록 조회 실패' }, { status: 500 })
