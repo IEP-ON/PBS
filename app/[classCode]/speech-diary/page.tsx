@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import type { ChangeEvent } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { formatDate } from '@/lib/utils'
@@ -34,7 +35,10 @@ export default function SpeechDiaryPage() {
   const [loading, setLoading] = useState(true)
   const [savingId, setSavingId] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [bulkDeleting, setBulkDeleting] = useState(false)
   const [message, setMessage] = useState('')
+  const selectAllRef = useRef<HTMLInputElement>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editText, setEditText] = useState('')
   const [teacherNote, setTeacherNote] = useState('')
@@ -62,6 +66,16 @@ export default function SpeechDiaryPage() {
   useEffect(() => {
     void loadData()
   }, [])
+
+  useEffect(() => {
+    setSelectedIds((prev) => prev.filter((id) => diaries.some((d) => d.id === id)))
+  }, [diaries])
+
+  useEffect(() => {
+    const el = selectAllRef.current
+    if (!el) return
+    el.indeterminate = selectedIds.length > 0 && selectedIds.length < diaries.length
+  }, [selectedIds, diaries.length])
 
   const openEdit = (diary: Diary) => {
     setEditingId(diary.id)
@@ -94,6 +108,57 @@ export default function SpeechDiaryPage() {
       setMessage('저장 중 오류가 발생했습니다.')
     } finally {
       setSavingId(null)
+    }
+  }
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
+  }
+
+  const toggleSelectAll = (event: ChangeEvent<HTMLInputElement>) => {
+    if (event.target.checked) {
+      setSelectedIds(diaries.map((d) => d.id))
+    } else {
+      setSelectedIds([])
+    }
+  }
+
+  const deleteSelected = async () => {
+    if (selectedIds.length === 0) return
+    if (
+      !confirm(
+        `선택한 말 일기 ${selectedIds.length}건을 삭제할까요? 삭제 후에는 복구할 수 없습니다.`
+      )
+    ) {
+      return
+    }
+
+    setBulkDeleting(true)
+    setMessage('')
+    try {
+      const res = await fetch('/api/speech-diary/bulk-delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ diaryIds: selectedIds }),
+      })
+      const data = await res.json()
+
+      if (!res.ok) {
+        setMessage(data.error || '일괄 삭제에 실패했습니다.')
+      } else {
+        const skipped = typeof data.skippedCount === 'number' && data.skippedCount > 0
+        setMessage(
+          skipped
+            ? `${data.deletedCount}건을 삭제했습니다. (${data.skippedCount}건은 권한 없음으로 건너뜀)`
+            : `${data.deletedCount}건을 삭제했습니다.`
+        )
+        setSelectedIds([])
+        await loadData(selectedStudentId)
+      }
+    } catch {
+      setMessage('일괄 삭제 중 오류가 발생했습니다.')
+    } finally {
+      setBulkDeleting(false)
     }
   }
 
@@ -164,6 +229,28 @@ export default function SpeechDiaryPage() {
           ))}
         </select>
         <span className="text-xs text-gray-400">총 {diaries.length}건</span>
+        {diaries.length > 0 && (
+          <>
+            <label className="inline-flex items-center gap-2 text-sm text-gray-700 cursor-pointer touch-target">
+              <input
+                ref={selectAllRef}
+                type="checkbox"
+                checked={diaries.length > 0 && selectedIds.length === diaries.length}
+                onChange={toggleSelectAll}
+                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              전체 선택
+            </label>
+            <button
+              type="button"
+              onClick={() => void deleteSelected()}
+              disabled={selectedIds.length === 0 || bulkDeleting || loading}
+              className="px-4 py-2 bg-rose-600 hover:bg-rose-700 disabled:bg-rose-300 text-white text-sm font-semibold rounded-xl transition-colors"
+            >
+              {bulkDeleting ? '삭제 중...' : `선택 삭제 (${selectedIds.length})`}
+            </button>
+          </>
+        )}
       </div>
 
       {message && (
@@ -186,11 +273,21 @@ export default function SpeechDiaryPage() {
           {diaries.map((diary) => (
             <div key={diary.id} className="bg-white rounded-2xl border border-gray-100 p-5 space-y-4">
               <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                <div>
+                <div className="flex items-start gap-3 min-w-0">
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.includes(diary.id)}
+                    onChange={() => toggleSelect(diary.id)}
+                    disabled={bulkDeleting}
+                    className="mt-1 h-4 w-4 shrink-0 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    aria-label={`${diary.student_name} 일기 선택`}
+                  />
+                  <div className="min-w-0">
                   <p className="font-bold text-gray-900">{diary.student_name}</p>
                   <p className="text-xs text-gray-400 mt-1">
                     {new Date(diary.created_at).toLocaleString('ko-KR')}
                   </p>
+                  </div>
                 </div>
                 {diary.sentiment && (
                   <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
@@ -297,10 +394,10 @@ export default function SpeechDiaryPage() {
                     )}
                     <button
                       onClick={() => void deleteDiary(diary)}
-                      disabled={deletingId === diary.id}
+                      disabled={deletingId === diary.id || bulkDeleting}
                       className="flex-1 px-4 py-2 bg-rose-50 hover:bg-rose-100 disabled:bg-rose-50 text-rose-600 text-sm font-medium rounded-xl transition-colors"
                     >
-                      {deletingId === diary.id ? '삭제 중...' : '날짜 삭제'}
+                      {deletingId === diary.id ? '삭제 중...' : '삭제'}
                     </button>
                   </div>
                 </div>
