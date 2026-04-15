@@ -15,7 +15,7 @@ interface Props {
 
 const TAB_META: Array<{ key: TabKey; label: string; hint: string }> = [
   { key: 'overview', label: '개요', hint: '학생 상태 요약' },
-  { key: 'assessment', label: '사정', hint: '행동 원인 분석 · AI' },
+  { key: 'assessment', label: '사정', hint: 'AI 계획 · 행동 원인 분석' },
   { key: 'plan', label: '계획', hint: '목표 · 예방 전략' },
   { key: 'execute', label: '실행', hint: '약속 · 강화 타이머 · 거래' },
   { key: 'review', label: '점검', hint: '경보 · 추세 · 연결' },

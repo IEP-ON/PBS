@@ -207,7 +207,7 @@ function Sec9({ goto }: { goto: (n: number) => void }) {
                 criterion="자료의 적절성"
                 points="20점"
                 official="교육과정 연관성, 제작 목적 명확성, 교수·학습 효과"
-                mapping="2022 개정 특수교육 교육과정의 사회적응·일상생활 맥락에서 긍정적 행동지원(PBS) 실행을 목적으로 설계. 사정→계획→실행→점검 흐름을 **학생 지원 계획** 메뉴와 학생 상세 탭으로 구조화하고, **행동 목표 체크**로 교수·강화 효과를 즉시 제공."
+                mapping="2022 개정 특수교육 교육과정의 사회적응·일상생활 맥락에서 긍정적 행동지원(PBS) 실행을 목적으로 설계. 사정→계획→실행→점검 흐름을 **학생 지원 계획** 메뉴와 학생 상세 탭으로 구조화하고, **행동 목표 체크**로 교수·강화 효과를 즉시 제공. 신규 학급·첫 사정은 **AI 행동 지원 계획**을 사정 탭 상단에서 시작해 FBA·목표·계약·중재까지 연결합니다."
               />
               <CriteriaRow
                 criterion="창의성"
@@ -271,7 +271,7 @@ function Sec0({ goto }: { goto: (n: number) => void }) {
       <SectionHeader
         step="✨ 환영합니다"
         title="PBS 기반 디지털 행동지원 플랫폼"
-        desc="본 플랫폼은 특수학급에서 긍정적 행동지원(PBS)을 체계적으로 운영하기 위한 디지털 교육자료입니다. 학생별 목표행동 설정, 즉시 강화, 사건기록, 기능 기반 행동 원인 분석, 행동지원계획 수립 기능을 한 흐름으로 연결합니다."
+        desc="본 플랫폼은 특수학급에서 긍정적 행동지원(PBS)을 체계적으로 운영하기 위한 디지털 교육자료입니다. 학생별 목표행동 설정, 즉시 강화, 사건기록, 기능 기반 행동 원인 분석, 행동지원계획 수립 기능을 연결합니다. 신규 학급은 **AI 행동 지원 계획**으로 첫 사정을 시작한 뒤 FBA·목표·계약까지 한 번에 저장할 수 있습니다."
       />
       <Card title="🏛 서비스 정체성">
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 14 }}>
@@ -394,7 +394,7 @@ function Sec2({ goto }: { goto: (n: number) => void }) {
         <FeatureCard icon="💳" title="자동 계좌 개설" desc="등록과 동시에 토큰 통장이 생성됩니다. 초기 잔액·시작 보너스는 운영 정책에 맞게 설정하세요." />
         <FeatureCard icon="🪙" title="QR 코드 토큰" desc="실물 코인 대신 QR 코드로 토큰 지급·상환. QR 토큰 탭에서 배치 생성." />
       </Grid2>
-      <Tip type="success"><strong>권장 순서:</strong> 학생 등록 → AI 행동 지원 계획 생성 → 행동 목표 자동 설정. 목표를 수동으로 입력할 필요 없이 AI가 학생 정보 기반으로 초안을 만들어 줍니다.</Tip>
+      <Tip type="success"><strong>권장 순서:</strong> 학생 등록 → 학생 상세 **사정** 탭에서 AI 행동 지원 계획(기존 분석이 없으면 화면 상단) → 「한 번에 저장」으로 FBA·행동 목표·계약·중재까지 연결. 강화 타이머 **실행**과 소거 경보 **등록**은 각 전용 화면에서 진행합니다.</Tip>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 28, paddingTop: 20, borderTop: '1px solid #f1f5f9' }}>
         <button onClick={() => goto(1)} style={{ padding: '9px 18px', borderRadius: 10, fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', background: '#f1f5f9', color: '#64748b' }}>← 이전</button>
         <button onClick={() => goto(3)} style={{ padding: '9px 18px', borderRadius: 10, fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', background: '#3b82f6', color: '#fff' }}>다음: 행동 목표 →</button>
@@ -430,7 +430,7 @@ function Sec3({ goto }: { goto: (n: number) => void }) {
       <Card title="↩ 실수 취소 (Undo)">
         <p style={{ fontSize: 13, color: '#475569', lineHeight: 1.7 }}>체크 후 <strong>6초 이내</strong>에 토스트 알림의 실행취소 버튼을 누르면 기록이 삭제됩니다. 잘못 누른 경우 즉시 취소하세요.</p>
       </Card>
-      <Tip type="success"><strong>AI 자동 생성 권장:</strong> 학생 관리 → 학생 상세 → AI 행동 지원 계획 탭에서 학생 정보를 입력하면 ABA 근거 기반 행동 목표가 자동으로 만들어집니다.</Tip>
+      <Tip type="success"><strong>AI 자동 생성 권장:</strong> 학생 상세 → <strong>사정</strong> 탭 → AI 행동 지원 계획에서 서술·구조화 후 계획을 생성하면, 저장 시 FBA 추정 기능이 행동 목표에도 반영되고 하루 목표 횟수·스스로 체크 허용이 함께 설정됩니다.</Tip>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 28, paddingTop: 20, borderTop: '1px solid #f1f5f9' }}>
         <button onClick={() => goto(2)} style={{ padding: '9px 18px', borderRadius: 10, fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', background: '#f1f5f9', color: '#64748b' }}>← 이전</button>
         <button onClick={() => goto(4)} style={{ padding: '9px 18px', borderRadius: 10, fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', background: '#3b82f6', color: '#fff' }}>다음: AI 계획 →</button>
@@ -442,7 +442,7 @@ function Sec3({ goto }: { goto: (n: number) => void }) {
 function Sec4({ goto }: { goto: (n: number) => void }) {
   return (
     <div>
-      <SectionHeader step="STEP 4 · GPT-4o" title="AI 행동 지원 계획" desc="자유롭게 학생을 서술하면 AI가 학생 이해 정보를 구조화하고, 이를 바탕으로 행동 원인 분석 → 행동 목표 → 행동 약속 계약서 → 중재 전략을 한 흐름으로 생성합니다." />
+      <SectionHeader step="STEP 4 · GPT-4o" title="AI 행동 지원 계획" desc="자유롭게 학생을 서술하면 AI가 학생 이해 정보를 구조화하고, 행동 원인 분석(FBA)·행동 목표·행동 약속 계약서·중재 전략 초안을 만듭니다. 학생 상세 **사정** 탭에서는 기존 분석 기록이 없을 때 이 블록이 맨 위에 나와 신규 학급의 첫 사정 시작점이 됩니다. 「한 번에 저장」 시 FBA는 짧은 간격 안의 재저장이 같은 행을 갱신해 중복이 쌓이지 않습니다." />
       <Card title="🖊 자유 텍스트 입력 예시">
         <div style={{ background: '#1e293b', color: '#e2e8f0', borderRadius: 10, padding: '14px 16px', fontFamily: 'monospace', fontSize: 12, lineHeight: 1.7 }}>
           <span style={{ color: '#64748b' }}># 이렇게 자유롭게 써도 됩니다{'\n'}</span>
@@ -461,11 +461,12 @@ function Sec4({ goto }: { goto: (n: number) => void }) {
       <Card title="🤖 AI가 자동으로 생성하는 것">
         <Steps items={[
           { title: '행동 원인(기능) 분석', desc: '주의추구 / 회피 / 감각 / 물건획득 중 추정 기능과 신뢰도를 분석합니다.' },
-          { title: '행동 목표 2개 이상', desc: '대체행동 + 보완행동으로 구성. 토큰 단가와 강화 타이머 일정 포함.' },
+          { title: '행동 목표 2개 이상', desc: '대체행동 + 보완행동, 토큰 단가·하루 목표 횟수·FBA 추정 기능 필드 연동. 스스로 체크 허용은 저장 시 켜집니다.' },
           { title: '행동 약속 계약서 초안', desc: '달성 기준, 측정 방법, 보상 금액이 포함된 계약서를 즉시 인쇄 가능.' },
-          { title: '근거기반 중재전략', desc: 'FCT·강화 타이머(DRO)·NCR 등 18개 전략 DB에서 기능에 맞는 전략을 우선순위로 추천.' },
+          { title: '근거기반 중재전략', desc: 'FCT·강화 타이머(DRO)·NCR 등 전략 DB에서 기능에 맞는 전략을 우선순위로 추천.' },
         ]} />
       </Card>
+      <Tip type="warn"><strong>저장 범위:</strong> 「한 번에 저장」은 FBA·행동 목표·계약서·중재 라이브러리 반영까지입니다. <strong>강화 타이머를 실제로 돌리기</strong>·<strong>소거 위험 경보를 시스템에 등록</strong>하기는 각각 타이머·경보 화면에서 진행합니다.</Tip>
       <Tip type="danger"><strong>AI 산출물은 초안입니다.</strong> 이 플랫폼은 PBS를 상위 운영 틀로 두고 ABA 기반 원리를 활용하지만, 최종 판단은 반드시 교사가 해야 합니다. 감각 기능 행동 소거 금지 등 주요 안전 규칙은 자동 반영되더라도 저장 전 검토·수정은 필수입니다.</Tip>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 28, paddingTop: 20, borderTop: '1px solid #f1f5f9' }}>
         <button onClick={() => goto(3)} style={{ padding: '9px 18px', borderRadius: 10, fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', background: '#f1f5f9', color: '#64748b' }}>← 이전</button>

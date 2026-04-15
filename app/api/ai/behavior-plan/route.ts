@@ -141,7 +141,7 @@ export async function POST(request: Request) {
 ${dbContext ? `\n[DB에서 조회된 참조 데이터 — 이 전략 목록과 매핑을 최우선 참고하세요]\n${dbContext}` : ''}
 중요 규칙:
 1. 반드시 모든 필드를 한국어로 작성하세요 (영어 사용 금지).
-2. pbsGoals는 최소 2개 이상 포함하세요 (대체행동 + 보완행동).
+2. pbsGoals는 최소 2개 이상 포함하세요 (대체행동 + 보완행동). 각 목표에 dailyTarget(하루 달성 목표 횟수, 3~10 정수)을 포함하세요.
 3. interventions는 최소 2개 이상 포함하세요. DB의 전략 목록에서 선택하세요.
 4. tokenPerOccurrence는 100~500원 범위로 설정하세요.
 5. contract의 rewardAmount는 1000~5000원 범위로 설정하세요.
@@ -188,6 +188,7 @@ ${dbContext ? `\n[DB에서 조회된 참조 데이터 — 이 전략 목록과 �
       "behaviorDefinition": "조작적 정의 (관찰·측정 가능하게)",
       "strategyType": "DRO|DRA|DRI|DRL|FCT|NCR|BC|Shaping 중 하나",
       "tokenPerOccurrence": 100~500 사이 숫자(원),
+      "dailyTarget": 3~10 사이 정수(하루 목표 횟수),
       "rationale": "이 전략을 선택한 ABA 근거"
     }
   ],

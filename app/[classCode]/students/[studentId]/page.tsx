@@ -196,57 +196,81 @@ export default async function StudentDetailPage({
     </div>
   )
 
+  const hasFbaHistory = Boolean(fbaRecords && fbaRecords.length > 0)
+
+  const fbaRecordsSection = (
+    <div>
+      <h2 className="text-lg font-bold text-gray-900 mb-3">행동 원인 분석 기록</h2>
+      {hasFbaHistory ? (
+        <div className="space-y-3">
+          {fbaRecords!.map((record) => (
+            <div key={record.id} className="bg-white rounded-2xl border border-gray-100 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="font-semibold text-gray-900">{record.behavior_description}</p>
+                  <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                    {record.estimated_function && (
+                      <span className="rounded-full bg-purple-100 px-2 py-0.5 font-medium text-purple-700">
+                        기능: {record.estimated_function}
+                      </span>
+                    )}
+                    {record.confidence && (
+                      <span className="rounded-full bg-gray-100 px-2 py-0.5 font-medium text-gray-600">
+                        신뢰도: {record.confidence}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <p className="text-xs text-gray-400 whitespace-nowrap">
+                  {new Date(record.created_at).toLocaleDateString('ko-KR', {
+                    month: 'short',
+                    day: 'numeric',
+                  })}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="bg-white rounded-2xl border border-gray-100 p-8 text-center">
+          <p className="text-gray-400 text-sm">아직 기록된 행동 원인 분석이 없습니다.</p>
+          <p className="mt-3 text-xs text-gray-500 max-w-md mx-auto leading-relaxed">
+            신규 학급·첫 사정은 위쪽 <strong className="text-gray-700">AI 행동 지원 계획</strong>에서 초안을 만든 뒤
+            「한 번에 저장」으로 첫 기록을 남길 수 있습니다. 곧바로 다시 저장할 때는 최근 분석 행만 갱신되어
+            짧은 간격의 중복 기록이 쌓이지 않습니다.
+          </p>
+          <Link href={`/${classCode}/fba`} className="inline-block mt-4 text-sm text-blue-600 hover:text-blue-700">
+            학급 화면에서 행동 원인 분석 기록하기 →
+          </Link>
+        </div>
+      )}
+    </div>
+  )
+
+  const aiBehaviorPlanSection = (
+    <AiBehaviorPlan
+      studentId={studentId}
+      studentName={student.name}
+      grade={student.grade}
+      classCode={classCode}
+      initialProfile={aiProfile}
+    />
+  )
+
+  /** 기록이 없을 때는 AI를 먼저 두어 신규 학급의 사정 시작점을 맞춤 */
   const assessmentContent = (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-lg font-bold text-gray-900 mb-3">행동 원인 분석 기록</h2>
-        {fbaRecords && fbaRecords.length > 0 ? (
-          <div className="space-y-3">
-            {fbaRecords.map((record) => (
-              <div key={record.id} className="bg-white rounded-2xl border border-gray-100 p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="font-semibold text-gray-900">{record.behavior_description}</p>
-                    <div className="mt-2 flex flex-wrap gap-2 text-xs">
-                      {record.estimated_function && (
-                        <span className="rounded-full bg-purple-100 px-2 py-0.5 font-medium text-purple-700">
-                          기능: {record.estimated_function}
-                        </span>
-                      )}
-                      {record.confidence && (
-                        <span className="rounded-full bg-gray-100 px-2 py-0.5 font-medium text-gray-600">
-                          신뢰도: {record.confidence}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <p className="text-xs text-gray-400 whitespace-nowrap">
-                    {new Date(record.created_at).toLocaleDateString('ko-KR', {
-                      month: 'short',
-                      day: 'numeric',
-                    })}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="bg-white rounded-2xl border border-gray-100 p-8 text-center">
-            <p className="text-gray-400 text-sm">아직 기록된 행동 원인 분석이 없습니다.</p>
-            <Link href={`/${classCode}/fba`} className="inline-block mt-3 text-sm text-blue-600 hover:text-blue-700">
-              행동 원인 분석 기록하기 →
-            </Link>
-          </div>
-        )}
-      </div>
-
-      <AiBehaviorPlan
-        studentId={studentId}
-        studentName={student.name}
-        grade={student.grade}
-        classCode={classCode}
-        initialProfile={aiProfile}
-      />
+      {hasFbaHistory ? (
+        <>
+          {fbaRecordsSection}
+          {aiBehaviorPlanSection}
+        </>
+      ) : (
+        <>
+          {aiBehaviorPlanSection}
+          {fbaRecordsSection}
+        </>
+      )}
     </div>
   )
 

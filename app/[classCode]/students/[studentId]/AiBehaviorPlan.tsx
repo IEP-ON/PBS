@@ -32,6 +32,18 @@ interface PbsGoalDraft {
   strategyType: string
   tokenPerOccurrence: number
   rationale: string
+  /** 하루 목표 횟수 — AI 또는 기본값 */
+  dailyTarget?: number
+}
+
+const ESTIMATED_FUNCTIONS = ['attention', 'escape', 'sensory', 'tangible'] as const
+
+function coerceEstimatedFunction(value: unknown): (typeof ESTIMATED_FUNCTIONS)[number] | undefined {
+  if (typeof value !== 'string') return undefined
+  const v = value.trim().toLowerCase()
+  return (ESTIMATED_FUNCTIONS as readonly string[]).includes(v)
+    ? (v as (typeof ESTIMATED_FUNCTIONS)[number])
+    : undefined
 }
 
 interface ContractDraft {
@@ -70,6 +82,18 @@ interface BehaviorPlan {
   interventions: InterventionDraft[]
   dro: DroDraft
   extinctionAlert: ExtinctionDraft
+}
+
+function normalizePlanFromApi(plan: BehaviorPlan): BehaviorPlan {
+  const pbsGoals = (plan.pbsGoals || []).map((g) => {
+    const raw = g as PbsGoalDraft & { dailyTarget?: unknown }
+    let dailyTarget = 5
+    if (typeof raw.dailyTarget === 'number' && Number.isFinite(raw.dailyTarget)) {
+      dailyTarget = Math.min(30, Math.max(1, Math.floor(raw.dailyTarget)))
+    }
+    return { ...g, dailyTarget }
+  })
+  return { ...plan, pbsGoals }
 }
 
 type SaveStatus = 'idle' | 'saving' | 'done' | 'error'
@@ -403,13 +427,14 @@ export default function AiBehaviorPlan({
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'AI 행동 지원 계획 생성에 실패했습니다.')
 
-      setEditedPlan(JSON.parse(JSON.stringify(data.plan)))
-      setOriginalPlan(JSON.parse(JSON.stringify(data.plan)))
+      const normalized = normalizePlanFromApi(data.plan as BehaviorPlan)
+      setEditedPlan(JSON.parse(JSON.stringify(normalized)))
+      setOriginalPlan(JSON.parse(JSON.stringify(normalized)))
       setLogId(data.logId || null)
 
       const mapping: Record<number, number> = {}
-      const interventions: InterventionDraft[] = data.plan.interventions || []
-      ;(data.plan.pbsGoals || []).forEach((goal: PbsGoalDraft, index: number) => {
+      const interventions: InterventionDraft[] = normalized.interventions || []
+      ;(normalized.pbsGoals || []).forEach((goal: PbsGoalDraft, index: number) => {
         const abbr = (goal.strategyType || '').toUpperCase()
         const matchIndex = interventions.findIndex((item) =>
           item.strategyName.toUpperCase().includes(abbr) ||
@@ -441,6 +466,7 @@ export default function AiBehaviorPlan({
         estimatedFunction: fba.estimatedFunction,
         confidence: fba.confidence,
         rationale: fba.rationale,
+        replaceIfRecentMinutes: 45,
       }),
     })
     if (res.ok) setStatus('fba', 'done', `행동 원인 분석 저장 완료 (${FUNCTION_LABELS[fba.estimatedFunction] || fba.estimatedFunction})`)
@@ -453,9 +479,14 @@ export default function AiBehaviorPlan({
 
     let success = 0
     const dro = currentPlan.dro
+    const behaviorFunction = coerceEstimatedFunction(currentPlan.fba?.estimatedFunction)
     for (let index = 0; index < currentPlan.pbsGoals.length; index += 1) {
       const goal = currentPlan.pbsGoals[index]
       const isDroGoal = index === 0 && dro.intervalMinutes > 0
+      const dailyTarget =
+        typeof goal.dailyTarget === 'number' && goal.dailyTarget >= 1
+          ? Math.min(30, Math.floor(goal.dailyTarget))
+          : 5
       const res = await fetch('/api/pbs/goals', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -465,6 +496,9 @@ export default function AiBehaviorPlan({
           behaviorDefinition: goal.behaviorDefinition,
           tokenPerOccurrence: goal.tokenPerOccurrence,
           strategyType: goal.strategyType,
+          behaviorFunction,
+          dailyTarget,
+          allowSelfCheck: true,
           isDro: isDroGoal,
           droIntervalMinutes: isDroGoal ? dro.intervalMinutes : undefined,
         }),
@@ -690,7 +724,7 @@ export default function AiBehaviorPlan({
           <span className="text-2xl">🤖</span>
           <div className="text-left">
             <p className="font-bold text-gray-900">AI 행동 지원 계획</p>
-            <p className="text-xs text-gray-500">학생 이해 입력 → AI 구조화 → 교사 수정 → 전 기능 재사용</p>
+            <p className="text-xs text-gray-500">학생 이해 입력 → AI 구조화 → 교사 검토 → FBA·목표·계약·중재까지 한 번에 저장 (타이머 실행·소거 경보 등록은 별도 화면)</p>
           </div>
         </div>
         <span className="text-gray-400 text-sm">{open ? '▲' : '▼'}</span>
@@ -1053,9 +1087,18 @@ export default function AiBehaviorPlan({
                   <div key={index} className="rounded-lg border border-blue-100 bg-white p-3 space-y-2">
                     <div className="grid grid-cols-2 gap-2">
                       <input value={goal.behaviorName} onChange={(event) => updateGoal(index, 'behaviorName', event.target.value)} className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-medium text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400" />
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <input type="number" value={goal.tokenPerOccurrence} onChange={(event) => updateGoal(index, 'tokenPerOccurrence', Number(event.target.value))} className="w-24 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400" />
                         <span className="text-xs text-gray-400">원/회</span>
+                        <input
+                          type="number"
+                          min={1}
+                          max={30}
+                          value={goal.dailyTarget ?? 5}
+                          onChange={(event) => updateGoal(index, 'dailyTarget', Number(event.target.value))}
+                          className="w-20 rounded-lg border border-gray-200 bg-gray-50 px-2 py-2 text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                        />
+                        <span className="text-xs text-gray-400">회/일</span>
                       </div>
                     </div>
                     {editedPlan.interventions.length > 0 && (

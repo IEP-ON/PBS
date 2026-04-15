@@ -40,17 +40,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: '교사 권한이 필요합니다.' }, { status: 403 })
     }
 
-    const { 
-      studentId, 
-      behaviorDescription, 
-      antecedentPatterns, 
-      consequencePatterns, 
+    const {
+      studentId,
+      behaviorDescription,
+      antecedentPatterns,
+      consequencePatterns,
       frequencyData,
       requestAiAnalysis = false,
       // AI 행동 지원 계획에서 직접 전달받는 필드
       estimatedFunction: externalFunction,
       confidence: externalConfidence,
       rationale: externalRationale,
+      /** 최근 N분 안에 같은 학생 FBA가 있으면 갱신(중복 행 방지). AI 일괄 저장 등에서 사용 */
+      replaceIfRecentMinutes,
     } = await request.json()
 
     if (!studentId || !behaviorDescription) {
@@ -121,25 +123,71 @@ export async function POST(request: Request) {
       }
     }
 
-    // FBA 기록 저장
-    const { data: record } = await supabase
+    const rowPayload = {
+      behavior_description: behaviorDescription,
+      antecedent_patterns: antecedentPatterns || [],
+      consequence_patterns: consequencePatterns || [],
+      frequency_data: frequencyData || null,
+      estimated_function: estimatedFunction,
+      confidence,
+      gpt_analysis: gptAnalysis,
+    }
+
+    const windowMinutes =
+      typeof replaceIfRecentMinutes === 'number' && replaceIfRecentMinutes > 0
+        ? Math.min(Math.floor(replaceIfRecentMinutes), 24 * 60)
+        : 0
+
+    if (windowMinutes > 0) {
+      const since = new Date(Date.now() - windowMinutes * 60 * 1000).toISOString()
+      const { data: recent } = await supabase
+        .from('pbs_fba_records')
+        .select('id')
+        .eq('student_id', studentId)
+        .gte('created_at', since)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      if (recent?.id) {
+        const { data: updated, error: updateError } = await supabase
+          .from('pbs_fba_records')
+          .update(rowPayload)
+          .eq('id', recent.id)
+          .select()
+          .single()
+
+        if (updateError) {
+          console.error('FBA 기록 갱신 오류:', updateError)
+          return NextResponse.json({ error: 'FBA 기록 갱신에 실패했습니다.' }, { status: 500 })
+        }
+
+        return NextResponse.json({
+          record: updated,
+          aiAnalysisPerformed: !!gptAnalysis,
+          replacedRecent: true,
+        })
+      }
+    }
+
+    const { data: record, error: insertError } = await supabase
       .from('pbs_fba_records')
       .insert({
         student_id: studentId,
-        behavior_description: behaviorDescription,
-        antecedent_patterns: antecedentPatterns || [],
-        consequence_patterns: consequencePatterns || [],
-        frequency_data: frequencyData || null,
-        estimated_function: estimatedFunction,
-        confidence,
-        gpt_analysis: gptAnalysis,
+        ...rowPayload,
       })
       .select()
       .single()
 
-    return NextResponse.json({ 
+    if (insertError) {
+      console.error('FBA 기록 삽입 오류:', insertError)
+      return NextResponse.json({ error: 'FBA 기록 저장에 실패했습니다.' }, { status: 500 })
+    }
+
+    return NextResponse.json({
       record,
       aiAnalysisPerformed: !!gptAnalysis,
+      replacedRecent: false,
     })
   } catch {
     return NextResponse.json({ error: '서버 오류가 발생했습니다.' }, { status: 500 })
