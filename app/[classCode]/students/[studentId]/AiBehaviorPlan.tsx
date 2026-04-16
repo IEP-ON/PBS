@@ -513,12 +513,21 @@ export default function AiBehaviorPlan({
     if (!currentPlan) return
     setStatus('pbs', 'saving')
 
+    const goalsWithStrategies = currentPlan.pbsGoals.map((goal, index) => {
+      const interventionIndex = strategyMapping[index] ?? -1
+      if (interventionIndex >= 0 && currentPlan.interventions[interventionIndex]) {
+        return { ...goal, strategyType: currentPlan.interventions[interventionIndex].strategyName }
+      }
+      return goal
+    })
+
     let success = 0
+    let firstError = ''
     const dro = currentPlan.dro
     const ncrSchedule = currentPlan.ncrSchedule ?? null
     const behaviorFunction = coerceEstimatedFunction(currentPlan.fba?.estimatedFunction)
-    for (let index = 0; index < currentPlan.pbsGoals.length; index += 1) {
-      const goal = currentPlan.pbsGoals[index]
+    for (let index = 0; index < goalsWithStrategies.length; index += 1) {
+      const goal = goalsWithStrategies[index]
       const isDroGoal = index === 0 && dro.intervalMinutes > 0
       const strategyUpper = (goal.strategyType || '').toUpperCase()
       const isNcrGoal = strategyUpper === 'NCR'
@@ -550,13 +559,25 @@ export default function AiBehaviorPlan({
           ncrIntervalMinutes: ncrMinutes,
         }),
       })
-      if (res.ok) success += 1
+      if (res.ok) {
+        success += 1
+      } else if (!firstError) {
+        try {
+          const data = (await res.json()) as { error?: string; details?: string }
+          firstError = [data.error, data.details].filter(Boolean).join(' — ') || `HTTP ${res.status}`
+        } catch {
+          firstError = `HTTP ${res.status}`
+        }
+      }
     }
 
+    const total = currentPlan.pbsGoals.length
     setStatus(
       'pbs',
-      success === currentPlan.pbsGoals.length ? 'done' : 'error',
-      `행동 목표 ${success}/${currentPlan.pbsGoals.length}개 저장`
+      success === total ? 'done' : 'error',
+      firstError
+        ? `행동 목표 ${success}/${total}개 저장 — ${firstError}`
+        : `행동 목표 ${success}/${total}개 저장`
     )
   }
 
