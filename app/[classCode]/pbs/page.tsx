@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams } from 'next/navigation'
+import { SPEECH_DIARY_REWARD_AMOUNT } from '@/lib/speech-diary'
 import { formatCurrency } from '@/lib/utils'
 import type { SpeechDiaryStatus } from '@/types'
 
@@ -509,7 +510,7 @@ export default function PbsCheckPage() {
                 disabled={!selectedDiaryStatus.has_today_diary || selectedDiaryStatus.reward_granted_today || rewardingDiary}
                 className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-emerald-300"
               >
-                {selectedDiaryStatus.reward_granted_today ? '오늘 보상 완료' : rewardingDiary ? '지급 중...' : '말 일기 보상 +1'}
+                {selectedDiaryStatus.reward_granted_today ? '오늘 보상 완료' : rewardingDiary ? '지급 중...' : `말 일기 보상 +${formatCurrency(SPEECH_DIARY_REWARD_AMOUNT)}`}
               </button>
             </div>
           </div>
