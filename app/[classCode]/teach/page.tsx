@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import { formatCurrency } from '@/lib/utils'
+import { PROMPT_LEVEL_LABELS, buildPbsRecordPostBody, type PromptLevel } from '@/lib/pbs-record-fields'
 import type { TeachStudent, TeachGoal } from '@/app/api/teach/summary/route'
 
 // ─── 상수 ────────────────────────────────────────────────────────────────────
@@ -57,9 +58,10 @@ export default function TeachPage() {
   const [currentPeriod, setCurrentPeriod] = useState(0) // 0 = 미설정
   const [sessionStart, setSessionStart] = useState<Date | null>(null)
 
-  // PBS 체크 관련
+  // PBS 체크 관련 (PTR Teach: 촉구 수준 · Prevent: 선행 퀵태그)
   const [checkingGoal, setCheckingGoal] = useState<string | null>(null)
-  const [promptedStudent, setPromptedStudent] = useState<string | null>(null) // P 토글
+  const [promptLevelByStudent, setPromptLevelByStudent] = useState<Record<string, PromptLevel>>({})
+  const [antecedentTagByStudent, setAntecedentTagByStudent] = useState<Record<string, string>>({})
   const [expandedStudent, setExpandedStudent] = useState<string | null>(null)
   const [lastCheck, setLastCheck] = useState<{ name: string; count: number; tokens: number } | null>(null)
 
@@ -127,8 +129,11 @@ export default function TeachPage() {
   }
 
   // ── PBS 체크 ────────────────────────────────────────────────────────────────
+  const getPromptLevel = (studentId: string): PromptLevel =>
+    promptLevelByStudent[studentId] ?? 'independent'
+
   const handleCheck = async (student: TeachStudent, goal: TeachGoal, count: number) => {
-    const prompted = promptedStudent === student.id
+    const promptLevel = getPromptLevel(student.id)
     setCheckingGoal(goal.id)
 
     // 옵티미스틱 업데이트
@@ -150,12 +155,15 @@ export default function TeachPage() {
     await fetch('/api/pbs/records', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        studentId: student.id,
-        goalId: goal.id,
-        occurrenceCount: count,
-        prompted,
-      }),
+      body: JSON.stringify(
+        buildPbsRecordPostBody({
+          studentId: student.id,
+          goalId: goal.id,
+          occurrenceCount: count,
+          promptLevel,
+          antecedentTag: antecedentTagByStudent[student.id],
+        })
+      ),
     })
 
     setCheckingGoal(null)
@@ -313,7 +321,8 @@ export default function TeachPage() {
       <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
         {students.map(student => {
           const dro = calcDro(student, now)
-          const isPrompted = promptedStudent === student.id
+          const promptLevel = getPromptLevel(student.id)
+          const isPrompted = promptLevel !== 'independent'
           const isExpanded = expandedStudent === student.id
           const primaryGoal = student.goals[0] || null
           const promptHint = student.p_prompt_options[0] || null
@@ -336,6 +345,16 @@ export default function TeachPage() {
                     <p className="mt-1 max-w-[210px] text-[11px] leading-4 text-gray-500">
                       {student.public_safe_summary}
                     </p>
+                  )}
+                  {student.prevention_supports.length > 0 && (
+                    <div className="mt-2 max-w-[240px] rounded-lg border border-teal-100 bg-teal-50/80 px-2 py-1.5">
+                      <p className="text-[9px] font-bold uppercase tracking-wider text-teal-600">예방(Prevent)</p>
+                      <ul className="mt-0.5 list-disc pl-3 text-[10px] leading-4 text-teal-900">
+                        {student.prevention_supports.slice(0, 4).map((line) => (
+                          <li key={line}>{line}</li>
+                        ))}
+                      </ul>
+                    </div>
                   )}
                 </div>
                 <div className="text-right">
@@ -418,19 +437,75 @@ export default function TeachPage() {
                     </div>
                   )}
 
-                  {/* 촉구 토글 + 체크 버튼 */}
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      onClick={() => setPromptedStudent(prev => prev === student.id ? null : student.id)}
-                      className={`shrink-0 text-[10px] px-2 py-1.5 rounded-lg font-bold transition-colors ${
+                  {/* 선행 퀵태그 (Prevent) */}
+                  {student.antecedent_patterns.length > 0 && (
+                    <div className="mb-2">
+                      <p className="text-[9px] font-semibold text-gray-500 mb-1">선행 퀵태그</p>
+                      <div className="flex flex-wrap gap-1">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setAntecedentTagByStudent((prev) => {
+                              const next = { ...prev }
+                              delete next[student.id]
+                              return next
+                            })
+                          }
+                          className={`rounded-full px-2 py-0.5 text-[9px] font-medium border ${
+                            !antecedentTagByStudent[student.id]
+                              ? 'border-violet-400 bg-violet-100 text-violet-800'
+                              : 'border-gray-200 bg-white text-gray-500'
+                          }`}
+                        >
+                          없음
+                        </button>
+                        {student.antecedent_patterns.slice(0, 6).map((tag) => (
+                          <button
+                            type="button"
+                            key={tag}
+                            onClick={() =>
+                              setAntecedentTagByStudent((prev) => ({
+                                ...prev,
+                                [student.id]: tag,
+                              }))
+                            }
+                            className={`rounded-full px-2 py-0.5 text-[9px] font-medium border truncate max-w-[140px] ${
+                              antecedentTagByStudent[student.id] === tag
+                                ? 'border-violet-500 bg-violet-200 text-violet-900'
+                                : 'border-gray-200 bg-gray-50 text-gray-600'
+                            }`}
+                            title={tag}
+                          >
+                            {tag.length > 18 ? `${tag.slice(0, 18)}…` : tag}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 촉구 수준(Teach) + 체크 */}
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <select
+                      value={promptLevel}
+                      onChange={(e) =>
+                        setPromptLevelByStudent((prev) => ({
+                          ...prev,
+                          [student.id]: e.target.value as PromptLevel,
+                        }))
+                      }
+                      className={`shrink-0 max-w-[100px] rounded-lg border px-1.5 py-1 text-[10px] font-semibold ${
                         isPrompted
-                          ? 'bg-amber-400 text-white'
-                          : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                          ? 'border-amber-300 bg-amber-50 text-amber-900'
+                          : 'border-gray-200 bg-white text-gray-600'
                       }`}
-                      title="촉구 토글 (ON = 다음 체크가 촉구 행동으로 기록됨)"
+                      title="촉구 수준 — 독립이면 촉구 없이 기록"
                     >
-                      {isPrompted ? 'P✓' : 'P'}
-                    </button>
+                      {(Object.keys(PROMPT_LEVEL_LABELS) as PromptLevel[]).map((k) => (
+                        <option key={k} value={k}>
+                          {PROMPT_LEVEL_LABELS[k]}
+                        </option>
+                      ))}
+                    </select>
                     {[1, 2, 3].map(n => (
                       <button
                         key={n}

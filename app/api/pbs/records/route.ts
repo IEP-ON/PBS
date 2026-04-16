@@ -2,6 +2,15 @@ import { NextResponse } from 'next/server'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { getSession } from '@/lib/session'
 
+const PROMPT_LEVELS = new Set(['full', 'partial', 'gesture', 'independent'])
+
+function normalizePromptLevel(value: unknown): string | null {
+  if (value === undefined || value === null || value === '') return null
+  if (typeof value !== 'string') return null
+  const v = value.trim().toLowerCase()
+  return PROMPT_LEVELS.has(v) ? v : null
+}
+
 // POST /api/pbs/records — 행동 목표 체크 입력
 export async function POST(request: Request) {
   try {
@@ -11,11 +20,27 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json()
-    const { studentId, goalId, occurrenceCount, prompted, contextNote } = body
+    const { studentId, goalId, occurrenceCount, prompted, contextNote, antecedentTag, promptLevel } = body
 
     if (!studentId || !goalId || occurrenceCount === undefined) {
       return NextResponse.json({ error: '필수 항목을 입력해주세요.' }, { status: 400 })
     }
+
+    const normalizedPromptLevel = normalizePromptLevel(promptLevel)
+    if (promptLevel !== undefined && promptLevel !== null && promptLevel !== '' && !normalizedPromptLevel) {
+      return NextResponse.json(
+        { error: 'promptLevel은 full, partial, gesture, independent 중 하나여야 합니다.' },
+        { status: 400 }
+      )
+    }
+
+    const antecedentTagStr =
+      typeof antecedentTag === 'string' && antecedentTag.trim() ? antecedentTag.trim().slice(0, 200) : null
+
+    const promptedEffective =
+      typeof prompted === 'boolean'
+        ? prompted
+        : normalizedPromptLevel != null && normalizedPromptLevel !== 'independent'
 
     const supabase = await createServerSupabase()
 
@@ -32,17 +57,22 @@ export async function POST(request: Request) {
 
     const tokenGranted = goal.token_per_occurrence * occurrenceCount
 
+    const insertPayload: Record<string, unknown> = {
+      student_id: studentId,
+      goal_id: goalId,
+      occurrence_count: occurrenceCount,
+      prompted: promptedEffective,
+      context_note: contextNote || null,
+      token_granted: tokenGranted,
+      is_settled: false,
+    }
+
+    if (antecedentTagStr !== null) insertPayload.antecedent_tag = antecedentTagStr
+    if (normalizedPromptLevel !== null) insertPayload.prompt_level = normalizedPromptLevel
+
     const { data: record, error } = await supabase
       .from('pbs_records')
-      .insert({
-        student_id: studentId,
-        goal_id: goalId,
-        occurrence_count: occurrenceCount,
-        prompted: prompted || false,
-        context_note: contextNote || null,
-        token_granted: tokenGranted,
-        is_settled: false,
-      })
+      .insert(insertPayload)
       .select()
       .single()
 

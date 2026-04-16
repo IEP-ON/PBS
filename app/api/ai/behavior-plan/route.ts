@@ -56,6 +56,80 @@ ${Object.entries(extinctionMap).map(([fn, info]) => `${fn}: ${info}`).join('\n')
   }
 }
 
+type NcrScheduleNormalized = {
+  intervalMinutes: number
+  reinforcerType: 'attention' | 'tangible' | 'activity'
+  description: string
+  rationale: string
+}
+
+function normalizeNcrSchedule(raw: unknown, estimatedFunction: string): NcrScheduleNormalized | null {
+  const fn = String(estimatedFunction || '').trim().toLowerCase()
+  if (fn !== 'attention' && fn !== 'tangible') return null
+  if (!raw || typeof raw !== 'object') return null
+  const o = raw as Record<string, unknown>
+  if (o.intervalMinutes === null || o.intervalMinutes === undefined) return null
+  const intervalRaw =
+    typeof o.intervalMinutes === 'number' && Number.isFinite(o.intervalMinutes)
+      ? Math.floor(o.intervalMinutes)
+      : null
+  if (intervalRaw === null || intervalRaw <= 0) return null
+  const intervalMinutes = Math.min(180, Math.max(3, intervalRaw))
+  const rt = typeof o.reinforcerType === 'string' ? o.reinforcerType.trim().toLowerCase() : 'attention'
+  const reinforcerType =
+    rt === 'tangible' || rt === 'activity' ? (rt as 'tangible' | 'activity') : 'attention'
+  return {
+    intervalMinutes,
+    reinforcerType,
+    description:
+      typeof o.description === 'string' ? o.description.slice(0, 500) : '비수반 강화 일정',
+    rationale: typeof o.rationale === 'string' ? o.rationale.slice(0, 500) : '',
+  }
+}
+
+type ScheduleFadingNormalized = {
+  currentSchedule: string
+  targetSchedule: string
+  criterionToFade: string
+  steps: string[]
+  rationale: string
+}
+
+function normalizeScheduleFading(raw: unknown): ScheduleFadingNormalized {
+  if (!raw || typeof raw !== 'object') {
+    return {
+      currentSchedule: 'FR1 (매 목표 체크 시 토큰)',
+      targetSchedule: 'VR5 (평균 5회당 1회 강화)',
+      criterionToFade: '일일 목표 5일 연속 달성 시 다음 단계 검토',
+      steps: ['FR1 고정비율', 'FR2로 증가', 'VR3 전환', '목표 VR/VI'],
+      rationale: 'Ferster & Skinner (1957) 고정·변간 강화 및 희석 원칙.',
+    }
+  }
+  const o = raw as Record<string, unknown>
+  const steps = Array.isArray(o.steps)
+    ? o.steps.map((s) => String(s).trim().slice(0, 220)).filter(Boolean).slice(0, 14)
+    : []
+  return {
+    currentSchedule:
+      typeof o.currentSchedule === 'string' && o.currentSchedule.trim()
+        ? o.currentSchedule.trim().slice(0, 400)
+        : 'FR1 (매 체크 강화)',
+    targetSchedule:
+      typeof o.targetSchedule === 'string' && o.targetSchedule.trim()
+        ? o.targetSchedule.trim().slice(0, 400)
+        : 'VR5',
+    criterionToFade:
+      typeof o.criterionToFade === 'string' && o.criterionToFade.trim()
+        ? o.criterionToFade.trim().slice(0, 600)
+        : '교사가 일일 기록을 보고 단계 전환',
+    steps: steps.length > 0 ? steps : ['현재 일정 유지', '달성도 확인 후 희석'],
+    rationale:
+      typeof o.rationale === 'string' && o.rationale.trim()
+        ? o.rationale.trim().slice(0, 900)
+        : 'Ferster & Skinner (1957) 기반.',
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const session = await getSession()
@@ -147,6 +221,9 @@ ${dbContext ? `\n[DB에서 조회된 참조 데이터 — 이 전략 목록과 �
 5. contract의 rewardAmount는 1000~5000원 범위로 설정하세요.
 6. sensory 기능으로 판단되면 소거(EXT) 절대 제안 금지.
 7. interventions의 evidenceLevel은 DB의 evidence_level 값(strong/moderate/emerging)을 그대로 사용하세요.
+8. estimatedFunction이 attention 또는 tangible이면 루트에 ncrSchedule 객체를 반드시 포함하고, pbsGoals에 strategyType이 NCR인 목표를 정확히 1개 포함하세요. NCR 목표는 예방적 비수반 강화(선제적 관심·선호자원 접근)를 관찰 가능한 행동으로 정의하세요.
+9. estimatedFunction이 escape 또는 sensory이면 ncrSchedule은 null이고, NCR 전략 목표는 포함하지 마세요.
+10. 루트에 scheduleFading 객체를 반드시 포함하세요. 토큰경제의 강화 일정(FR/VR/VI 등)을 현재→목표로 희석하는 단계·전환 기준·근거(Ferster & Skinner, 1957)를 한국어로 채웁니다.
 
 반드시 JSON 형식으로만 응답하세요. 마크다운이나 설명 텍스트 없이 순수 JSON만 반환하세요.`
 
@@ -218,13 +295,27 @@ ${dbContext ? `\n[DB에서 조회된 참조 데이터 — 이 전략 목록과 �
     "baselineCount": 하루평균빈도추정값(숫자),
     "alertThreshold": 소거폭발임계값(숫자),
     "rationale": "Lerman & Iwata(1995) 기반 임계값 설정 근거"
+  },
+  "ncrSchedule": {
+    "intervalMinutes": "3~30 사이 정수(분 단위, 비수반 강화 제공 간격)",
+    "reinforcerType": "attention|tangible|activity 중 하나",
+    "description": "교사가 수업 중 실행할 NCR 절차 (1-2문장)",
+    "rationale": "간격 설정 근거 (기저선 간격의 70~80% 수준 권장)"
+  },
+  "scheduleFading": {
+    "currentSchedule": "예: FR1 매 체크마다 강화",
+    "targetSchedule": "예: VR5 평균 5회에 1회 강화",
+    "criterionToFade": "전환 기준 (예: 5일 연속 dailyTarget 달성 시)",
+    "steps": ["FR1→FR2→VR3→목표 스케줄"],
+    "rationale": "Ferster & Skinner (1957) 고정·변간 강화 일정 희석 원칙에 따른 근거"
   }
-}`
+}
+또는 escape/sensory인 경우 ncrSchedule은 null로 두세요. scheduleFading은 항상 포함하세요.`
 
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o',
       response_format: { type: 'json_object' },
-      max_tokens: 3000,
+      max_tokens: 3400,
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
@@ -236,7 +327,10 @@ ${dbContext ? `\n[DB에서 조회된 참조 데이터 — 이 전략 목록과 �
       return NextResponse.json({ error: 'AI 응답이 없습니다.' }, { status: 500 })
     }
 
-    const plan = JSON.parse(content)
+    const plan = JSON.parse(content) as Record<string, unknown>
+    const estFn = String((plan.fba as Record<string, unknown> | undefined)?.estimatedFunction ?? '')
+    plan.ncrSchedule = normalizeNcrSchedule(plan.ncrSchedule, estFn)
+    plan.scheduleFading = normalizeScheduleFading(plan.scheduleFading)
 
     // 생성 로그 저장 후 logId 반환 (실패해도 응답은 정상 반환)
     let logId: string | null = null
@@ -258,7 +352,10 @@ ${dbContext ? `\n[DB에서 조회된 참조 데이터 — 이 전략 목록과 �
             optionalPrompt: optionalPrompt ?? null,
           },
           ai_output: plan,
-          estimated_function: plan.fba?.estimatedFunction ?? null,
+          estimated_function:
+            (plan.fba as Record<string, unknown> | undefined)?.estimatedFunction != null
+              ? String((plan.fba as Record<string, unknown>).estimatedFunction)
+              : null,
         })
         .select('id')
         .single()

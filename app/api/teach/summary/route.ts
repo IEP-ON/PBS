@@ -31,6 +31,10 @@ export interface TeachStudent {
   activeTimer: TeachTimer | null
   class_mode_targets: string[]
   p_prompt_options: string[]
+  /** AI 프로필 선행 패턴 — PBS 체크 시 퀵태그 후보 */
+  antecedent_patterns: string[]
+  /** AI 프로필 예방 지원 — 수업 중 Prevent 힌트 */
+  prevention_supports: string[]
   incident_tags: string[]
   public_safe_summary: string | null
 }
@@ -80,7 +84,9 @@ export async function GET() {
     const studentIds = students.map(s => s.id)
     const { data: profiles } = await supabase
       .from('pbs_student_ai_profiles')
-      .select('student_id, class_mode_targets, p_prompt_options, incident_tags, public_safe_summary')
+      .select(
+        'student_id, class_mode_targets, p_prompt_options, antecedent_patterns, prevention_supports, incident_tags, public_safe_summary'
+      )
       .in('student_id', studentIds)
 
     // 오늘 모든 학생 PBS 기록
@@ -142,6 +148,8 @@ export async function GET() {
         activeTimer,
         class_mode_targets: profileMap.get(student.id)?.class_mode_targets || [],
         p_prompt_options: profileMap.get(student.id)?.p_prompt_options || [],
+        antecedent_patterns: profileMap.get(student.id)?.antecedent_patterns || [],
+        prevention_supports: profileMap.get(student.id)?.prevention_supports || [],
         incident_tags: profileMap.get(student.id)?.incident_tags || [],
         public_safe_summary: profileMap.get(student.id)?.public_safe_summary || null,
       }

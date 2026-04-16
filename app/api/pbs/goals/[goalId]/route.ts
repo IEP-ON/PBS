@@ -25,6 +25,10 @@ export async function PATCH(
       weeklyTarget: 'weekly_target',
       allowSelfCheck: 'allow_self_check',
       isActive: 'is_active',
+      isDro: 'is_dro',
+      droIntervalMinutes: 'dro_interval_minutes',
+      isNcr: 'is_ncr',
+      ncrIntervalMinutes: 'ncr_interval_minutes',
     }
 
     const updateData: Record<string, unknown> = {}

@@ -75,6 +75,23 @@ interface ExtinctionDraft {
   rationale: string
 }
 
+/** Prevent 단계 — 비수반 강화(NCR) 일정 (서버 behavior-plan에서 정규화됨) */
+export interface NcrSchedule {
+  intervalMinutes: number
+  reinforcerType: 'attention' | 'tangible' | 'activity'
+  description: string
+  rationale: string
+}
+
+/** Reinforce 단계 — 강화 일정 희석(서버 behavior-plan scheduleFading) */
+export interface ScheduleFading {
+  currentSchedule: string
+  targetSchedule: string
+  criterionToFade: string
+  steps: string[]
+  rationale: string
+}
+
 interface BehaviorPlan {
   fba: FbaPlan
   pbsGoals: PbsGoalDraft[]
@@ -82,6 +99,24 @@ interface BehaviorPlan {
   interventions: InterventionDraft[]
   dro: DroDraft
   extinctionAlert: ExtinctionDraft
+  ncrSchedule?: NcrSchedule | null
+  scheduleFading?: ScheduleFading | null
+}
+
+function coerceScheduleFading(raw: unknown): ScheduleFading | null {
+  if (!raw || typeof raw !== 'object') return null
+  const o = raw as Record<string, unknown>
+  const steps = Array.isArray(o.steps) ? o.steps.map((s) => String(s).trim()).filter(Boolean) : []
+  const currentSchedule = typeof o.currentSchedule === 'string' ? o.currentSchedule.trim() : ''
+  const targetSchedule = typeof o.targetSchedule === 'string' ? o.targetSchedule.trim() : ''
+  if (!currentSchedule && !targetSchedule && steps.length === 0) return null
+  return {
+    currentSchedule: currentSchedule || '—',
+    targetSchedule: targetSchedule || '—',
+    criterionToFade: typeof o.criterionToFade === 'string' ? o.criterionToFade.trim() : '',
+    steps: steps.length > 0 ? steps : ['—'],
+    rationale: typeof o.rationale === 'string' ? o.rationale.trim() : '',
+  }
 }
 
 function normalizePlanFromApi(plan: BehaviorPlan): BehaviorPlan {
@@ -93,7 +128,8 @@ function normalizePlanFromApi(plan: BehaviorPlan): BehaviorPlan {
     }
     return { ...g, dailyTarget }
   })
-  return { ...plan, pbsGoals }
+  const scheduleFading = coerceScheduleFading((plan as unknown as Record<string, unknown>).scheduleFading) ?? plan.scheduleFading ?? null
+  return { ...plan, pbsGoals, scheduleFading }
 }
 
 type SaveStatus = 'idle' | 'saving' | 'done' | 'error'
@@ -479,14 +515,23 @@ export default function AiBehaviorPlan({
 
     let success = 0
     const dro = currentPlan.dro
+    const ncrSchedule = currentPlan.ncrSchedule ?? null
     const behaviorFunction = coerceEstimatedFunction(currentPlan.fba?.estimatedFunction)
     for (let index = 0; index < currentPlan.pbsGoals.length; index += 1) {
       const goal = currentPlan.pbsGoals[index]
       const isDroGoal = index === 0 && dro.intervalMinutes > 0
+      const strategyUpper = (goal.strategyType || '').toUpperCase()
+      const isNcrGoal = strategyUpper === 'NCR'
       const dailyTarget =
         typeof goal.dailyTarget === 'number' && goal.dailyTarget >= 1
           ? Math.min(30, Math.floor(goal.dailyTarget))
           : 5
+      const ncrMinutes =
+        isNcrGoal && ncrSchedule
+          ? ncrSchedule.intervalMinutes
+          : isNcrGoal
+            ? 15
+            : undefined
       const res = await fetch('/api/pbs/goals', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -501,6 +546,8 @@ export default function AiBehaviorPlan({
           allowSelfCheck: true,
           isDro: isDroGoal,
           droIntervalMinutes: isDroGoal ? dro.intervalMinutes : undefined,
+          isNcr: isNcrGoal,
+          ncrIntervalMinutes: ncrMinutes,
         }),
       })
       if (res.ok) success += 1
@@ -1195,6 +1242,45 @@ export default function AiBehaviorPlan({
                   <p className="text-xs text-gray-400 italic">{editedPlan.extinctionAlert.rationale}</p>
                 </div>
               </div>
+
+              {editedPlan.ncrSchedule && (
+                <div className="rounded-xl border border-teal-200 bg-teal-50 p-4 space-y-2">
+                  <p className="font-bold text-sm text-teal-900">🛡️ 예방(NCR) 일정 권장</p>
+                  <p className="text-lg font-bold text-teal-800">
+                    {editedPlan.ncrSchedule.intervalMinutes}분마다 · {editedPlan.ncrSchedule.reinforcerType}
+                  </p>
+                  <p className="text-xs text-gray-700">{editedPlan.ncrSchedule.description}</p>
+                  <p className="text-xs text-gray-400 italic">{editedPlan.ncrSchedule.rationale}</p>
+                  <p className="text-[11px] text-teal-700">
+                    저장 시 strategyType NCR 목표에 위 간격이 연결됩니다. 수업 모드에서 예방 힌트와 함께 확인하세요.
+                  </p>
+                </div>
+              )}
+
+              {editedPlan.scheduleFading && (
+                <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-4 space-y-2">
+                  <p className="font-bold text-sm text-indigo-900">📉 강화 일정 희석 (Reinforce)</p>
+                  <div className="grid gap-2 sm:grid-cols-2 text-xs text-gray-800">
+                    <div>
+                      <p className="font-semibold text-indigo-800">현재</p>
+                      <p>{editedPlan.scheduleFading.currentSchedule}</p>
+                    </div>
+                    <div>
+                      <p className="font-semibold text-indigo-800">목표</p>
+                      <p>{editedPlan.scheduleFading.targetSchedule}</p>
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-700">
+                    전환 기준: <strong>{editedPlan.scheduleFading.criterionToFade}</strong>
+                  </p>
+                  <ol className="list-decimal pl-4 text-xs text-gray-700 space-y-0.5">
+                    {editedPlan.scheduleFading.steps.map((step, i) => (
+                      <li key={i}>{step}</li>
+                    ))}
+                  </ol>
+                  <p className="text-xs text-gray-400 italic">{editedPlan.scheduleFading.rationale}</p>
+                </div>
+              )}
             </div>
           )}
         </div>

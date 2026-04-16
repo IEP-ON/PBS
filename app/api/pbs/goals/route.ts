@@ -50,7 +50,7 @@ export async function POST(request: Request) {
     const {
       studentId, behaviorName, behaviorDefinition, behaviorFunction,
       strategyType, tokenPerOccurrence, dailyTarget, weeklyTarget,
-      isDro, droIntervalMinutes, isDrl, drlMaxPerWeek, allowSelfCheck,
+      isDro, droIntervalMinutes, isNcr, ncrIntervalMinutes, isDrl, drlMaxPerWeek, allowSelfCheck,
     } = body
 
     if (!studentId || !behaviorName || !tokenPerOccurrence) {
@@ -73,6 +73,11 @@ export async function POST(request: Request) {
         weekly_target: weeklyTarget || null,
         is_dro: isDro || false,
         dro_interval_minutes: droIntervalMinutes || null,
+        is_ncr: Boolean(isNcr),
+        ncr_interval_minutes:
+          isNcr && typeof ncrIntervalMinutes === 'number' && ncrIntervalMinutes > 0
+            ? Math.min(240, Math.floor(ncrIntervalMinutes))
+            : null,
         is_drl: isDrl || false,
         drl_max_per_week: drlMaxPerWeek || null,
         allow_self_check: allowSelfCheck || false,

@@ -581,6 +581,20 @@ export default async function StudentDetailPage({
           />
           <LevelUpButton studentId={studentId} currentStage={student.pbs_stage} />
         </div>
+        <div className="mt-3 flex flex-wrap gap-2 border-t border-gray-100 pt-3">
+          <Link
+            href={`/${classCode}/students/${studentId}/ptr-insights`}
+            className="inline-flex items-center rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-100"
+          >
+            PTR·강화 인사이트
+          </Link>
+          <Link
+            href={`/${classCode}/students/${studentId}/preference-assessment`}
+            className="inline-flex items-center rounded-xl border border-violet-200 bg-violet-50 px-3 py-2 text-xs font-semibold text-violet-800 hover:bg-violet-100"
+          >
+            선호도 평가 (가게 강화물)
+          </Link>
+        </div>
         {aiProfile && (
           <div className="mt-4 rounded-2xl border border-purple-100 bg-purple-50 p-4">
             <p className="text-xs font-bold uppercase tracking-[0.22em] text-purple-500">AI 학생 요약</p>

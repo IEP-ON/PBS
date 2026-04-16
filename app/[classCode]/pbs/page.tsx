@@ -3,8 +3,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import { SPEECH_DIARY_REWARD_AMOUNT } from '@/lib/speech-diary'
+import { PROMPT_LEVEL_LABELS, buildPbsRecordPostBody, type PromptLevel } from '@/lib/pbs-record-fields'
 import { formatCurrency } from '@/lib/utils'
-import type { SpeechDiaryStatus } from '@/types'
+import type { SpeechDiaryStatus, StudentAiProfile } from '@/types'
 
 interface Student {
   id: string
@@ -118,6 +119,13 @@ export default function PbsCheckPage() {
   const [bulkSelectedStudents, setBulkSelectedStudents] = useState<string[]>([])
   const [bulkCount, setBulkCount] = useState(1)
   const [bulkSubmitting, setBulkSubmitting] = useState(false)
+  const [bulkPromptLevel, setBulkPromptLevel] = useState<PromptLevel>('independent')
+  const [bulkAntecedentTag, setBulkAntecedentTag] = useState('')
+
+  /** 선택 학생 AI 프로필(예방·선행·촉구 힌트) — 수업 모드와 동일 출처 */
+  const [studentAiProfile, setStudentAiProfile] = useState<StudentAiProfile | null>(null)
+  const [promptLevelByStudent, setPromptLevelByStudent] = useState<Record<string, PromptLevel>>({})
+  const [antecedentTagByStudent, setAntecedentTagByStudent] = useState<Record<string, string>>({})
 
   // 학생 목록 + 라이브러리 전략 로드
   useEffect(() => {
@@ -158,17 +166,20 @@ export default function PbsCheckPage() {
 
   // 선택 학생의 PBS 목표 + 오늘 기록 + 활성 계약서 로드
   const loadStudentData = useCallback(async (studentId: string) => {
-    const [goalsRes, recordsRes, contractsRes] = await Promise.all([
+    const [goalsRes, recordsRes, contractsRes, profileRes] = await Promise.all([
       fetch(`/api/pbs/goals?studentId=${studentId}`),
       fetch(`/api/pbs/records?studentId=${studentId}`),
       fetch(`/api/contracts?studentId=${studentId}`),
+      fetch(`/api/students/${studentId}/ai-profile`),
     ])
     const goalsData = await goalsRes.json()
     const recordsData = await recordsRes.json()
     const contractsData = await contractsRes.json()
+    const profileData = profileRes.ok ? await profileRes.json() : {}
     setGoals(goalsData.goals || [])
     setTodayRecords(recordsData.records || [])
     setActiveContracts((contractsData.contracts || []).filter((c: ActiveContract & { is_active: boolean }) => c.is_active))
+    setStudentAiProfile((profileData.profile as StudentAiProfile | null | undefined) ?? null)
   }, [])
 
   useEffect(() => {
@@ -199,18 +210,25 @@ export default function PbsCheckPage() {
     }
   }, [])
 
+  const getPromptLevel = (studentId: string): PromptLevel =>
+    promptLevelByStudent[studentId] ?? 'independent'
+
   const handleCheck = async (goalId: string, count: number, goalName: string) => {
     if (!selectedStudent) return
 
+    const promptLevel = getPromptLevel(selectedStudent)
     const res = await fetch('/api/pbs/records', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        studentId: selectedStudent,
-        goalId,
-        occurrenceCount: count,
-        prompted: false,
-      }),
+      body: JSON.stringify(
+        buildPbsRecordPostBody({
+          studentId: selectedStudent,
+          goalId,
+          occurrenceCount: count,
+          promptLevel,
+          antecedentTag: antecedentTagByStudent[selectedStudent],
+        })
+      ),
     })
 
     if (res.ok) {
@@ -273,6 +291,8 @@ export default function PbsCheckPage() {
     setBulkBehaviorName('')
     setBulkSelectedStudents([])
     setBulkCount(1)
+    setBulkPromptLevel('independent')
+    setBulkAntecedentTag('')
     setShowBulkModal(true)
   }
 
@@ -295,12 +315,15 @@ export default function PbsCheckPage() {
       return fetch('/api/pbs/records', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          studentId,
-          goalId: goal.id,
-          occurrenceCount: bulkCount,
-          prompted: false,
-        }),
+        body: JSON.stringify(
+          buildPbsRecordPostBody({
+            studentId,
+            goalId: goal.id,
+            occurrenceCount: bulkCount,
+            promptLevel: bulkPromptLevel,
+            antecedentTag: bulkAntecedentTag || null,
+          })
+        ),
       })
     })
 
@@ -544,6 +567,111 @@ export default function PbsCheckPage() {
         </div>
       )}
 
+      {/* PTR 맥락: 예방·선행·촉구 — 수업 모드와 동일 필드로 POST */}
+      {selectedStudent && goals.length > 0 && (
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
+          <div>
+            <p className="text-sm font-semibold text-gray-900">체크 시 함께 기록</p>
+            <p className="text-xs text-gray-500 mt-0.5">
+              촉구 수준·선행 태그는 PBS 기록에 저장되어 PTR 분석에 사용됩니다.
+            </p>
+          </div>
+          {studentAiProfile?.public_safe_summary && (
+            <p className="text-sm leading-relaxed text-gray-600">{studentAiProfile.public_safe_summary}</p>
+          )}
+          {studentAiProfile && studentAiProfile.prevention_supports.length > 0 && (
+            <div className="rounded-xl border border-teal-100 bg-teal-50/80 px-4 py-3">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-teal-600">예방(Prevent)</p>
+              <ul className="mt-1 list-disc pl-4 text-sm leading-relaxed text-teal-900">
+                {studentAiProfile.prevention_supports.slice(0, 6).map((line) => (
+                  <li key={line}>{line}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {studentAiProfile && studentAiProfile.antecedent_patterns.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-gray-600 mb-2">선행 퀵태그</p>
+              <div className="flex flex-wrap gap-1.5">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setAntecedentTagByStudent((prev) => {
+                      const next = { ...prev }
+                      delete next[selectedStudent]
+                      return next
+                    })
+                  }
+                  className={`rounded-full px-3 py-1 text-xs font-medium border ${
+                    !antecedentTagByStudent[selectedStudent]
+                      ? 'border-violet-400 bg-violet-100 text-violet-800'
+                      : 'border-gray-200 bg-white text-gray-500'
+                  }`}
+                >
+                  없음
+                </button>
+                {studentAiProfile.antecedent_patterns.slice(0, 8).map((tag) => (
+                  <button
+                    type="button"
+                    key={tag}
+                    onClick={() =>
+                      setAntecedentTagByStudent((prev) => ({
+                        ...prev,
+                        [selectedStudent]: tag,
+                      }))
+                    }
+                    className={`rounded-full px-3 py-1 text-xs font-medium border truncate max-w-[200px] ${
+                      antecedentTagByStudent[selectedStudent] === tag
+                        ? 'border-violet-500 bg-violet-200 text-violet-900'
+                        : 'border-gray-200 bg-gray-50 text-gray-600'
+                    }`}
+                    title={tag}
+                  >
+                    {tag.length > 22 ? `${tag.slice(0, 22)}…` : tag}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+            <label className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3 flex-1 min-w-0">
+              <span className="text-xs font-medium text-gray-600 shrink-0">촉구 수준</span>
+              <select
+                value={getPromptLevel(selectedStudent)}
+                onChange={(e) =>
+                  setPromptLevelByStudent((prev) => ({
+                    ...prev,
+                    [selectedStudent]: e.target.value as PromptLevel,
+                  }))
+                }
+                className={`max-w-xs rounded-xl border px-3 py-2 text-sm font-semibold ${
+                  getPromptLevel(selectedStudent) !== 'independent'
+                    ? 'border-amber-300 bg-amber-50 text-amber-900'
+                    : 'border-gray-200 bg-gray-50 text-gray-800'
+                }`}
+                title="독립이면 촉구 없이 기록"
+              >
+                {(Object.keys(PROMPT_LEVEL_LABELS) as PromptLevel[]).map((k) => (
+                  <option key={k} value={k}>
+                    {PROMPT_LEVEL_LABELS[k]}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          {studentAiProfile?.p_prompt_options?.[0] && (
+            <p className="rounded-xl border border-amber-100 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              추천 촉구: {studentAiProfile.p_prompt_options[0]}
+            </p>
+          )}
+          {!studentAiProfile && (
+            <p className="text-xs text-gray-400">
+              AI 프로필이 없으면 예방·선행 칩은 비어 있습니다. 촉구 수준은 그대로 기록됩니다.
+            </p>
+          )}
+        </div>
+      )}
+
       {/* PBS 목표 체크 보드 */}
       {goals.length === 0 ? (
         <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
@@ -581,6 +709,8 @@ export default function PbsCheckPage() {
               const progressPct = goal.daily_target && goal.daily_target > 0
                 ? Math.min(100, Math.round((todayCount / goal.daily_target) * 100))
                 : null
+              const isPrompted =
+                selectedStudent != null && getPromptLevel(selectedStudent) !== 'independent'
 
               return (
                 <div key={goal.id} className="bg-white rounded-2xl border border-gray-100 p-5">
@@ -643,7 +773,11 @@ export default function PbsCheckPage() {
                         <button
                           key={n}
                           onClick={() => handleCheck(goal.id, n, goal.behavior_name)}
-                          className="w-12 h-12 bg-blue-50 hover:bg-blue-100 active:bg-blue-200 text-blue-700 font-bold rounded-xl transition-colors border border-blue-200"
+                          className={`w-12 h-12 font-bold rounded-xl transition-colors border ${
+                            isPrompted
+                              ? 'bg-amber-50 hover:bg-amber-100 active:bg-amber-200 text-amber-800 border-amber-300'
+                              : 'bg-blue-50 hover:bg-blue-100 active:bg-blue-200 text-blue-700 border-blue-200'
+                          }`}
                         >
                           +{n}
                         </button>
@@ -758,6 +892,39 @@ export default function PbsCheckPage() {
                       </>
                     )}
                   </div>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <label className="block sm:col-span-1">
+                    <span className="text-sm font-medium text-gray-700">촉구 수준 (공통)</span>
+                    <select
+                      value={bulkPromptLevel}
+                      onChange={(e) => setBulkPromptLevel(e.target.value as PromptLevel)}
+                      className={`mt-1 block w-full px-4 py-3 rounded-xl border text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                        bulkPromptLevel !== 'independent'
+                          ? 'border-amber-300 bg-amber-50 text-amber-900'
+                          : 'border-gray-200 bg-gray-50 text-gray-800'
+                      }`}
+                      title="선택한 모든 학생 기록에 동일하게 적용"
+                    >
+                      {(Object.keys(PROMPT_LEVEL_LABELS) as PromptLevel[]).map((k) => (
+                        <option key={k} value={k}>
+                          {PROMPT_LEVEL_LABELS[k]}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="block sm:col-span-1">
+                    <span className="text-sm font-medium text-gray-700">선행 태그 (선택)</span>
+                    <input
+                      type="text"
+                      value={bulkAntecedentTag}
+                      onChange={(e) => setBulkAntecedentTag(e.target.value)}
+                      placeholder="공통 태그 — 비우면 미기록"
+                      maxLength={200}
+                      className="mt-1 block w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </label>
                 </div>
 
                 <div>
