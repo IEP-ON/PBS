@@ -1,5 +1,6 @@
 'use client'
 
+import type { ReactNode } from 'react'
 import { useState } from 'react'
 import Link from 'next/link'
 
@@ -11,133 +12,113 @@ const SECTIONS = [
   { id: 3, icon: '✅', label: '행동 목표 설정', group: '수업 설정' },
   { id: 4, icon: '🤖', label: 'AI 행동 지원 계획', group: '수업 설정', badge: 'GPT-4o' },
   { id: 5, icon: '👨‍🏫', label: '수업 모드', group: '매일 사용' },
+  { id: 10, icon: '📈', label: 'PTR·강화 도구', group: '매일 사용' },
   { id: 6, icon: '📺', label: 'TV 순위판', group: '매일 사용' },
   { id: 7, icon: '🔍', label: '행동 원인 분석', group: '매일 사용' },
   { id: 8, icon: '🎉', label: '시작 준비 완료', group: '마무리' },
 ]
 
-const groups = ['교육자료전', '준비', '수업 설정', '매일 사용', '마무리']
+const GROUPS = ['교육자료전', '준비', '수업 설정', '매일 사용', '마무리'] as const
 
-export default function HelpPage() {
-  const [current, setCurrent] = useState(9)
-  const [visited, setVisited] = useState<Set<number>>(new Set([9]))
+function cnNav(active: boolean) {
+  return [
+    'flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm transition-colors',
+    active ? 'bg-blue-50 font-semibold text-blue-800' : 'text-slate-600 hover:bg-slate-50',
+  ].join(' ')
+}
 
-  const goto = (idx: number) => {
-    setCurrent(idx)
-    setVisited(prev => new Set([...prev, idx]))
-  }
-
-  const pct = Math.round((visited.size / SECTIONS.length) * 100)
-
+function NavFooter({
+  goto,
+  prev,
+  next,
+  prevLabel = '← 이전',
+  nextLabel = '다음 →',
+  nextPrimary = 'blue',
+}: {
+  goto: (n: number) => void
+  prev?: number
+  next?: number
+  prevLabel?: string
+  nextLabel?: string
+  nextPrimary?: 'blue' | 'emerald'
+}) {
   return (
-    <div style={{ display: 'flex', minHeight: '100dvh', overflow: 'hidden', fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", background: '#f8fafc', color: '#1e293b' }}>
-
-      {/* ── 사이드바 ─────────────────────────────────────── */}
-      <aside style={{ width: 'clamp(220px, 22vw, 280px)', minWidth: 220, background: '#fff', borderRight: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
-        <div style={{ padding: '20px 16px 12px', borderBottom: '1px solid #f1f5f9' }}>
-          <p style={{ fontSize: 15, fontWeight: 800, color: '#1d4ed8' }}>🏫 도움말 · 심사 대응</p>
-          <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>PBS 토큰 이코노미 · 교육자료전 기준 정리</p>
-        </div>
-
-        <div style={{ flex: 1, padding: '8px 8px 0' }}>
-          {groups.map(group => (
-            <div key={group}>
-              <p style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', textTransform: 'uppercase', padding: '10px 8px 4px' }}>{group}</p>
-              {SECTIONS.filter(s => s.group === group).map(s => (
-                <button
-                  key={s.id}
-                  onClick={() => goto(s.id)}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 9, width: '100%',
-                    padding: '8px 10px', border: 'none', cursor: 'pointer',
-                    borderRadius: 8, fontSize: 12.5, textAlign: 'left',
-                    marginBottom: 1, transition: 'all 0.15s',
-                    background: current === s.id ? '#eff6ff' : 'transparent',
-                    color: current === s.id ? '#1d4ed8' : '#475569',
-                    fontWeight: current === s.id ? 700 : 400,
-                  }}
-                >
-                  <span style={{ fontSize: 15, width: 20, textAlign: 'center', flexShrink: 0 }}>{s.icon}</span>
-                  <span style={{ flex: 1 }}>{s.label}</span>
-                  {s.badge && (
-                    <span style={{ fontSize: 9, fontWeight: 700, background: '#dbeafe', color: '#1d4ed8', padding: '1px 5px', borderRadius: 99 }}>{s.badge}</span>
-                  )}
-                </button>
-              ))}
-            </div>
-          ))}
-        </div>
-
-        <div style={{ padding: '12px 16px', borderTop: '1px solid #f1f5f9' }}>
-          <p style={{ fontSize: 10, color: '#94a3b8', marginBottom: 6 }}>{visited.size} / {SECTIONS.length} 완료</p>
-          <div style={{ background: '#f1f5f9', borderRadius: 99, height: 5, overflow: 'hidden' }}>
-            <div style={{ height: '100%', background: 'linear-gradient(90deg,#3b82f6,#6366f1)', borderRadius: 99, width: `${pct}%`, transition: 'width 0.4s' }} />
-          </div>
-        </div>
-      </aside>
-
-      {/* ── 메인 ─────────────────────────────────────────── */}
-      <main style={{ flex: 1, overflowY: 'auto', padding: 'clamp(20px, 2.8vw, 36px)' }}>
-        {current === 9 && <Sec9 goto={goto} />}
-        {current === 0 && <Sec0 goto={goto} />}
-        {current === 1 && <Sec1 goto={goto} />}
-        {current === 2 && <Sec2 goto={goto} />}
-        {current === 3 && <Sec3 goto={goto} />}
-        {current === 4 && <Sec4 goto={goto} />}
-        {current === 5 && <Sec5 goto={goto} />}
-        {current === 6 && <Sec6 goto={goto} />}
-        {current === 7 && <Sec7 goto={goto} />}
-        {current === 8 && <Sec8 goto={goto} />}
-      </main>
+    <div className="mt-10 flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-6">
+      {prev != null ? (
+        <button
+          type="button"
+          onClick={() => goto(prev)}
+          className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
+        >
+          {prevLabel}
+        </button>
+      ) : (
+        <span />
+      )}
+      {next != null ? (
+        <button
+          type="button"
+          onClick={() => goto(next)}
+          className={`rounded-xl px-4 py-2.5 text-sm font-semibold text-white ${
+            nextPrimary === 'emerald' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-blue-600 hover:bg-blue-700'
+          }`}
+        >
+          {nextLabel}
+        </button>
+      ) : null}
     </div>
   )
 }
-
-// ── 공통 스타일 컴포넌트 ────────────────────────────────────
 
 function SectionHeader({ step, title, desc }: { step: string; title: string; desc: string }) {
   return (
-    <div style={{ marginBottom: 28 }}>
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, color: '#6366f1', background: '#eef2ff', padding: '3px 10px', borderRadius: 99, marginBottom: 10 }}>{step}</span>
-      <h2 style={{ fontSize: 24, fontWeight: 800, color: '#0f172a', lineHeight: 1.2 }}>{title}</h2>
-      <p style={{ fontSize: 14, color: '#64748b', marginTop: 6, lineHeight: 1.6 }}>{desc}</p>
-    </div>
+    <header className="mb-8">
+      <span className="mb-3 inline-flex rounded-full bg-indigo-50 px-3 py-1 text-xs font-bold uppercase tracking-wide text-indigo-700">
+        {step}
+      </span>
+      <h2 className="text-2xl font-bold tracking-tight text-slate-900 md:text-3xl">{title}</h2>
+      <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-600 md:text-base">{desc}</p>
+    </header>
   )
 }
 
-function Card({ title, children }: { title?: string; children: React.ReactNode }) {
+function HCard({ title, children, className = '' }: { title?: string; children: ReactNode; className?: string }) {
   return (
-    <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, padding: '20px 22px', marginBottom: 16 }}>
-      {title && <h3 style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', marginBottom: 10 }}>{title}</h3>}
+    <section
+      className={`rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm md:p-6 ${className}`}
+    >
+      {title ? <h3 className="mb-3 text-sm font-bold text-slate-900 md:text-base">{title}</h3> : null}
       {children}
-    </div>
+    </section>
   )
 }
 
-function Tip({ type = 'warn', children }: { type?: 'warn' | 'danger' | 'success'; children: React.ReactNode }) {
-  const colors = {
-    warn:    { bg: '#fffbeb', border: '#fde68a', text: '#92400e' },
-    danger:  { bg: '#fef2f2', border: '#fecaca', text: '#991b1b' },
-    success: { bg: '#f0fdf4', border: '#bbf7d0', text: '#14532d' },
+function HTip({ type = 'warn', children }: { type?: 'warn' | 'danger' | 'success'; children: ReactNode }) {
+  const styles = {
+    warn: 'border-amber-200 bg-amber-50 text-amber-950',
+    danger: 'border-red-200 bg-red-50 text-red-950',
+    success: 'border-emerald-200 bg-emerald-50 text-emerald-950',
   }
-  const c = colors[type]
+  const icon = type === 'danger' ? '⚠️' : type === 'success' ? '✅' : '💡'
   return (
-    <div style={{ background: c.bg, border: `1px solid ${c.border}`, borderRadius: 12, padding: '12px 16px', display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: 16 }}>
-      <span style={{ fontSize: 16, flexShrink: 0, marginTop: 1 }}>{type === 'danger' ? '⚠️' : type === 'success' ? '✅' : '💡'}</span>
-      <p style={{ fontSize: 12.5, color: c.text, lineHeight: 1.6, margin: 0 }}>{children}</p>
+    <div className={`mb-4 flex gap-3 rounded-2xl border px-4 py-3 text-sm leading-relaxed ${styles[type]}`}>
+      <span className="shrink-0 text-base">{icon}</span>
+      <div className="min-w-0">{children}</div>
     </div>
   )
 }
 
-function Steps({ items }: { items: { title: string; desc: string }[] }) {
+function HSteps({ items }: { items: { title: string; desc: ReactNode }[] }) {
   return (
-    <ul style={{ listStyle: 'none', padding: 0 }}>
+    <ul className="space-y-4">
       {items.map((item, i) => (
-        <li key={i} style={{ display: 'flex', gap: 14, marginBottom: 18, alignItems: 'flex-start' }}>
-          <span style={{ width: 28, height: 28, borderRadius: '50%', background: '#3b82f6', color: '#fff', fontSize: 12, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>{i + 1}</span>
-          <div>
-            <strong style={{ fontSize: 13.5, color: '#0f172a', display: 'block', marginBottom: 3 }}>{item.title}</strong>
-            <span style={{ fontSize: 12.5, color: '#64748b', lineHeight: 1.6 }} dangerouslySetInnerHTML={{ __html: item.desc }} />
+        <li key={i} className="flex gap-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">
+            {i + 1}
+          </span>
+          <div className="min-w-0 pt-0.5">
+            <p className="font-semibold text-slate-900">{item.title}</p>
+            <div className="mt-1 text-sm leading-relaxed text-slate-600">{item.desc}</div>
           </div>
         </li>
       ))}
@@ -145,44 +126,155 @@ function Steps({ items }: { items: { title: string; desc: string }[] }) {
   )
 }
 
-function Grid2({ children }: { children: React.ReactNode }) {
-  return <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 14, marginBottom: 16 }}>{children}</div>
+function HGrid({ children }: { children: ReactNode }) {
+  return <div className="mb-4 grid gap-3 sm:grid-cols-2">{children}</div>
 }
 
-function FeatureCard({ icon, title, desc }: { icon: string; title: string; desc: string }) {
+function FeatureTile({ icon, title, desc }: { icon: string; title: string; desc: string }) {
   return (
-    <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 12, padding: 16 }}>
-      <div style={{ fontSize: 24, marginBottom: 8 }}>{icon}</div>
-      <strong style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', display: 'block', marginBottom: 4 }}>{title}</strong>
-      <p style={{ fontSize: 12, color: '#64748b', lineHeight: 1.5, margin: 0 }}>{desc}</p>
+    <div className="rounded-2xl border border-slate-100 bg-slate-50/80 p-4">
+      <div className="mb-2 text-2xl">{icon}</div>
+      <p className="font-semibold text-slate-900">{title}</p>
+      <p className="mt-1 text-xs leading-relaxed text-slate-600 md:text-sm">{desc}</p>
     </div>
   )
 }
 
-function Flow({ items }: { items: string[] }) {
+function HFlow({ items }: { items: string[] }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', padding: 16, background: '#f8fafc', borderRadius: 12, marginBottom: 16 }}>
+    <div className="mb-4 flex flex-wrap items-center gap-2 rounded-2xl border border-slate-100 bg-slate-50 p-4">
       {items.map((item, i) => (
-        <span key={i} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, padding: '8px 12px', fontSize: 12, fontWeight: 600, color: '#1e293b' }}>{item}</span>
-          {i < items.length - 1 && <span style={{ color: '#94a3b8', fontSize: 14 }}>→</span>}
+        <span key={i} className="flex items-center gap-2">
+          <span className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800">
+            {item}
+          </span>
+          {i < items.length - 1 ? <span className="text-slate-400">→</span> : null}
         </span>
       ))}
     </div>
   )
 }
 
-function CriteriaRow({ criterion, points, official, mapping }: { criterion: string; points: string; official: string; mapping: string }) {
+function InlineCode({ children }: { children: ReactNode }) {
   return (
-    <tr style={{ borderBottom: '1px solid #e2e8f0', verticalAlign: 'top' }}>
-      <td style={{ padding: '12px 10px', fontSize: 12.5, fontWeight: 800, color: '#1e40af', width: '18%' }}>{criterion}<br /><span style={{ fontSize: 10, fontWeight: 600, color: '#64748b' }}>{points}</span></td>
-      <td style={{ padding: '12px 10px', fontSize: 12, color: '#475569', width: '34%', lineHeight: 1.55 }}>{official}</td>
-      <td style={{ padding: '12px 10px', fontSize: 12, color: '#0f172a', width: '48%', lineHeight: 1.55 }}>{mapping}</td>
+    <code className="rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] text-slate-800">{children}</code>
+  )
+}
+
+type CriteriaRowProps = {
+  criterion: string
+  points: string
+  official: string
+  mapping: string
+}
+
+function CriteriaRow({ criterion, points, official, mapping }: CriteriaRowProps) {
+  return (
+    <tr className="border-b border-slate-100 align-top last:border-0">
+      <td className="px-3 py-3 text-xs font-bold text-blue-900 md:px-4 md:text-sm md:w-[18%]">
+        {criterion}
+        <span className="mt-1 block text-[10px] font-semibold text-slate-500">{points}</span>
+      </td>
+      <td className="px-3 py-3 text-xs leading-relaxed text-slate-600 md:px-4 md:text-sm md:w-[34%]">{official}</td>
+      <td className="px-3 py-3 text-xs leading-relaxed text-slate-800 md:px-4 md:text-sm md:w-[48%]">{mapping}</td>
     </tr>
   )
 }
 
-// ── 각 섹션 ─────────────────────────────────────────────────
+export default function HelpPage() {
+  const [current, setCurrent] = useState(9)
+  const [visited, setVisited] = useState<Set<number>>(new Set([9]))
+
+  const goto = (idx: number) => {
+    setCurrent(idx)
+    setVisited((prev) => new Set([...prev, idx]))
+  }
+
+  const pct = Math.round((visited.size / SECTIONS.length) * 100)
+
+  return (
+    <div className="flex min-h-[100dvh] flex-col bg-slate-50 text-slate-800 lg:flex-row">
+      {/* 모바일: 상단 탭 */}
+      <div className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur lg:hidden">
+        <div className="flex gap-1 overflow-x-auto px-2 py-2">
+          {SECTIONS.map((s) => (
+            <button
+              key={s.id}
+              type="button"
+              onClick={() => goto(s.id)}
+              className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium ${
+                current === s.id ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600'
+              }`}
+            >
+              {s.icon} {s.label}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center justify-between px-3 pb-2 text-[10px] text-slate-500">
+          <span>
+            {visited.size}/{SECTIONS.length} 섹션 열람
+          </span>
+          <div className="h-1.5 w-24 overflow-hidden rounded-full bg-slate-200">
+            <div className="h-full rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 transition-all" style={{ width: `${pct}%` }} />
+          </div>
+        </div>
+      </div>
+
+      {/* 데스크톱 사이드바 */}
+      <aside className="hidden w-[min(100%,280px)] shrink-0 flex-col border-r border-slate-200 bg-white lg:flex">
+        <div className="border-b border-slate-100 p-5">
+          <p className="text-lg font-bold text-blue-700">도움말</p>
+          <p className="mt-1 text-xs leading-relaxed text-slate-500">PBS 토큰 이코노미 · 교육자료전 · PTR 연동</p>
+        </div>
+        <nav className="flex-1 space-y-1 overflow-y-auto p-3">
+          {GROUPS.map((group) => (
+            <div key={group}>
+              <p className="px-3 pb-1 pt-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">{group}</p>
+              {SECTIONS.filter((s) => s.group === group).map((s) => (
+                <button key={s.id} type="button" onClick={() => goto(s.id)} className={cnNav(current === s.id)}>
+                  <span className="text-lg">{s.icon}</span>
+                  <span className="flex-1 truncate">{s.label}</span>
+                  {s.badge ? (
+                    <span className="shrink-0 rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-700">
+                      {s.badge}
+                    </span>
+                  ) : null}
+                </button>
+              ))}
+            </div>
+          ))}
+        </nav>
+        <div className="border-t border-slate-100 p-4">
+          <p className="text-[10px] text-slate-500">
+            {visited.size} / {SECTIONS.length} 열람
+          </p>
+          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 transition-all duration-500"
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+        </div>
+      </aside>
+
+      <main className="min-h-0 flex-1 overflow-y-auto px-4 py-8 md:px-8 lg:py-10">
+        <div className="mx-auto max-w-3xl space-y-6">
+          {current === 9 && <Sec9 goto={goto} />}
+          {current === 0 && <Sec0 goto={goto} />}
+          {current === 1 && <Sec1 goto={goto} />}
+          {current === 2 && <Sec2 goto={goto} />}
+          {current === 3 && <Sec3 goto={goto} />}
+          {current === 4 && <Sec4 goto={goto} />}
+          {current === 5 && <Sec5 goto={goto} />}
+          {current === 10 && <Sec10 goto={goto} />}
+          {current === 6 && <Sec6 goto={goto} />}
+          {current === 7 && <Sec7 goto={goto} />}
+          {current === 8 && <Sec8 goto={goto} />}
+        </div>
+      </main>
+    </div>
+  )
+}
 
 function Sec9({ goto }: { goto: (n: number) => void }) {
   return (
@@ -190,16 +282,16 @@ function Sec9({ goto }: { goto: (n: number) => void }) {
       <SectionHeader
         step="교육자료전 · 100점 만점"
         title="심사 기준과 본 플랫폼 대응"
-        desc="대구광역시 교육자료전 요강의 심사 기준(각 20점)을 기준으로, 현재 버전에 반영된 기능·용어·흐름을 한눈에 정리합니다. 심사 설명·시연 시 이 표를 골격으로 사용할 수 있습니다."
+        desc="대구광역시 교육자료전 요강 심사 기준(각 20점)과 현재 버전 기능·PTR 기록·경로를 한눈에 정리합니다."
       />
-      <Card title="📌 심사 기준 요약 (공문 기준)">
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, minWidth: 560 }}>
+      <HCard title="심사 기준 요약 (공문 기준)">
+        <div className="-mx-1 overflow-x-auto">
+          <table className="w-full min-w-[560px] border-collapse text-left text-xs md:text-sm">
             <thead>
-              <tr style={{ background: '#eff6ff', borderBottom: '2px solid #bfdbfe' }}>
-                <th style={{ textAlign: 'left', padding: '10px', color: '#1e3a8a' }}>기준</th>
-                <th style={{ textAlign: 'left', padding: '10px', color: '#1e3a8a' }}>공문상 주요 내용</th>
-                <th style={{ textAlign: 'left', padding: '10px', color: '#1e3a8a' }}>본 작품(PBS 토큰 이코노미) 대응</th>
+              <tr className="border-b-2 border-blue-200 bg-blue-50/80">
+                <th className="px-3 py-2.5 font-bold text-blue-950">기준</th>
+                <th className="px-3 py-2.5 font-bold text-blue-950">공문상 주요 내용</th>
+                <th className="px-3 py-2.5 font-bold text-blue-950">본 작품 대응</th>
               </tr>
             </thead>
             <tbody>
@@ -207,60 +299,67 @@ function Sec9({ goto }: { goto: (n: number) => void }) {
                 criterion="자료의 적절성"
                 points="20점"
                 official="교육과정 연관성, 제작 목적 명확성, 교수·학습 효과"
-                mapping="2022 개정 특수교육 교육과정의 사회적응·일상생활 맥락에서 긍정적 행동지원(PBS) 실행을 목적으로 설계. 사정→계획→실행→점검 흐름을 **학생 지원 계획** 메뉴와 학생 상세 탭으로 구조화하고, **행동 목표 체크**로 교수·강화 효과를 즉시 제공. 신규 학급·첫 사정은 **AI 행동 지원 계획**을 사정 탭 상단에서 시작해 FBA·목표·계약·중재까지 연결합니다."
+                mapping="특수교육과정 맥락의 PBS 실행. 사정→계획→실행→점검을 학생 지원·상세 탭으로 구조화. 행동 목표 체크에 Prevent·Teach 필드(선행·촉구 단계)를 반영해 연구·현장 점검에 대응."
               />
               <CriteriaRow
                 criterion="창의성"
                 points="20점"
                 official="참신성·독창성, 본인 직접 제작 여부"
-                mapping="토큰 경제를 **통장·ATM·보상·가게·주식**으로 일관되게 시각화. **AI 행동 지원 계획(GPT-4o)**으로 서술형 입력을 행동 원인 분석·행동 목표·중재 전략 초안으로 연결. **말 일기장(Whisper)**으로 언어·정서 채널을 병행."
+                mapping="토큰경제를 통장·ATM·가게·주식으로 일관 시각화. GPT-4o 행동 지원 계획, Whisper 말 일기장, PTR 충실도·FCT 시나리오 API 등 데이터 기반 확장."
               />
               <CriteriaRow
                 criterion="완성도"
                 points="20점"
-                official="목적 부합, 제작 기술, 매체 활용, 견고성·편의성, 체계적 조직"
-                mapping="교사·학생·ATM·TV·키오스크 역할 분리 UI. **강화 타이머·소거 위험 경보·반응대가** 등 행동주의·PBS 요소를 화면에 반영. 용어를 **행동 목표·행동 원인 분석·스스로 체크** 등으로 통일해 가독성과 접근성을 높임. 실서비스(Next.js) 기준으로 동작."
+                official="목적 부합, 제작 기술, 매체 활용, 견고성·편의성"
+                mapping="Next.js 실서비스. 강화 타이머·소거 경보·반응대가·NCR 일정·강화 일정 희석 로드맵까지 화면에 반영. 용어 통일(행동 목표, 행동 원인 분석 등)."
               />
               <CriteriaRow
                 criterion="교육에의 기여도"
                 points="20점"
-                official="교육문제 해결, 교육효과 증진, 현장 개선 기여"
-                mapping="즉시 토큰 지급·**정산**으로 강화 지연을 줄임. 수업 중 사건 기록이 **행동 원인 분석**과 중재 전략 라이브러리로 이어져 데이터 기반 의사결정을 지원. 학생 **스스로 체크**와 계약서로 자기관리·가시적 목표를 연결."
+                official="교육문제 해결, 교육효과 증진, 현장 개선"
+                mapping="즉시 토큰·정산으로 강화 지연 감소. 사건 기록→행동 원인 분석→중재 DB. 스스로 체크·계약서로 자기관리. 선호도 평가로 강화물 개별화."
               />
               <CriteriaRow
                 criterion="일반화 가능성"
                 points="20점"
-                official="경비·보급·경제성, 재료·제작 용이성"
-                mapping="학급 코드·웹 접속만으로 타 학급 확장 가능. 별도 설치 없이 URL·QR로 운영. 가게 가격·급여 불균형은 **DB 시드·가격 하한** 등으로 보정 가능(운영 가이드·도움말에 명시)."
+                official="경비·보급·경제성, 제작 용이성"
+                mapping="학급 코드·웹만으로 타 학급 확장. Supabase 시드·가격 하한으로 경제 균형 조정 가능."
               />
             </tbody>
           </table>
         </div>
-      </Card>
-      <Card title="🧭 현재 버전에 반영된 용어·경로 (심사·시연 시 참고)">
-        <ul style={{ paddingLeft: 18, margin: 0 }}>
+      </HCard>
+      <HCard title="주요 경로 (시연·심사용)">
+        <ul className="space-y-3 text-sm text-slate-700">
           {[
-            ['행동 목표 체크', '/[학급코드]/pbs', '교사가 목표 달성 시 토큰 지급·일괄 체크·실수 취소(Undo)'],
-            ['학생 지원 계획', '/[학급코드]/support', '사정·계획·실행·점검 허브, 계약·강화 타이머·경보·중재 전략 인라인'],
-            ['행동 원인 분석', '/[학급코드]/fba', 'ABC·기능 가설·중재 전략 바로가기'],
-            ['보상 · 가게', '/[학급코드]/token-economy', '가게·주식·학급 계좌 등 보상 경제'],
-            ['학생 통장·스스로 체크', '/s/[코드]/[학생ID]/…', '하단 탭 **스스로 체크**, 정산 후 통장 반영 구조 유지'],
-            ['ATM', '/atm', '학급 보상·토큰 통장, 오늘의 목표(한글) 표시'],
+            ['행동 목표 체크', '/[학급코드]/pbs', '토큰 지급·일괄 체크·Undo·Prevent/Teach 기록'],
+            ['수업 모드', '/[학급코드]/teach', '6인 모니터·촉구 4단계·선행 태그·예방 블록·사건·정산'],
+            ['PTR·강화 인사이트', '/[학급코드]/students/[학생ID]/ptr-insights', '충실도·촉구 진행도·FCT·강화 효과성'],
+            ['선호도 평가', '/[학급코드]/students/[학생ID]/preference-assessment', '가게 아이템 단일자극법·프로필 반영'],
+            ['학생 지원 계획', '/[학급코드]/support', '사정·계획·실행·점검 허브'],
+            ['행동 원인 분석', '/[학급코드]/fba', 'ABC·기능 가설·중재 전략'],
           ].map(([title, path, desc]) => (
-            <li key={title} style={{ fontSize: 12.5, color: '#334155', lineHeight: 1.75, marginBottom: 6 }}>
-              <strong style={{ color: '#0f172a' }}>{title}</strong>
-              <code style={{ display: 'block', marginTop: 2, marginBottom: 2, background: '#f1f5f9', padding: '4px 8px', borderRadius: 6, fontSize: 11 }}>{path}</code>
-              <span style={{ color: '#64748b' }}>{desc}</span>
+            <li key={title}>
+              <strong className="text-slate-900">{title}</strong>
+              <code className="mt-1 block rounded-lg bg-slate-100 px-2 py-1 font-mono text-[11px] text-slate-700">{path}</code>
+              <span className="text-xs text-slate-500">{desc}</span>
             </li>
           ))}
         </ul>
-      </Card>
-      <Tip type="success"><strong>시연 권장 순서(약 5분):</strong> 로그인 → <strong>행동 목표 체크</strong>에서 지급 → <strong>수업 모드</strong>에서 강화 타이머·사건 기록 → <strong>학생 지원 계획</strong>에서 버킷·경보 요약 → 학생 화면에서 <strong>스스로 체크</strong>·통장 → TV 순위판 새 탭.</Tip>
-      <Tip type="warn"><strong>윤리·안전:</strong> AI 산출물은 초안이며 최종 판단은 교사에게 있습니다. 감각 기능 행동의 소거 금지 등은 도움말 후반(행동 원인 분석)과 동일하게 안내합니다.</Tip>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 28, paddingTop: 20, borderTop: '1px solid #f1f5f9', flexWrap: 'wrap', gap: 10 }}>
-        <button type="button" onClick={() => goto(0)} style={{ padding: '9px 18px', borderRadius: 10, fontSize: 13, fontWeight: 600, border: '1px solid #e2e8f0', cursor: 'pointer', background: '#fff', color: '#475569' }}>서비스 소개로</button>
-        <button type="button" onClick={() => goto(1)} style={{ padding: '9px 18px', borderRadius: 10, fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', background: '#3b82f6', color: '#fff' }}>설치·가입 안내(STEP 1) →</button>
-      </div>
+      </HCard>
+      <HTip type="success">
+        <strong>시연 권장(약 5분):</strong> 로그인 → 행동 목표 체크(선행·촉구 확인) → 수업 모드 → 학생 상세 PTR·강화 인사이트 → 학생 지원 계획 → 스스로 체크·통장 → TV 순위판.
+      </HTip>
+      <HTip type="warn">
+        <strong>윤리:</strong> AI 산출물은 초안입니다. 감각 기능 행동의 소거 금지 등 안전 규칙은 반드시 교사 검토 후 적용하세요.
+      </HTip>
+      <NavFooter
+        goto={goto}
+        prev={0}
+        next={1}
+        prevLabel="← 서비스 소개"
+        nextLabel="STEP 1 회원가입 →"
+      />
     </div>
   )
 }
@@ -269,80 +368,75 @@ function Sec0({ goto }: { goto: (n: number) => void }) {
   return (
     <div>
       <SectionHeader
-        step="✨ 환영합니다"
-        title="PBS 기반 디지털 행동지원 플랫폼"
-        desc="본 플랫폼은 특수학급에서 긍정적 행동지원(PBS)을 체계적으로 운영하기 위한 디지털 교육자료입니다. 학생별 목표행동 설정, 즉시 강화, 사건기록, 기능 기반 행동 원인 분석, 행동지원계획 수립 기능을 연결합니다. 신규 학급은 **AI 행동 지원 계획**으로 첫 사정을 시작한 뒤 FBA·목표·계약까지 한 번에 저장할 수 있습니다."
+        step="환영합니다"
+        title="PBS 기반 디지털 행동지원"
+        desc="긍정적 행동지원(PBS)을 학급에서 운영하기 위한 웹앱입니다. ABA 원리(강화·기록·분석)를 실행 레이어로 두고, 예방(Prevent)·교수(Teach)·강화(Reinforce) 기록이 PTR 점검과 이어지도록 설계했습니다."
       />
-      <Card title="🏛 서비스 정체성">
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 14 }}>
-          <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 12, padding: 16 }}>
-            <p style={{ fontSize: 11, fontWeight: 800, color: '#6366f1', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>상위 이념</p>
-            <p style={{ fontSize: 13, lineHeight: 1.7, color: '#334155', margin: 0 }}>
-              학생을 통제하기 위한 시스템이 아니라, 기대행동과 대체행동을 가르치고 유지하도록 돕는
-              <strong style={{ color: '#0f172a' }}> 긍정적·예방적 행동지원 체계</strong>입니다.
-            </p>
-          </div>
-          <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 12, padding: 16 }}>
-            <p style={{ fontSize: 11, fontWeight: 800, color: '#6366f1', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>작동 원리</p>
-            <p style={{ fontSize: 13, lineHeight: 1.7, color: '#334155', margin: 0 }}>
-              PBS를 상위 운영 틀로 두고, <strong style={{ color: '#0f172a' }}>ABA 기반 강화·기록·분석 원리</strong>를
-              실행 레이어로 활용합니다. ABA는 엔진이고, PBS는 교실 운영 체계입니다.
-            </p>
-          </div>
+      <HGrid>
+        <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-indigo-600">상위 이념</p>
+          <p className="mt-2 text-sm leading-relaxed text-slate-700">
+            통제가 아니라 <strong className="text-slate-900">기대행동·대체행동을 가르치고 유지</strong>하는 예방적 지원입니다.
+          </p>
         </div>
-      </Card>
-      <Card title="🧭 원리 · 이념 · 계층">
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
-          <div>
-            <p style={{ fontSize: 12, fontWeight: 700, color: '#0f172a', marginBottom: 8 }}>핵심 원리</p>
-            <ul style={{ paddingLeft: 18, margin: 0 }}>
-              {[
-                '긍정적 강화: 목표행동 발생 시 즉시 토큰 제공',
-                '기능 기반 이해: 사건기록과 행동 원인 분석으로 행동 기능 추정',
-                '예방 중심 지원: 수업 전 목표와 지원을 먼저 설정',
-                '데이터 기반 조정: 기록 자동 집계 후 계획 재설정',
-              ].map((item) => (
-                <li key={item} style={{ fontSize: 12.5, color: '#475569', lineHeight: 1.8, marginBottom: 2 }}>{item}</li>
-              ))}
-            </ul>
-          </div>
-          <div>
-            <p style={{ fontSize: 12, fontWeight: 700, color: '#0f172a', marginBottom: 8 }}>계층 구조</p>
-            <div style={{ display: 'grid', gap: 8 }}>
-              {[
-                ['0층', '교육적 목적', '기대행동 형성, 자기조절 향상, 수업 참여 확대'],
-                ['1층', '상위 운영 틀', 'PBS 기반 긍정적 행동지원'],
-                ['2층', '실행 전략', '토큰경제, 강화 타이머, 행동 원인 분석, 촉구, 사건기록, 행동계약'],
-                ['3층', '플랫폼 기능', '학생등록, AI 계획, 수업 모드, 정산, TV 순위판'],
-              ].map(([level, title, desc]) => (
-                <div key={level} style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 12, padding: '10px 12px' }}>
-                  <p style={{ fontSize: 11, fontWeight: 800, color: '#2563eb', margin: 0 }}>{level} · {title}</p>
-                  <p style={{ fontSize: 12, color: '#64748b', margin: '4px 0 0', lineHeight: 1.6 }}>{desc}</p>
-                </div>
-              ))}
+        <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-indigo-600">작동 원리</p>
+          <p className="mt-2 text-sm leading-relaxed text-slate-700">
+            PBS가 운영 틀, <strong className="text-slate-900">ABA가 강화·데이터·촉구</strong> 등 실행 원리를 담당합니다.
+          </p>
+        </div>
+      </HGrid>
+      <HCard title="핵심 원리">
+        <ul className="list-disc space-y-1 pl-5 text-sm text-slate-700">
+          <li>긍정적 강화: 목표 행동 시 즉시 토큰</li>
+          <li>기능 기반 이해: 사건·FBA로 행동 기능 추정</li>
+          <li>예방: AI 계획의 예방 문구·선행 태그를 수업·PBS 체크에 연결</li>
+          <li>데이터: PTR 충실도·촉구 진행도·강화 효과성으로 점검</li>
+        </ul>
+      </HCard>
+      <HCard title="계층 구조">
+        <div className="grid gap-2 text-sm">
+          {[
+            ['0층', '교육적 목적', '기대행동·자기조절·수업 참여'],
+            ['1층', 'PBS', '긍정적 행동지원 운영 틀'],
+            ['2층', '실행', '토큰경제, 타이머, FBA, Prevent·Teach 기록, 사건, 계약'],
+            ['3층', '플랫폼', '등록, AI 계획, 수업 모드, PTR 인사이트, 정산, TV'],
+          ].map(([lv, t, d]) => (
+            <div key={lv} className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2">
+              <span className="font-bold text-blue-700">{lv}</span> · {t}
+              <p className="text-xs text-slate-600">{d}</p>
             </div>
-          </div>
+          ))}
         </div>
-      </Card>
-      <Card title="🔄 운영 흐름">
-        <Flow items={['학생 등록', '행동 목표', '학생 지원 계획', 'AI 초안', '수업 모드', '행동 원인 분석', '정산·보상', '점검·수정']} />
-        <p style={{ fontSize: 12.5, color: '#64748b', lineHeight: 1.7, margin: 0 }}>
-          이 플랫폼은 메뉴를 늘어놓은 도구가 아니라, <strong style={{ color: '#0f172a' }}>설정 → 실행 → 기록 → 분석 → 정산 → 수정</strong>의
-          순환 구조로 행동지원을 운영하도록 설계되었습니다.
+      </HCard>
+      <HCard title="운영 흐름">
+        <HFlow
+          items={['학생 등록', '행동 목표', '지원 계획', 'AI 초안', '수업·PBS', 'PTR 점검', 'FBA', '정산', '수정']}
+        />
+        <p className="text-sm text-slate-600">
+          설정 → 실행(기록 포함) → 분석 → 정산 → 수정의 순환입니다.
         </p>
-      </Card>
-      <Grid2>
-        <FeatureCard icon="✅" title="행동 목표 체크" desc="학생별 목표 행동 달성 시 토큰을 즉시 지급하고, 하루 기록을 자동 집계합니다." />
-        <FeatureCard icon="👨‍🏫" title="수업 모드" desc="6명 동시 모니터링, 강화 타이머, 촉구 기록, 사건기록을 한 화면에서 처리합니다." />
-        <FeatureCard icon="🤖" title="AI 행동 지원 계획" desc="자유입력 → 구조화 → 행동 원인 분석 → 행동 목표·계약서·중재전략 생성까지 연결합니다." />
-        <FeatureCard icon="📊" title="보상 · 가게" desc="게임이 아니라 강화의 누적·선택·지연 교환을 경험하게 하는 토큰 경제입니다. 가게·주식·ATM·학급 계좌로 연결됩니다." />
-      </Grid2>
-      <Flow items={['🔐 가입', '👨‍🎓 학생 등록', '🤖 AI 계획', '👨‍🏫 수업 모드', '💰 정산']} />
-      <Tip type="warn"><strong>읽는 법:</strong> 왼쪽 맨 위 <strong>심사 기준과 대응</strong>은 교육자료전 배점·시연 포인트용입니다. 아래 단계는 실제 사용 순서입니다.</Tip>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 28, paddingTop: 20, borderTop: '1px solid #f1f5f9', flexWrap: 'wrap', gap: 8 }}>
-        <button type="button" onClick={() => goto(9)} style={{ padding: '9px 18px', borderRadius: 10, fontSize: 13, fontWeight: 600, border: '1px solid #c7d2fe', cursor: 'pointer', background: '#eef2ff', color: '#4338ca' }}>← 심사 기준으로</button>
-        <button type="button" onClick={() => goto(1)} style={{ padding: '9px 18px', borderRadius: 10, fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', background: '#3b82f6', color: '#fff' }}>다음: 회원가입 →</button>
-      </div>
+      </HCard>
+      <HGrid>
+        <FeatureTile
+          icon="✅"
+          title="행동 목표 체크"
+          desc="수업 모드와 동일하게 선행·촉구 4단계를 기록합니다."
+        />
+        <FeatureTile icon="👨‍🏫" title="수업 모드" desc="6인·타이머·Prevent·선행·촉구·사건·정산." />
+        <FeatureTile icon="📈" title="PTR·강화 인사이트" desc="충실도·촉구·FCT·강화 효과성을 한 화면에서." />
+        <FeatureTile icon="🤖" title="AI 행동 지원 계획" desc="FBA·목표·계약·중재·NCR·강화 일정 희석 초안." />
+      </HGrid>
+      <HTip type="warn">
+        왼쪽 맨 위 <strong>심사 기준</strong>은 배점·시연용입니다. 아래 단계는 실제 사용 순서입니다.
+      </HTip>
+      <NavFooter
+        goto={goto}
+        prev={9}
+        next={1}
+        prevLabel="← 심사 기준"
+        nextLabel="다음: 회원가입 →"
+      />
     </div>
   )
 }
@@ -350,31 +444,52 @@ function Sec0({ goto }: { goto: (n: number) => void }) {
 function Sec1({ goto }: { goto: (n: number) => void }) {
   return (
     <div>
-      <SectionHeader step="STEP 1" title="회원가입 · 로그인" desc="교사 계정을 만들면 고유한 학급 코드가 발급됩니다. 이 코드가 학생·학부모 접속의 열쇠입니다." />
-      <Card title="📝 교사 회원가입">
-        <Steps items={[
-          { title: '/register 접속', desc: '이름, 학교명, 이메일, 비밀번호를 입력합니다.' },
-          { title: '학급 코드 확인', desc: '가입 완료 후 대시보드에서 고유 학급 코드(예: <code style="background:#f1f5f9;padding:1px 5px;border-radius:4px;font-size:11px">abc123</code>)를 확인합니다.' },
-          { title: '학생에게 공유', desc: '학생은 이 코드로 <code style="background:#f1f5f9;padding:1px 5px;border-radius:4px;font-size:11px">/s/[코드]/[학생ID]/home</code>에 접속합니다.' },
-        ]} />
-      </Card>
-      <Card title="🔑 로그인 후 URL 구조">
-        <div style={{ background: '#1e293b', color: '#e2e8f0', borderRadius: 10, padding: '14px 16px', fontFamily: 'monospace', fontSize: 12, lineHeight: 1.6 }}>
-          <span style={{ color: '#64748b' }}># 교사 대시보드{'\n'}</span>
-          {'/'}<span style={{ color: '#7dd3fc' }}>[학급코드]</span>/dashboard{'\n'}
-          {'/'}<span style={{ color: '#7dd3fc' }}>[학급코드]</span>/pbs{'  '}# 행동 목표 체크{'\n'}
-          {'/'}<span style={{ color: '#7dd3fc' }}>[학급코드]</span>/support{'  '}# 학생 지원 계획{'\n\n'}
-          <span style={{ color: '#64748b' }}># 수업 모드 (매일 메인){'\n'}</span>
-          {'/'}<span style={{ color: '#7dd3fc' }}>[학급코드]</span>/teach{'\n\n'}
-          <span style={{ color: '#64748b' }}># TV 순위판 (새 탭){'\n'}</span>
-          /tv/<span style={{ color: '#7dd3fc' }}>[학급코드]</span>
-        </div>
-      </Card>
-      <Tip type="danger"><strong>학급 코드는 URL에 포함됩니다.</strong> 다른 사람이 알아도 학생 데이터를 수정할 수 없지만, 학생 이름과 토큰 잔액은 열람 가능합니다. 공개 게시 주의.</Tip>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 28, paddingTop: 20, borderTop: '1px solid #f1f5f9' }}>
-        <button onClick={() => goto(0)} style={{ padding: '9px 18px', borderRadius: 10, fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', background: '#f1f5f9', color: '#64748b' }}>← 이전</button>
-        <button onClick={() => goto(2)} style={{ padding: '9px 18px', borderRadius: 10, fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', background: '#3b82f6', color: '#fff' }}>다음: 학생 등록 →</button>
-      </div>
+      <SectionHeader
+        step="STEP 1"
+        title="회원가입 · 로그인"
+        desc="교사 계정 생성 시 학급 코드가 발급됩니다. 학생·학부모는 이 코드로 접속합니다."
+      />
+      <HCard title="교사 회원가입">
+        <HSteps
+          items={[
+            {
+              title: '/register',
+              desc: '이름, 학교, 이메일, 비밀번호 입력.',
+            },
+            {
+              title: '학급 코드',
+              desc: (
+                <>
+                  대시보드에서 고유 코드 확인 (예: <InlineCode>abc123</InlineCode>).
+                </>
+              ),
+            },
+            {
+              title: '학생에게 공유',
+              desc: (
+                <>
+                  학생 URL: <InlineCode>/s/[코드]/[학생ID]/home</InlineCode>
+                </>
+              ),
+            },
+          ]}
+        />
+      </HCard>
+      <HCard title="교사 URL 구조">
+        <pre className="overflow-x-auto rounded-xl bg-slate-900 p-4 font-mono text-[11px] leading-relaxed text-slate-200 md:text-xs">
+          {`/[학급코드]/dashboard
+/[학급코드]/pbs              # 행동 목표 체크
+/[학급코드]/teach            # 수업 모드
+/[학급코드]/students/[id]/ptr-insights
+/[학급코드]/students/[id]/preference-assessment
+/[학급코드]/support
+/tv/[학급코드]`}
+        </pre>
+      </HCard>
+      <HTip type="danger">
+        <strong>학급 코드는 URL에 노출됩니다.</strong> 토큰 잔액·이름 열람 가능성을 고려해 공개 게시에 주의하세요.
+      </HTip>
+      <NavFooter goto={goto} prev={0} next={2} prevLabel="← 이전" nextLabel="다음: 학생 등록 →" />
     </div>
   )
 }
@@ -382,23 +497,20 @@ function Sec1({ goto }: { goto: (n: number) => void }) {
 function Sec2({ goto }: { goto: (n: number) => void }) {
   return (
     <div>
-      <SectionHeader step="STEP 2" title="학생 등록" desc="학생을 등록하면 자동으로 토큰 계좌가 개설됩니다. QR 통장도 바로 인쇄할 수 있습니다." />
-      <Card title="👨‍🎓 학생 등록 방법">
-        <Steps items={[
-          { title: '학생 관리 → 학생 추가', desc: '이름, 학년, 장애 유형, 행동 형성 단계 LV.(1~5)를 입력합니다.' },
-          { title: 'LV. 단계 설정', desc: '낮은 단계는 촉구 비중이 높고, 높은 단계는 독립 수행 비중이 높아지도록 설계하세요. 처음엔 1~2단계 권장.' },
-          { title: 'QR 통장 인쇄', desc: '학생 상세 → QR 통장 발급 버튼. 학생이 자신의 잔액을 스캔으로 확인합니다.' },
-        ]} />
-      </Card>
-      <Grid2>
-        <FeatureCard icon="💳" title="자동 계좌 개설" desc="등록과 동시에 토큰 통장이 생성됩니다. 초기 잔액·시작 보너스는 운영 정책에 맞게 설정하세요." />
-        <FeatureCard icon="🪙" title="QR 코드 토큰" desc="실물 코인 대신 QR 코드로 토큰 지급·상환. QR 토큰 탭에서 배치 생성." />
-      </Grid2>
-      <Tip type="success"><strong>권장 순서:</strong> 학생 등록 → 학생 상세 **사정** 탭에서 AI 행동 지원 계획(기존 분석이 없으면 화면 상단) → 「한 번에 저장」으로 FBA·행동 목표·계약·중재까지 연결. 강화 타이머 **실행**과 소거 경보 **등록**은 각 전용 화면에서 진행합니다.</Tip>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 28, paddingTop: 20, borderTop: '1px solid #f1f5f9' }}>
-        <button onClick={() => goto(1)} style={{ padding: '9px 18px', borderRadius: 10, fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', background: '#f1f5f9', color: '#64748b' }}>← 이전</button>
-        <button onClick={() => goto(3)} style={{ padding: '9px 18px', borderRadius: 10, fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', background: '#3b82f6', color: '#fff' }}>다음: 행동 목표 →</button>
-      </div>
+      <SectionHeader step="STEP 2" title="학생 등록" desc="등록 시 토큰 계좌가 열리고 QR 통장을 인쇄할 수 있습니다." />
+      <HCard>
+        <HSteps
+          items={[
+            { title: '학생 관리 → 추가', desc: '이름, 학년, 장애유형, PBS LV. 입력.' },
+            { title: 'LV. 설계', desc: '초기에는 낮은 단계에서 촉구 비중을 높이고, 독립 비율을 점진적으로 늘리는 계획과 맞춥니다.' },
+            { title: 'QR 통장', desc: '학생 상세에서 발급·인쇄.' },
+          ]}
+        />
+      </HCard>
+      <HTip type="success">
+        권장: 학생 상세 <strong>사정</strong> 탭에서 AI 행동 지원 계획 → 「한 번에 저장」으로 FBA·목표·계약·중재 연결.
+      </HTip>
+      <NavFooter goto={goto} prev={1} next={3} prevLabel="← 이전" nextLabel="다음: 행동 목표 →" />
     </div>
   )
 }
@@ -406,35 +518,25 @@ function Sec2({ goto }: { goto: (n: number) => void }) {
 function Sec3({ goto }: { goto: (n: number) => void }) {
   return (
     <div>
-      <SectionHeader step="STEP 3" title="행동 목표 설정" desc="각 학생에게 목표 행동을 등록하고 토큰 단가와 하루 목표 횟수를 설정합니다. AI로 자동 생성하는 것을 추천합니다." />
-      <Card title="✅ 목표 등록 필드">
-        <ul style={{ paddingLeft: 18 }}>
-          {[
-            ['행동명', '관찰 가능한 형태로 (예: "자리에 앉아 과제를 5분 이상 수행하기")'],
-            ['토큰 단가', '1회 달성 시 지급 토큰 (10~100원 권장)'],
-            ['하루 목표 횟수', '진행률 바로 시각화됨'],
-            ['강화 타이머 연동', '체크 시 강화 타이머 자동 시작 여부'],
-          ].map(([k, v]) => (
-            <li key={k} style={{ fontSize: 13, color: '#475569', lineHeight: 1.7, marginBottom: 4 }}><strong style={{ color: '#0f172a' }}>{k}</strong> — {v}</li>
-          ))}
+      <SectionHeader step="STEP 3" title="행동 목표 설정" desc="목표별 토큰 단가·일일 목표·전략을 설정합니다. AI 생성을 권장합니다." />
+      <HCard title="등록 필드">
+        <ul className="list-disc space-y-1 pl-5 text-sm text-slate-700">
+          <li>행동명 — 관찰 가능한 문장</li>
+          <li>토큰 단가, 하루 목표 횟수</li>
+          <li>강화 타이머(DRO) 연동 여부</li>
         </ul>
-      </Card>
-      <Card title="📦 일괄 체크 기능">
-        <p style={{ fontSize: 13, color: '#475569', marginBottom: 10 }}>같은 목표를 여러 학생이 공유하는 경우, <strong>일괄 체크 버튼</strong>으로 한 번에 처리할 수 있습니다.</p>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          {['행동명 선택', '→ 해당 학생 목록 표시', '→ +1/2/3 일괄 적용'].map(t => (
-            <span key={t} style={{ fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 99, background: '#dbeafe', color: '#1d4ed8' }}>{t}</span>
-          ))}
-        </div>
-      </Card>
-      <Card title="↩ 실수 취소 (Undo)">
-        <p style={{ fontSize: 13, color: '#475569', lineHeight: 1.7 }}>체크 후 <strong>6초 이내</strong>에 토스트 알림의 실행취소 버튼을 누르면 기록이 삭제됩니다. 잘못 누른 경우 즉시 취소하세요.</p>
-      </Card>
-      <Tip type="success"><strong>AI 자동 생성 권장:</strong> 학생 상세 → <strong>사정</strong> 탭 → AI 행동 지원 계획에서 서술·구조화 후 계획을 생성하면, 저장 시 FBA 추정 기능이 행동 목표에도 반영되고 하루 목표 횟수·스스로 체크 허용이 함께 설정됩니다.</Tip>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 28, paddingTop: 20, borderTop: '1px solid #f1f5f9' }}>
-        <button onClick={() => goto(2)} style={{ padding: '9px 18px', borderRadius: 10, fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', background: '#f1f5f9', color: '#64748b' }}>← 이전</button>
-        <button onClick={() => goto(4)} style={{ padding: '9px 18px', borderRadius: 10, fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', background: '#3b82f6', color: '#fff' }}>다음: AI 계획 →</button>
-      </div>
+      </HCard>
+      <HCard title="일괄 체크 · PTR 기록">
+        <p className="text-sm text-slate-700">
+          같은 행동명을 여러 학생에게 적용할 때 모달에서 <strong>촉구 수준(공통)</strong>과{' '}
+          <strong>선행 태그(선택)</strong>를 지정할 수 있습니다. 단일 학생 PBS 화면에서도 수업 모드와 동일하게{' '}
+          <InlineCode>antecedent_tag</InlineCode>·<InlineCode>prompt_level</InlineCode>이 저장됩니다.
+        </p>
+      </HCard>
+      <HCard title="Undo">
+        <p className="text-sm text-slate-700">체크 후 6초 이내 토스트에서 실행 취소 가능합니다.</p>
+      </HCard>
+      <NavFooter goto={goto} prev={2} next={4} prevLabel="← 이전" nextLabel="다음: AI 계획 →" />
     </div>
   )
 }
@@ -442,36 +544,24 @@ function Sec3({ goto }: { goto: (n: number) => void }) {
 function Sec4({ goto }: { goto: (n: number) => void }) {
   return (
     <div>
-      <SectionHeader step="STEP 4 · GPT-4o" title="AI 행동 지원 계획" desc="자유롭게 학생을 서술하면 AI가 학생 이해 정보를 구조화하고, 행동 원인 분석(FBA)·행동 목표·행동 약속 계약서·중재 전략 초안을 만듭니다. 학생 상세 **사정** 탭에서는 기존 분석 기록이 없을 때 이 블록이 맨 위에 나와 신규 학급의 첫 사정 시작점이 됩니다. 「한 번에 저장」 시 FBA는 짧은 간격 안의 재저장이 같은 행을 갱신해 중복이 쌓이지 않습니다." />
-      <Card title="🖊 자유 텍스트 입력 예시">
-        <div style={{ background: '#1e293b', color: '#e2e8f0', borderRadius: 10, padding: '14px 16px', fontFamily: 'monospace', fontSize: 12, lineHeight: 1.7 }}>
-          <span style={{ color: '#64748b' }}># 이렇게 자유롭게 써도 됩니다{'\n'}</span>
-          <span style={{ color: '#7dd3fc' }}>
-            {`김민준, 3학년, 지적장애 경도.\n수업 중 자리를 이탈해서 교실을 돌아다녀요.\n특히 수학 시간에 자주 발생하고, 친구들이\n웃어주면 더 심해지는 것 같아요.`}
-          </span>
-        </div>
-      </Card>
-      <Card title="🧠 AI의 역할">
-        <Steps items={[
-          { title: '학생 이해 정보 구조화', desc: '강점, 선호, 지원 필요, 위험요인, 관찰 행동, 선행·결과 사건을 먼저 정리합니다.' },
-          { title: '학생별 AI 프로필 저장', desc: '한 번 구조화한 정보는 학생 상세에 저장되어 이후 계획 생성과 수업 운영에 재사용됩니다.' },
-          { title: '행동지원 산출물 생성', desc: '저장된 프로필을 바탕으로 행동 원인 분석, 행동 목표, 계약서, 중재전략, 강화 타이머 후보를 만듭니다.' },
-        ]} />
-      </Card>
-      <Card title="🤖 AI가 자동으로 생성하는 것">
-        <Steps items={[
-          { title: '행동 원인(기능) 분석', desc: '주의추구 / 회피 / 감각 / 물건획득 중 추정 기능과 신뢰도를 분석합니다.' },
-          { title: '행동 목표 2개 이상', desc: '대체행동 + 보완행동, 토큰 단가·하루 목표 횟수·FBA 추정 기능 필드 연동. 스스로 체크 허용은 저장 시 켜집니다.' },
-          { title: '행동 약속 계약서 초안', desc: '달성 기준, 측정 방법, 보상 금액이 포함된 계약서를 즉시 인쇄 가능.' },
-          { title: '근거기반 중재전략', desc: 'FCT·강화 타이머(DRO)·NCR 등 전략 DB에서 기능에 맞는 전략을 우선순위로 추천.' },
-        ]} />
-      </Card>
-      <Tip type="warn"><strong>저장 범위:</strong> 「한 번에 저장」은 FBA·행동 목표·계약서·중재 라이브러리 반영까지입니다. <strong>강화 타이머를 실제로 돌리기</strong>·<strong>소거 위험 경보를 시스템에 등록</strong>하기는 각각 타이머·경보 화면에서 진행합니다.</Tip>
-      <Tip type="danger"><strong>AI 산출물은 초안입니다.</strong> 이 플랫폼은 PBS를 상위 운영 틀로 두고 ABA 기반 원리를 활용하지만, 최종 판단은 반드시 교사가 해야 합니다. 감각 기능 행동 소거 금지 등 주요 안전 규칙은 자동 반영되더라도 저장 전 검토·수정은 필수입니다.</Tip>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 28, paddingTop: 20, borderTop: '1px solid #f1f5f9' }}>
-        <button onClick={() => goto(3)} style={{ padding: '9px 18px', borderRadius: 10, fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', background: '#f1f5f9', color: '#64748b' }}>← 이전</button>
-        <button onClick={() => goto(5)} style={{ padding: '9px 18px', borderRadius: 10, fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', background: '#3b82f6', color: '#fff' }}>다음: 수업 모드 →</button>
-      </div>
+      <SectionHeader
+        step="STEP 4 · GPT-4o"
+        title="AI 행동 지원 계획"
+        desc="자유 서술 → 구조화 프로필 → FBA·목표·계약·중재·DRO·NCR 일정·강화 일정 희석(scheduleFading) 초안까지 한 번에 생성합니다."
+      />
+      <HCard title="AI가 만드는 것">
+        <ul className="list-disc space-y-1 pl-5 text-sm text-slate-700">
+          <li>행동 원인(FBA) 추정·신뢰도</li>
+          <li>행동 목표 2개 이상(대체·보완)</li>
+          <li>행동 계약서 초안</li>
+          <li>근거기반 중재 전략(FCT·DRO·NCR 등)</li>
+          <li>NCR 일정(기능이 attention/tangible일 때)</li>
+          <li>강화 일정 희석 로드맵(FR→VR 등 단계·전환 기준)</li>
+        </ul>
+      </HCard>
+      <HTip type="warn">「한 번에 저장」은 FBA·목표·계약·중재까지입니다. 타이머 <strong>실행</strong>·소거 <strong>경보 등록</strong>은 전용 화면에서 하세요.</HTip>
+      <HTip type="danger">AI 출력은 초안입니다. 저장 전 반드시 검토·수정하세요.</HTip>
+      <NavFooter goto={goto} prev={3} next={5} prevLabel="← 이전" nextLabel="다음: 수업 모드 →" />
     </div>
   )
 }
@@ -479,37 +569,58 @@ function Sec4({ goto }: { goto: (n: number) => void }) {
 function Sec5({ goto }: { goto: (n: number) => void }) {
   return (
     <div>
-      <SectionHeader step="매일 사용" title="수업 모드 👨‍🏫" desc="40분 수업 동안 6명을 동시에 모니터링하는 핵심 화면입니다. 사이드바 맨 위의 수업 모드 버튼으로 진입하세요." />
-      <Grid2>
-        <FeatureCard icon="⏰" title="교시 선택" desc="1~6교시 또는 방과후 선택 시 세션 타이머 시작. 경과 시간 실시간 표시." />
-        <FeatureCard icon="+1" title="즉시 토큰 지급" desc="학생 카드의 +1/+2/+3 버튼 탭 한 번으로 지급. ABA 3초 강화 원칙 준수." />
-        <FeatureCard icon="P" title="촉구 토글" desc="P 버튼 활성화 시 다음 체크가 '촉구 행동'으로 기록. 독립/촉구 비율 추적." />
-        <FeatureCard icon="⏱" title="강화 타이머" desc="학생 카드 내에 타이머 내장. 행동 발생 시 ↩ 리셋, 완료 시 토큰 지급." />
-      </Grid2>
-      <Card title="⚠️ FAB 버튼 — 즉각 사건 기록">
-        <p style={{ fontSize: 13, color: '#475569', marginBottom: 10 }}>화면 우하단 빨간 버튼. 3탭으로 사건을 기록합니다:</p>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
-          {['① 학생 선택', '→ ② 행동 유형', '→ ③ 저장'].map(t => (
-            <span key={t} style={{ fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 99, background: '#fed7aa', color: '#c2410c' }}>{t}</span>
-          ))}
-        </div>
-        <p style={{ fontSize: 12, color: '#64748b' }}>자리이탈 · 공격행동 · 자해행동 · 수업방해 · 물건던지기 · 거부/회피 · 기타</p>
-      </Card>
-      <Card title="🏁 수업 종료 · 일괄 정산">
-        <ul style={{ paddingLeft: 18 }}>
-          {[
-            '미정산 토큰이 있으면 상단에 수업 종료 버튼이 활성화됩니다.',
-            '클릭 시 학생별 미정산 금액 확인 후 일괄 정산으로 전원 계좌 입금.',
-            '정산 완료 후 다음 교시 선택으로 연속 운영 가능.',
-          ].map((t, i) => (
-            <li key={i} style={{ fontSize: 13, color: '#475569', lineHeight: 1.7, marginBottom: 4 }}>{t}</li>
-          ))}
-        </ul>
-      </Card>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 28, paddingTop: 20, borderTop: '1px solid #f1f5f9' }}>
-        <button onClick={() => goto(4)} style={{ padding: '9px 18px', borderRadius: 10, fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', background: '#f1f5f9', color: '#64748b' }}>← 이전</button>
-        <button onClick={() => goto(6)} style={{ padding: '9px 18px', borderRadius: 10, fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', background: '#3b82f6', color: '#fff' }}>다음: TV 순위판 →</button>
-      </div>
+      <SectionHeader
+        step="매일 사용"
+        title="수업 모드"
+        desc="6명 동시 모니터링. 체크마다 Prevent·Teach 맥락이 기록되어 PTR 분석과 연결됩니다."
+      />
+      <HGrid>
+        <FeatureTile icon="⏰" title="교시" desc="1~6교시·방과후, 세션 타이머." />
+        <FeatureTile icon="+1" title="즉시 지급" desc="+1/+2/+3, 3초 강화 원칙." />
+        <FeatureTile icon="📶" title="촉구 4단계" desc="전체·부분·제스처·독립. PBS와 동일 스키마." />
+        <FeatureTile icon="⏱" title="강화 타이머" desc="리셋·완료 시 지급." />
+      </HGrid>
+      <HCard title="Prevent · 선행 퀵태그">
+        <p className="text-sm leading-relaxed text-slate-700">
+          AI 프로필의 <strong>예방(Prevent)</strong> 요약·<strong>선행</strong> 칩·<InlineCode>p_prompt_options</InlineCode> 힌트를 카드에 표시합니다.
+        </p>
+      </HCard>
+      <HCard title="사건 기록 · 정산">
+        <p className="text-sm text-slate-700">FAB로 사건 유형 기록. 미정산 시 수업 종료 후 일괄 정산.</p>
+      </HCard>
+      <NavFooter goto={goto} prev={4} next={10} prevLabel="← 이전" nextLabel="다음: PTR·강화 도구 →" />
+    </div>
+  )
+}
+
+function Sec10({ goto }: { goto: (n: number) => void }) {
+  return (
+    <div>
+      <SectionHeader
+        step="매일 사용"
+        title="PTR·강화 도구"
+        desc="학생 상세에서 Prevent·Teach·Reinforce 데이터를 점검하고, 가게 강화물 선호도를 평가합니다."
+      />
+      <HGrid>
+        <FeatureTile
+          icon="📊"
+          title="PTR·강화 인사이트"
+          desc="주간 PTR 충실도, 목표별 촉구 진행도, FCT 교수 시나리오(GPT), 강화 효과성(기록·구매). GPT 한 줄 권고는 선택."
+        />
+        <FeatureTile
+          icon="💜"
+          title="선호도 평가"
+          desc="가게 아이템 5~8개 단일자극법 3회 시도 → 서열. 프로필 reinforcement_preferences 반영."
+        />
+      </HGrid>
+      <HCard title="배포 전 DB">
+        <p className="text-sm text-slate-700">
+          Supabase 마이그레이션 <InlineCode>012_ptr_phase1…</InlineCode> (기록·NCR 메타),{' '}
+          <InlineCode>013_pbs_preference_assessments</InlineCode> (선호도 저장) 적용 후, 저장소의{' '}
+          <InlineCode>supabase/verify_ptr_schema.sql</InlineCode>로 컬럼·테이블을 확인하세요.
+        </p>
+      </HCard>
+      <NavFooter goto={goto} prev={5} next={6} prevLabel="← 수업 모드" nextLabel="다음: TV 순위판 →" />
     </div>
   )
 }
@@ -517,19 +628,18 @@ function Sec5({ goto }: { goto: (n: number) => void }) {
 function Sec6({ goto }: { goto: (n: number) => void }) {
   return (
     <div>
-      <SectionHeader step="교실 디스플레이" title="TV 순위판 📺" desc="교실 TV나 빔프로젝터에 띄우는 전용 화면입니다. 학생 잔액 순위가 30초마다 자동 갱신됩니다." />
-      <Card title="🖥 실행 방법">
-        <Steps items={[
-          { title: '사이드바 맨 아래 TV 순위판 클릭', desc: '새 탭으로 열립니다. 이 탭을 교실 TV에 전송하세요 (크롬캐스트·미러링).' },
-          { title: '상단 버튼으로 정렬 모드 변경', desc: '오늘 획득 토큰 순 / 전체 잔액 순 전환 가능.' },
-          { title: 'TOP 3는 메달 시상대로 표시', desc: '나머지 학생은 카드 그리드로 표시. 교실 분위기를 자연스럽게 조성합니다.' },
-        ]} />
-      </Card>
-      <Tip type="warn"><strong>활용 팁:</strong> 수업 종료 후 정산이 완료되면 즉시 TV에 반영됩니다. 수업 끝나고 모두 함께 확인하는 루틴이 강화 효과를 높입니다.</Tip>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 28, paddingTop: 20, borderTop: '1px solid #f1f5f9' }}>
-        <button onClick={() => goto(5)} style={{ padding: '9px 18px', borderRadius: 10, fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', background: '#f1f5f9', color: '#64748b' }}>← 이전</button>
-        <button onClick={() => goto(7)} style={{ padding: '9px 18px', borderRadius: 10, fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', background: '#3b82f6', color: '#fff' }}>다음: 행동 원인 분석 →</button>
-      </div>
+      <SectionHeader step="교실" title="TV 순위판" desc="30초마다 갱신. 교실 TV에 전송해 사용합니다." />
+      <HCard>
+        <HSteps
+          items={[
+            { title: '사이드바 TV 순위판', desc: '새 탭 → 크롬캐스트·미러링.' },
+            { title: '정렬', desc: '오늘 획득 / 전체 잔액.' },
+            { title: 'TOP 3', desc: '메달 표시.' },
+          ]}
+        />
+      </HCard>
+      <HTip type="warn">정산 직후 TV에 반영되면 강화 효과가 커집니다.</HTip>
+      <NavFooter goto={goto} prev={10} next={7} prevLabel="← PTR·강화" nextLabel="다음: 행동 원인 분석 →" />
     </div>
   )
 }
@@ -537,63 +647,81 @@ function Sec6({ goto }: { goto: (n: number) => void }) {
 function Sec7({ goto }: { goto: (n: number) => void }) {
   return (
     <div>
-      <SectionHeader step="데이터 기반 중재" title="행동 원인 분석 🔍" desc="수업 중 발생한 사건 기록이 쌓이면 행동 원인 분석 화면에서 패턴을 분석하고, 기능에 맞는 중재전략을 바로 조회할 수 있습니다." />
-      <Card title="📊 기록 → 분석 흐름">
-        <Flow items={['⚠️ 수업 중 사건', '분석 화면 자동 저장', '기능 추정', '전략 조회']} />
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          {[['주의추구', '#ede9fe', '#7c3aed'], ['회피/도피', '#fed7aa', '#c2410c'], ['감각자극', '#dcfce7', '#15803d'], ['물건획득', '#dbeafe', '#1d4ed8']].map(([label, bg, color]) => (
-            <span key={label} style={{ fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 99, background: bg, color }}>{label}</span>
+      <SectionHeader step="분석" title="행동 원인 분석" desc="사건 기록이 쌓이면 기능 추정·중재 전략 DB와 연결됩니다." />
+      <HCard title="기능 유형">
+        <div className="flex flex-wrap gap-2">
+          {['주의추구', '회피/도피', '감각', '물건획득'].map((label) => (
+            <span key={label} className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
+              {label}
+            </span>
           ))}
         </div>
-      </Card>
-      <Card title="PBS와 ABA의 관계">
-        <p style={{ fontSize: 13, color: '#475569', lineHeight: 1.8, margin: 0 }}>
-          이 플랫폼에서 <strong style={{ color: '#0f172a' }}>PBS는 상위 운영 틀</strong>이고,
-          <strong style={{ color: '#0f172a' }}> ABA는 작동 원리 일부</strong>입니다.
-          강화, 토큰 지급, 촉구, 강화 타이머, 사건기록, 행동 원인 분석 같은 기법은 ABA 기반 원리를 활용하지만,
-          전체 운영 목표는 학교·학급 맥락에서 예방적이고 교육적인 행동지원을 수행하는 PBS에 있습니다.
-        </p>
-      </Card>
-      <Card title="📚 중재전략 인라인 조회">
-        <p style={{ fontSize: 13, color: '#475569', lineHeight: 1.7 }}>각 분석 기록에서 <strong>&ldquo;중재전략 보기 ▼&rdquo;</strong> 버튼 클릭 시 해당 기능에 맞는 근거기반 전략 상위 3개가 바로 펼쳐집니다. &ldquo;행동 목표로 →&rdquo; 버튼으로 바로 연결.</p>
-      </Card>
-      <Tip type="danger"><strong>소거(EXT) 주의:</strong> 감각 기능 행동에는 소거가 적용 불가합니다. 회피 기능 자해·공격 행동 소거는 폭발 위험이 높으므로 전문가 팀 협의 후 진행하세요 (Lerman &amp; Iwata, 1995).</Tip>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 28, paddingTop: 20, borderTop: '1px solid #f1f5f9' }}>
-        <button onClick={() => goto(6)} style={{ padding: '9px 18px', borderRadius: 10, fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', background: '#f1f5f9', color: '#64748b' }}>← 이전</button>
-        <button onClick={() => goto(8)} style={{ padding: '9px 18px', borderRadius: 10, fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', background: '#10b981', color: '#fff' }}>완료 화면 →</button>
-      </div>
+      </HCard>
+      <HTip type="danger">
+        감각 기능에는 소거가 적용되지 않습니다. 회피·자해·공격의 소거는 전문가 팀 협의 후 진행하세요.
+      </HTip>
+      <NavFooter
+        goto={goto}
+        prev={6}
+        next={8}
+        prevLabel="← 이전"
+        nextLabel="완료 화면 →"
+        nextPrimary="emerald"
+      />
     </div>
   )
 }
 
 function Sec8({ goto }: { goto: (n: number) => void }) {
   const checklist = [
-    '교사 계정·학급 코드 확인',
-    '학생 등록 및 토큰 통장 생성 확인',
-    '행동 목표: AI 생성 또는 수동 등록(학급 시드로 자동 부여된 경우 교사가 검토)',
-    '학생 지원 계획(/support)에서 버킷·경보 요약 확인',
-    '학생 로그인 후 홈·스스로 체크·통장 문구 확인',
-    'TV 순위판·수업 모드·행동 목표 체크 시연 경로 확인',
-    '행동 약속 계약서 인쇄 (선택)',
+    '교사 계정·학급 코드',
+    '학생 등록·통장',
+    '행동 목표(AI 또는 수동)',
+    '학생 지원 계획(/support)',
+    '학생 홈·스스로 체크',
+    '수업 모드·PBS 체크·TV 시연',
+    'DB 012·013 + verify_ptr_schema.sql',
+    'PTR 인사이트·선호도 평가(선택)',
+    '계약서 인쇄(선택)',
   ]
   return (
-    <div style={{ textAlign: 'center', padding: '40px 20px' }}>
-      <div style={{ fontSize: 64, marginBottom: 16 }}>🎉</div>
-      <h2 style={{ fontSize: 26, fontWeight: 800, color: '#0f172a', marginBottom: 10 }}>준비 완료!</h2>
-      <p style={{ fontSize: 14, color: '#64748b', lineHeight: 1.7, maxWidth: 400, margin: '0 auto' }}>모든 기능을 확인했습니다. 아래 체크리스트로 첫 수업 전 준비 상태를 점검하세요.</p>
-      <div style={{ textAlign: 'left', maxWidth: 360, margin: '24px auto 0' }}>
-        {checklist.map((item, i) => (
-          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0', borderBottom: i < checklist.length - 1 ? '1px solid #f1f5f9' : 'none', fontSize: 13, color: '#374151' }}>
-            <span style={{ width: 20, height: 20, borderRadius: '50%', background: '#dcfce7', color: '#16a34a', fontSize: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontWeight: 700 }}>✓</span>
+    <div className="py-6 text-center">
+      <div className="text-5xl md:text-6xl">🎉</div>
+      <h2 className="mt-4 text-2xl font-bold text-slate-900">준비 완료</h2>
+      <p className="mx-auto mt-2 max-w-md text-sm text-slate-600">첫 수업 전 아래를 점검하세요.</p>
+      <ul className="mx-auto mt-8 max-w-md space-y-2 text-left text-sm text-slate-700">
+        {checklist.map((item) => (
+          <li key={item} className="flex gap-3 rounded-xl border border-slate-100 bg-white px-3 py-2">
+            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-xs font-bold text-emerald-700">
+              ✓
+            </span>
             {item}
-          </div>
+          </li>
         ))}
+      </ul>
+      <div className="mt-10 flex flex-wrap justify-center gap-3">
+        <button
+          type="button"
+          onClick={() => goto(9)}
+          className="rounded-xl border border-indigo-200 bg-indigo-50 px-5 py-2.5 text-sm font-semibold text-indigo-800 hover:bg-indigo-100"
+        >
+          심사 기준
+        </button>
+        <button
+          type="button"
+          onClick={() => goto(0)}
+          className="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
+        >
+          서비스 소개
+        </button>
+        <Link
+          href="/login"
+          className="inline-flex items-center rounded-xl bg-emerald-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700"
+        >
+          시작하기
+        </Link>
       </div>
-      <div style={{ marginTop: 28, display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
-        <button type="button" onClick={() => goto(9)} style={{ padding: '10px 20px', borderRadius: 10, fontSize: 13, fontWeight: 600, border: '1px solid #c7d2fe', cursor: 'pointer', background: '#eef2ff', color: '#4338ca' }}>심사 기준 다시 보기</button>
-        <button type="button" onClick={() => goto(0)} style={{ padding: '10px 20px', borderRadius: 10, fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', background: '#f1f5f9', color: '#64748b' }}>서비스 소개</button>
-        <Link href="/login" style={{ padding: '10px 24px', borderRadius: 10, fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', background: '#10b981', color: '#fff', textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>🏫 시작하기</Link>
-      </div>
+      <NavFooter goto={goto} prev={7} prevLabel="← 이전" />
     </div>
   )
 }
