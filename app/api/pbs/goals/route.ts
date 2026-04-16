@@ -20,6 +20,16 @@ function normalizeBehaviorFunction(value: unknown): string | null {
   return (BEHAVIOR_FUNCTIONS as readonly string[]).includes(v) ? v : null
 }
 
+/** 구 DB(012 마이그레이션 전): pbs_goals에 is_ncr 컬럼이 없을 때 PostgREST 오류 */
+function isMissingNcrColumnsError(error: { message?: string; details?: string; code?: string }): boolean {
+  const combined = [error.message, error.details, error.code].filter(Boolean).join(' ')
+  if (!combined) return false
+  const mentionsNcrCols = /is_ncr|ncr_interval_minutes/i.test(combined)
+  const schemaHint =
+    /does not exist|schema cache|could not find|unknown column|PGRST204|42703/i.test(combined)
+  return mentionsNcrCols && schemaHint
+}
+
 // GET /api/pbs/goals — 행동 목표 목록
 export async function GET(request: Request) {
   try {
@@ -143,31 +153,43 @@ export async function POST(request: Request) {
       )
     }
 
-    const { data: goal, error } = await supabase
-      .from('pbs_goals')
-      .insert({
-        student_id: studentId,
-        class_code_id: session.classroomId,
-        behavior_name: String(behaviorName).trim(),
-        behavior_definition: behaviorDefinition || null,
-        behavior_function: normalizeBehaviorFunction(behaviorFunction),
-        strategy_type: strategyType || null,
-        token_per_occurrence: tokenInt,
-        daily_target: dailyTargetInt,
-        weekly_target: weeklyTargetInt,
-        is_dro: isDroActive,
-        dro_interval_minutes: droMinutes,
-        is_ncr: Boolean(isNcr),
-        ncr_interval_minutes:
-          isNcr && typeof ncrIntervalMinutes === 'number' && ncrIntervalMinutes > 0
-            ? Math.min(240, Math.floor(ncrIntervalMinutes))
-            : null,
-        is_drl: isDrl || false,
-        drl_max_per_week: drlMaxInt,
-        allow_self_check: allowSelfCheck || false,
-      })
-      .select()
-      .single()
+    const legacyRow = {
+      student_id: studentId,
+      class_code_id: session.classroomId,
+      behavior_name: String(behaviorName).trim(),
+      behavior_definition: behaviorDefinition || null,
+      behavior_function: normalizeBehaviorFunction(behaviorFunction),
+      strategy_type: strategyType || null,
+      token_per_occurrence: tokenInt,
+      daily_target: dailyTargetInt,
+      weekly_target: weeklyTargetInt,
+      is_dro: isDroActive,
+      dro_interval_minutes: droMinutes,
+      is_drl: isDrl || false,
+      drl_max_per_week: drlMaxInt,
+      allow_self_check: allowSelfCheck || false,
+    }
+
+    const fullRow = {
+      ...legacyRow,
+      is_ncr: Boolean(isNcr),
+      ncr_interval_minutes:
+        isNcr && typeof ncrIntervalMinutes === 'number' && ncrIntervalMinutes > 0
+          ? Math.min(240, Math.floor(ncrIntervalMinutes))
+          : null,
+    }
+
+    let { data: goal, error } = await supabase.from('pbs_goals').insert(fullRow).select().single()
+
+    if (error && isMissingNcrColumnsError(error)) {
+      console.warn(
+        'pbs_goals insert: NCR 컬럼 없음 — 레거시 스키마로 재시도합니다. Supabase에 012 마이그레이션을 적용하면 NCR 메타가 저장됩니다.',
+        error.message
+      )
+      const retry = await supabase.from('pbs_goals').insert(legacyRow).select().single()
+      goal = retry.data
+      error = retry.error
+    }
 
     if (error) {
       console.error('행동 목표 등록 오류:', error)
@@ -176,16 +198,6 @@ export async function POST(request: Request) {
         return NextResponse.json(
           { error: '학생 또는 학급 정보가 일치하지 않아 저장할 수 없습니다.' },
           { status: 400 }
-        )
-      }
-      if (/is_ncr|ncr_interval_minutes|column/i.test(msg) && /does not exist|schema cache/i.test(msg)) {
-        return NextResponse.json(
-          {
-            error:
-              'DB에 NCR 관련 컬럼(is_ncr)이 없습니다. Supabase에 마이그레이션 012_ptr_phase1_prevent_teach_columns.sql을 적용했는지 확인해주세요.',
-            details: msg,
-          },
-          { status: 503 }
         )
       }
       return NextResponse.json(
