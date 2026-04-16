@@ -52,8 +52,8 @@ export async function POST(request: Request) {
     // system_settings INSERT (기본값)
     await supabase.from('pbs_system_settings').insert({
       class_code_id: classroom.id,
-      currency_unit: currencyUnit || 500,
-      starting_balance: startBalance || 1000,
+      currency_unit: currencyUnit || 100,
+      starting_balance: startBalance || 500,
     })
 
     // class_account INSERT (공동계좌)
@@ -67,13 +67,13 @@ export async function POST(request: Request) {
         class_code_id: classroom.id,
         rule_name: '출석 기본급',
         rule_type: 'attendance',
-        amount: currencyUnit || 500,
+        amount: currencyUnit || 100,
       },
       {
         class_code_id: classroom.id,
         rule_name: '주간 개근 보너스',
         rule_type: 'weekly_perfect',
-        amount: (currencyUnit || 500) * 2,
+        amount: (currencyUnit || 100) * 2,
       },
     ])
 

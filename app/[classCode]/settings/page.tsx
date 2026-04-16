@@ -36,16 +36,16 @@ export default function SettingsPage() {
   const { data: health, loading: healthLoading, error: healthError } = useTokenEconomyHealth()
 
   const [form, setForm] = useState({
-    currencyUnit: '500',
-    startingBalance: '1000',
-    minBalanceProtection: '500',
+    currencyUnit: '100',
+    startingBalance: '500',
+    minBalanceProtection: '100',
     interestRateWeekly: '0.5',
-    interestMinBalance: '2000',
+    interestMinBalance: '500',
     balanceCarryover: true,
     dataRetentionMonths: '12',
     weatherLocation: '대구',
-    attendanceSalary: '500',
-    weeklyBonus: '1000',
+    attendanceSalary: '100',
+    weeklyBonus: '200',
     tvSettings: defaultTvSettings,
   })
 
@@ -65,8 +65,8 @@ export default function SettingsPage() {
             balanceCarryover: s.balance_carryover,
             dataRetentionMonths: String(s.data_retention_months),
             weatherLocation: s.weather_location || '대구',
-            attendanceSalary: String(data.salaryRules?.find((r: SalaryRule) => r.rule_type === 'attendance')?.amount || 500),
-            weeklyBonus: String(data.salaryRules?.find((r: SalaryRule) => r.rule_type === 'weekly_perfect')?.amount || 1000),
+            attendanceSalary: String(data.salaryRules?.find((r: SalaryRule) => r.rule_type === 'attendance')?.amount || 100),
+            weeklyBonus: String(data.salaryRules?.find((r: SalaryRule) => r.rule_type === 'weekly_perfect')?.amount || 200),
             tvSettings: {
               anonymizeName: Boolean(s.tv_settings?.anonymizeName),
               showTicker: s.tv_settings?.showTicker !== false,

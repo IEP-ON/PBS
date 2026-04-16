@@ -115,7 +115,7 @@ export async function POST(request: Request) {
       .eq('class_code_id', session.classroomId)
       .single()
 
-    const startBalance = settings?.starting_balance || 1000
+    const startBalance = settings?.starting_balance || 500
 
     // 계좌 생성
     await supabase.from('pbs_accounts').insert({

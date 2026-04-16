@@ -35,7 +35,7 @@ CREATE TABLE pbs.students (
   behavior_function text,
   response_cost_enabled bool DEFAULT false,
   parental_consent_rc bool DEFAULT false,
-  min_balance int DEFAULT 500,
+  min_balance int DEFAULT 100,
   created_at timestamptz DEFAULT now(),
   is_active bool DEFAULT true
 );
@@ -44,7 +44,7 @@ CREATE TABLE pbs.students (
 CREATE TABLE pbs.accounts (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   student_id uuid REFERENCES pbs.students(id) UNIQUE NOT NULL,
-  balance int DEFAULT 1000,
+  balance int DEFAULT 500,
   total_earned int DEFAULT 0,
   total_spent int DEFAULT 0,
   created_at timestamptz DEFAULT now()
@@ -72,7 +72,7 @@ CREATE TABLE pbs.pbs_goals (
   behavior_definition text,
   behavior_function text,
   strategy_type text,
-  token_per_occurrence int NOT NULL DEFAULT 100,
+  token_per_occurrence int NOT NULL DEFAULT 20,
   daily_target int,
   weekly_target int,
   is_dro bool DEFAULT false,
@@ -349,11 +349,11 @@ CREATE TABLE pbs.consent_templates (
 CREATE TABLE pbs.system_settings (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   class_code_id uuid REFERENCES pbs.class_codes(id) UNIQUE,
-  currency_unit int DEFAULT 500,
-  starting_balance int DEFAULT 1000,
-  min_balance_protection int DEFAULT 500,
+  currency_unit int DEFAULT 100,
+  starting_balance int DEFAULT 500,
+  min_balance_protection int DEFAULT 100,
   interest_rate_weekly numeric DEFAULT 0.005,
-  interest_min_balance int DEFAULT 2000,
+  interest_min_balance int DEFAULT 500,
   balance_carryover bool DEFAULT true,
   data_retention_months int DEFAULT 12,
   weather_location text DEFAULT '대구',

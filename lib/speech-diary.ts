@@ -1,5 +1,5 @@
 const KST_OFFSET_MS = 9 * 60 * 60 * 1000
-export const SPEECH_DIARY_REWARD_AMOUNT = 1
+export const SPEECH_DIARY_REWARD_AMOUNT = 50
 export const SPEECH_DIARY_REWARD_TYPE = 'speech_diary_reward'
 
 export function getKstToday() {

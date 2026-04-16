@@ -67,7 +67,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: '계좌를 찾을 수 없습니다.' }, { status: 404 })
     }
 
-    if (!canWithdraw(account.balance, item.price, student.min_balance || 500)) {
+    if (!canWithdraw(account.balance, item.price, student.min_balance || 100)) {
       return NextResponse.json({ error: '잔액이 부족합니다.' }, { status: 400 })
     }
 

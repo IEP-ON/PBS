@@ -59,7 +59,7 @@ export async function POST(request: Request) {
       .eq('id', session.studentId)
       .single()
 
-    if (!canWithdraw(buyerAccount.balance, item.price, buyer?.min_balance || 500)) {
+    if (!canWithdraw(buyerAccount.balance, item.price, buyer?.min_balance || 100)) {
       return NextResponse.json({ error: '잔액이 부족합니다. (최저잔액 보호)' }, { status: 400 })
     }
 
