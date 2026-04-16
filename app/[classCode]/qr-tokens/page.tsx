@@ -15,7 +15,8 @@ interface QrToken {
   pbs_students?: { name: string } | null
 }
 
-const PRESET_AMOUNTS = [100, 200, 500, 1000, 2000, 5000]
+/** QR 배치 생성 시 금액 빠른 선택 (낮은 단위부터) */
+const PRESET_AMOUNTS = [10, 50, 100, 200, 500, 1000, 2000, 5000]
 const PRINT_COLUMNS = 4
 const PRINT_ROWS = 6
 const TOKENS_PER_PRINT_PAGE = PRINT_COLUMNS * PRINT_ROWS
@@ -217,13 +218,17 @@ export default function QrTokensPage() {
           <h2 className="font-bold text-gray-900">새 토큰 배치 생성</h2>
 
           <div>
-            <span className="text-sm font-medium text-gray-700 block mb-2">금액 선택</span>
-            <div className="flex flex-wrap gap-2">
-              {PRESET_AMOUNTS.map(a => (
+            <span className="mb-2 block text-sm font-medium text-gray-700">금액 선택</span>
+            <div className="grid max-w-2xl grid-cols-4 gap-2 sm:gap-3">
+              {PRESET_AMOUNTS.map((a) => (
                 <button
                   key={a}
-                  onClick={() => { setAmount(String(a)); setLabel(`${a}원 토큰`) }}
-                  className={`px-4 py-2 rounded-xl text-sm font-bold border-2 transition-all ${
+                  type="button"
+                  onClick={() => {
+                    setAmount(String(a))
+                    setLabel(`${a}원 토큰`)
+                  }}
+                  className={`rounded-xl border-2 px-2 py-2.5 text-sm font-bold transition-all sm:px-3 sm:py-3 ${
                     amount === String(a)
                       ? 'border-blue-500 bg-blue-50 text-blue-700'
                       : 'border-gray-200 text-gray-600 hover:border-blue-300'
