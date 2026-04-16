@@ -134,6 +134,17 @@ function normalizePlanFromApi(plan: BehaviorPlan): BehaviorPlan {
 
 type SaveStatus = 'idle' | 'saving' | 'done' | 'error'
 
+/** /api/ai/behavior-plan 의 regenerateOnly 와 동일 키 */
+type PlanRegenSection =
+  | 'fba'
+  | 'pbsGoals'
+  | 'contract'
+  | 'interventions'
+  | 'dro'
+  | 'extinctionAlert'
+  | 'ncrSchedule'
+  | 'scheduleFading'
+
 type EditableStudentAiProfile = Omit<
   StudentAiProfile,
   'id' | 'student_id' | 'class_code_id' | 'created_at' | 'updated_at'
@@ -303,6 +314,7 @@ export default function AiBehaviorPlan({
 
   const [editedPlan, setEditedPlan] = useState<BehaviorPlan | null>(null)
   const [generating, setGenerating] = useState(false)
+  const [sectionGen, setSectionGen] = useState<PlanRegenSection | null>(null)
   const [genError, setGenError] = useState('')
   const [logId, setLogId] = useState<string | null>(null)
   const [originalPlan, setOriginalPlan] = useState<BehaviorPlan | null>(null)
@@ -440,6 +452,58 @@ export default function AiBehaviorPlan({
     }
   }
 
+  const applyPlanFromApi = (
+    rawPlan: BehaviorPlan,
+    options?: { resetOriginal?: boolean; resetSaveStatus?: boolean }
+  ) => {
+    const normalized = normalizePlanFromApi(rawPlan)
+    const clone = JSON.parse(JSON.stringify(normalized)) as BehaviorPlan
+    setEditedPlan(clone)
+    if (options?.resetOriginal !== false) {
+      setOriginalPlan(JSON.parse(JSON.stringify(normalized)))
+    }
+    if (options?.resetSaveStatus) {
+      setSaveStatus({})
+      setSaveMsg({})
+    }
+    const mapping: Record<number, number> = {}
+    const interventions: InterventionDraft[] = normalized.interventions || []
+    ;(normalized.pbsGoals || []).forEach((goal: PbsGoalDraft, index: number) => {
+      const abbr = (goal.strategyType || '').toUpperCase()
+      const matchIndex = interventions.findIndex(
+        (item) =>
+          item.strategyName.toUpperCase().includes(abbr) || item.description.toUpperCase().includes(abbr)
+      )
+      mapping[index] = matchIndex
+    })
+    setStrategyMapping(mapping)
+  }
+
+  const regenerateSection = async (section: PlanRegenSection) => {
+    if (!editedPlan) return
+    setSectionGen(section)
+    setGenError('')
+    try {
+      const res = await fetch('/api/ai/behavior-plan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          studentId,
+          optionalPrompt: optionalPrompt.trim() || undefined,
+          currentPlan: editedPlan,
+          regenerateOnly: section,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || '해당 영역 재생성에 실패했습니다.')
+      applyPlanFromApi(data.plan as BehaviorPlan, { resetOriginal: false, resetSaveStatus: false })
+    } catch (error: unknown) {
+      setGenError(error instanceof Error ? error.message : '오류가 발생했습니다.')
+    } finally {
+      setSectionGen(null)
+    }
+  }
+
   const handleGeneratePlan = async () => {
     setGenerating(true)
     setGenError('')
@@ -463,22 +527,8 @@ export default function AiBehaviorPlan({
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'AI 행동 지원 계획 생성에 실패했습니다.')
 
-      const normalized = normalizePlanFromApi(data.plan as BehaviorPlan)
-      setEditedPlan(JSON.parse(JSON.stringify(normalized)))
-      setOriginalPlan(JSON.parse(JSON.stringify(normalized)))
+      applyPlanFromApi(data.plan as BehaviorPlan, { resetOriginal: true, resetSaveStatus: true })
       setLogId(data.logId || null)
-
-      const mapping: Record<number, number> = {}
-      const interventions: InterventionDraft[] = normalized.interventions || []
-      ;(normalized.pbsGoals || []).forEach((goal: PbsGoalDraft, index: number) => {
-        const abbr = (goal.strategyType || '').toUpperCase()
-        const matchIndex = interventions.findIndex((item) =>
-          item.strategyName.toUpperCase().includes(abbr) ||
-          item.description.toUpperCase().includes(abbr)
-        )
-        mapping[index] = matchIndex
-      })
-      setStrategyMapping(mapping)
     } catch (error: unknown) {
       setGenError(error instanceof Error ? error.message : '오류가 발생했습니다.')
     } finally {
@@ -670,10 +720,11 @@ export default function AiBehaviorPlan({
 
   const SaveBtn = ({ skey, onClick }: { skey: string; onClick: () => void }) => {
     const status = saveStatus[skey]
+    const blocked = sectionGen !== null
     return (
       <button
         onClick={onClick}
-        disabled={status === 'saving' || status === 'done'}
+        disabled={status === 'saving' || status === 'done' || blocked}
         className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
           status === 'done'
             ? 'bg-green-100 text-green-700 cursor-default'
@@ -685,6 +736,21 @@ export default function AiBehaviorPlan({
         }`}
       >
         {status === 'done' ? '✓ 저장됨' : status === 'saving' ? '저장 중...' : status === 'error' ? '재시도' : '저장'}
+      </button>
+    )
+  }
+
+  const RegenBtn = ({ section }: { section: PlanRegenSection }) => {
+    const busy = generating || sectionGen !== null
+    const isThis = sectionGen === section
+    return (
+      <button
+        type="button"
+        onClick={() => void regenerateSection(section)}
+        disabled={busy}
+        className="px-2.5 py-1 text-xs font-medium rounded-lg border border-gray-300 bg-white text-gray-700 shadow-sm hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        {isThis ? '재생성 중…' : '🔄 재생성'}
       </button>
     )
   }
@@ -1099,7 +1165,7 @@ export default function AiBehaviorPlan({
                 />
                 <button
                   onClick={handleGeneratePlan}
-                  disabled={generating || savingProfile}
+                  disabled={generating || savingProfile || sectionGen !== null}
                   className="mt-3 w-full rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-indigo-700 disabled:bg-indigo-300"
                 >
                   {generating ? 'GPT-4o 분석 중...' : '🤖 AI 행동 지원 계획 생성'}
@@ -1115,7 +1181,8 @@ export default function AiBehaviorPlan({
                 <p className="font-bold text-gray-900">📋 생성된 행동 지원 초안</p>
                 <button
                   onClick={saveAll}
-                  className="rounded-xl bg-purple-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-purple-700"
+                  disabled={generating || sectionGen !== null}
+                  className="rounded-xl bg-purple-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-purple-700 disabled:bg-purple-300 disabled:cursor-not-allowed"
                 >
                   ✅ 모두 저장
                 </button>
@@ -1124,8 +1191,9 @@ export default function AiBehaviorPlan({
               <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 space-y-2">
                 <div className="flex items-center justify-between">
                   <p className="font-bold text-sm text-purple-900">🔍 행동 원인 분석</p>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     {saveMsg.fba && <span className="text-xs text-gray-500">{saveMsg.fba}</span>}
+                    <RegenBtn section="fba" />
                     <SaveBtn skey="fba" onClick={() => void saveFba()} />
                     <Link href={`/${classCode}/fba`} className="text-xs text-purple-500 hover:text-purple-700">분석 화면 →</Link>
                   </div>
@@ -1145,8 +1213,9 @@ export default function AiBehaviorPlan({
               <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <p className="font-bold text-sm text-blue-900">✅ 행동 목표 ({editedPlan.pbsGoals.length}개)</p>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     {saveMsg.pbs && <span className="text-xs text-gray-500">{saveMsg.pbs}</span>}
+                    <RegenBtn section="pbsGoals" />
                     <SaveBtn skey="pbs" onClick={() => void savePbsGoals()} />
                     <Link href={`/${classCode}/pbs`} className="text-xs text-blue-500 hover:text-blue-700">체크 화면 →</Link>
                   </div>
@@ -1193,8 +1262,9 @@ export default function AiBehaviorPlan({
               <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <p className="font-bold text-sm text-amber-900">📝 행동 약속 계약서 초안</p>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     {saveMsg.contract && <span className="text-xs text-gray-500">{saveMsg.contract}</span>}
+                    <RegenBtn section="contract" />
                     <SaveBtn skey="contract" onClick={() => void saveContract()} />
                     <Link href={`/${classCode}/contracts`} className="text-xs text-amber-600 hover:text-amber-800">계약서 탭 →</Link>
                   </div>
@@ -1216,8 +1286,9 @@ export default function AiBehaviorPlan({
               <div className="bg-green-50 border border-green-200 rounded-xl p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <p className="font-bold text-sm text-green-900">📚 추천 중재전략 ({editedPlan.interventions.length}개)</p>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     {saveMsg.interventions && <span className="text-xs text-gray-500">{saveMsg.interventions}</span>}
+                    <RegenBtn section="interventions" />
                     <SaveBtn skey="interventions" onClick={() => void saveInterventions()} />
                     <Link href={`/${classCode}/interventions`} className="text-xs text-green-600 hover:text-green-800">전략 탭 →</Link>
                   </div>
@@ -1244,18 +1315,24 @@ export default function AiBehaviorPlan({
 
               <div className="grid gap-3 md:grid-cols-2">
                 <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 space-y-2">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="font-bold text-sm text-orange-900">⏱️ 강화 타이머 권장 설정</p>
-                    <Link href={`/${classCode}/dro`} className="text-xs text-orange-500 hover:text-orange-700">타이머 화면 →</Link>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <RegenBtn section="dro" />
+                      <Link href={`/${classCode}/dro`} className="text-xs text-orange-500 hover:text-orange-700">타이머 화면 →</Link>
+                    </div>
                   </div>
                   <p className="text-2xl font-bold text-orange-700">{editedPlan.dro.intervalMinutes}분</p>
                   <p className="text-xs text-gray-500">간격 · 보상 {editedPlan.dro.tokenReward}원</p>
                   <p className="text-xs text-gray-400 italic">{editedPlan.dro.rationale}</p>
                 </div>
                 <div className="bg-red-50 border border-red-200 rounded-xl p-4 space-y-2">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="font-bold text-sm text-red-900">🚨 소거 위험 경보 기준</p>
-                    <Link href={`/${classCode}/extinction-alerts`} className="text-xs text-red-500 hover:text-red-700">경보 화면 →</Link>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <RegenBtn section="extinctionAlert" />
+                      <Link href={`/${classCode}/extinction-alerts`} className="text-xs text-red-500 hover:text-red-700">경보 화면 →</Link>
+                    </div>
                   </div>
                   <p className="text-xs text-gray-600">
                     기저선 <strong>{editedPlan.extinctionAlert.baselineCount}회</strong>/일 · 임계값 <strong className="text-red-600">{editedPlan.extinctionAlert.alertThreshold}회</strong>
@@ -1266,7 +1343,10 @@ export default function AiBehaviorPlan({
 
               {editedPlan.ncrSchedule && (
                 <div className="rounded-xl border border-teal-200 bg-teal-50 p-4 space-y-2">
-                  <p className="font-bold text-sm text-teal-900">🛡️ 예방(NCR) 일정 권장</p>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="font-bold text-sm text-teal-900">🛡️ 예방(NCR) 일정 권장</p>
+                    <RegenBtn section="ncrSchedule" />
+                  </div>
                   <p className="text-lg font-bold text-teal-800">
                     {editedPlan.ncrSchedule.intervalMinutes}분마다 · {editedPlan.ncrSchedule.reinforcerType}
                   </p>
@@ -1280,7 +1360,10 @@ export default function AiBehaviorPlan({
 
               {editedPlan.scheduleFading && (
                 <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-4 space-y-2">
-                  <p className="font-bold text-sm text-indigo-900">📉 강화 일정 희석 (Reinforce)</p>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="font-bold text-sm text-indigo-900">📉 강화 일정 희석 (Reinforce)</p>
+                    <RegenBtn section="scheduleFading" />
+                  </div>
                   <div className="grid gap-2 sm:grid-cols-2 text-xs text-gray-800">
                     <div>
                       <p className="font-semibold text-indigo-800">현재</p>

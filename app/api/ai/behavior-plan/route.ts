@@ -151,7 +151,32 @@ export async function POST(request: Request) {
       environment,
       studentId,
       optionalPrompt,
-    } = await request.json()
+      currentPlan,
+      regenerateOnly,
+    } = await request.json() as {
+      studentName?: string
+      grade?: number | null
+      currentLevel?: string
+      targetBehavior?: string
+      antecedents?: string
+      consequences?: string
+      environment?: string
+      studentId?: string
+      optionalPrompt?: string
+      currentPlan?: Record<string, unknown>
+      regenerateOnly?: string
+    }
+
+    const REGEN_KEYS = new Set([
+      'fba',
+      'pbsGoals',
+      'contract',
+      'interventions',
+      'dro',
+      'extinctionAlert',
+      'ncrSchedule',
+      'scheduleFading',
+    ])
 
     const supabase = await createServerSupabase()
     const [{ data: aiProfileRow }, { data: studentRow }] = await Promise.all([
@@ -199,6 +224,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: '학생 이름, 현행수준, 표적행동은 필수입니다.' }, { status: 400 })
     }
 
+    if (regenerateOnly != null && regenerateOnly !== '') {
+      if (!REGEN_KEYS.has(regenerateOnly)) {
+        return NextResponse.json({ error: 'regenerateOnly 값이 올바르지 않습니다.' }, { status: 400 })
+      }
+      if (!currentPlan || typeof currentPlan !== 'object') {
+        return NextResponse.json({ error: '영역 재생성에는 currentPlan이 필요합니다.' }, { status: 400 })
+      }
+    }
+
     const [openai, dbContext] = await Promise.all([
       Promise.resolve(new OpenAI({ apiKey: process.env.OPENAI_API_KEY })),
       fetchReferenceContext(),
@@ -227,7 +261,7 @@ ${dbContext ? `\n[DB에서 조회된 참조 데이터 — 이 전략 목록과 �
 
 반드시 JSON 형식으로만 응답하세요. 마크다운이나 설명 텍스트 없이 순수 JSON만 반환하세요.`
 
-    const userPrompt = `다음 학생의 행동 지원 계획 초안을 작성해주세요:
+    const studentContextBlock = `다음 학생의 행동 지원 계획 초안을 작성해주세요:
 
 학생: ${resolvedStudentName} (${resolvedGrade ? resolvedGrade + '학년' : '학년 미지정'})
 현행수준: ${resolvedCurrentLevel}
@@ -249,7 +283,9 @@ ${dbContext ? `\n[DB에서 조회된 참조 데이터 — 이 전략 목록과 �
 - 사건 태그: ${featureOutputs.incidentTags.join(', ') || '정보 없음'}
 - DRO 후보: ${featureOutputs.droCandidate}
 
-교사 추가 요청: ${optionalPrompt || '없음'}
+교사 추가 요청: ${optionalPrompt || '없음'}`
+
+    const fullPlanJsonInstruction = `
 
 다음 JSON 구조로 응답하세요:
 {
@@ -312,13 +348,34 @@ ${dbContext ? `\n[DB에서 조회된 참조 데이터 — 이 전략 목록과 �
 }
 또는 escape/sensory인 경우 ncrSchedule은 null로 두세요. scheduleFading은 항상 포함하세요.`
 
+    const userPrompt = studentContextBlock + fullPlanJsonInstruction
+
+    const isPartial =
+      typeof regenerateOnly === 'string' &&
+      REGEN_KEYS.has(regenerateOnly) &&
+      currentPlan &&
+      typeof currentPlan === 'object'
+
+    const partialSystem = `${systemPrompt}
+
+[부분 재생성 모드]
+응답 JSON에는 "${regenerateOnly}" 키만 정확히 하나 포함하세요. 다른 최상위 키는 절대 포함하지 마세요.`
+
+    const planSnapshot = JSON.stringify(currentPlan ?? {}).slice(0, 14000)
+    const partialUser = `${studentContextBlock}
+
+아래는 교사가 화면에서 수정한 현재 행동 지원 초안 전체입니다. 이 맥락을 유지한 채 "${regenerateOnly}" 영역만 새로 작성하세요.
+${planSnapshot}
+
+교사 추가 요청: ${optionalPrompt || '없음'}`
+
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o',
       response_format: { type: 'json_object' },
-      max_tokens: 3400,
+      max_tokens: isPartial ? 2800 : 3400,
       messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
+        { role: 'system', content: isPartial ? partialSystem : systemPrompt },
+        { role: 'user', content: isPartial ? partialUser : userPrompt },
       ],
     })
 
@@ -327,7 +384,18 @@ ${dbContext ? `\n[DB에서 조회된 참조 데이터 — 이 전략 목록과 �
       return NextResponse.json({ error: 'AI 응답이 없습니다.' }, { status: 500 })
     }
 
-    const plan = JSON.parse(content) as Record<string, unknown>
+    const parsed = JSON.parse(content) as Record<string, unknown>
+
+    let plan: Record<string, unknown>
+    if (isPartial && regenerateOnly) {
+      if (parsed[regenerateOnly] === undefined) {
+        return NextResponse.json({ error: 'AI가 해당 영역을 반환하지 않았습니다.' }, { status: 422 })
+      }
+      plan = { ...currentPlan, [regenerateOnly]: parsed[regenerateOnly] }
+    } else {
+      plan = parsed
+    }
+
     const estFn = String((plan.fba as Record<string, unknown> | undefined)?.estimatedFunction ?? '')
     plan.ncrSchedule = normalizeNcrSchedule(plan.ncrSchedule, estFn)
     plan.scheduleFading = normalizeScheduleFading(plan.scheduleFading)
@@ -350,6 +418,7 @@ ${dbContext ? `\n[DB에서 조회된 참조 데이터 — 이 전략 목록과 �
             environment: resolvedEnvironment,
             aiProfileId: aiProfile?.id ?? null,
             optionalPrompt: optionalPrompt ?? null,
+            regenerateOnly: regenerateOnly ?? null,
           },
           ai_output: plan,
           estimated_function:
