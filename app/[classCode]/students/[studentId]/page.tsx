@@ -12,6 +12,7 @@ import InterventionDeleteButton from './InterventionDeleteButton'
 import StudentSupportTabs from './StudentSupportTabs'
 import PrintableSupportPlan from './PrintableSupportPlan'
 import { buildFeatureOutputs, mapStudentAiProfile } from '@/lib/ai-profile'
+import { dedupeInterventionsForDisplay } from '@/lib/intervention-utils'
 import { redactForParent } from '@/lib/support/sanitize-for-parent'
 
 export default async function StudentDetailPage({
@@ -54,13 +55,15 @@ export default async function StudentDetailPage({
     .order('created_at', { ascending: false })
 
   const strategyNames = [...new Set((goals || []).map((goal) => goal.strategy_type).filter(Boolean))]
-  const { data: interventions } = strategyNames.length > 0
+  const { data: interventionsRaw } = strategyNames.length > 0
     ? await supabase
         .from('pbs_intervention_library')
         .select('id, name_ko, evidence_level, abbreviation')
         .in('name_ko', strategyNames)
         .order('name_ko')
     : { data: [] }
+
+  const interventions = dedupeInterventionsForDisplay(interventionsRaw || [])
 
   // 최근 거래내역 10건
   const { data: transactions } = await supabase

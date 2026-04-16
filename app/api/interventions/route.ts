@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { getSession } from '@/lib/session'
+import { extractCanonicalAbbrevFromStrategyName } from '@/lib/intervention-utils'
 
 // GET /api/interventions — 중재 전략 조회
 export async function GET(request: Request) {
@@ -71,19 +72,35 @@ export async function POST(request: Request) {
 
     const supabase = await createServerSupabase()
 
+    const trimmedName = String(strategyName).trim()
+
     // 동일 이름 전략이 이미 있으면 중복 저장 방지
-    const { data: existing } = await supabase
+    const { data: existingByTitle } = await supabase
       .from('pbs_intervention_library')
       .select('id, name_ko')
-      .eq('name_ko', strategyName)
+      .eq('name_ko', trimmedName)
       .maybeSingle()
 
-    if (existing) {
-      return NextResponse.json({ strategy: existing, duplicate: true })
+    if (existingByTitle) {
+      return NextResponse.json({ strategy: existingByTitle, duplicate: true })
+    }
+
+    // 시드·기존 행과 동일 약어(FCT, NCR 등)면 새 행 만들지 않음 — AI가 제목만 살짝 바꿔 저장하는 경우
+    const canonAbbr = extractCanonicalAbbrevFromStrategyName(trimmedName)
+    if (canonAbbr) {
+      const { data: existingByAbbr } = await supabase
+        .from('pbs_intervention_library')
+        .select('id, name_ko')
+        .eq('abbreviation', canonAbbr)
+        .maybeSingle()
+
+      if (existingByAbbr) {
+        return NextResponse.json({ strategy: existingByAbbr, duplicate: true })
+      }
     }
 
     // abbreviation 자동 생성 (고유성 보장)
-    const baseAbbr = strategyName
+    const baseAbbr = trimmedName
       .replace(/\s+/g, '')
       .replace(/[^a-zA-Z0-9가-힣]/g, '')
       .substring(0, 12)
@@ -96,8 +113,8 @@ export async function POST(request: Request) {
     const { data: strategy, error } = await supabase
       .from('pbs_intervention_library')
       .insert({
-        name_ko: strategyName,
-        name_en: strategyName,
+        name_ko: trimmedName,
+        name_en: trimmedName,
         abbreviation,
         category: 'AI생성',
         target_functions: applicableFunctions || [],
