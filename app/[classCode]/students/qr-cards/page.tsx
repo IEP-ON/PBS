@@ -336,15 +336,24 @@ export default function StudentQrCardsPage() {
           margin: 0 auto;
         }
 
+        /* 행을 항상 2줄로 고정 — 마지막 페이지에 1~3명만 있어도 카드 높이가 4명일 때와 동일 */
         .id-print-grid {
           display: grid;
           grid-template-columns: 1fr 1fr;
+          grid-template-rows: 1fr 1fr;
           gap: 12px;
-          min-height: 360px;
+          width: 100%;
+          max-width: 920px;
+          margin-inline: auto;
+          aspect-ratio: 200 / 287;
+          min-height: 0;
         }
 
         .id-print-grid__cell {
-          min-height: 280px;
+          min-height: 0;
+          min-width: 0;
+          height: 100%;
+          overflow: hidden;
         }
 
         @media print {
@@ -390,13 +399,18 @@ export default function StudentQrCardsPage() {
           .id-print-grid {
             width: 100%;
             height: calc(297mm - 10mm);
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
             gap: 4mm !important;
             min-height: 0 !important;
+            aspect-ratio: auto;
+            max-width: none;
           }
 
           .id-print-grid__cell {
             min-height: 0 !important;
             height: 100%;
+            max-height: 100%;
             overflow: hidden;
           }
 
