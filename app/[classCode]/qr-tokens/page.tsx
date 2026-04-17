@@ -29,6 +29,114 @@ function chunkItems<T>(items: T[], size: number) {
   return chunks
 }
 
+/** SVG id용: UUID 하이픈 제거 */
+function safeSvgId(id: string) {
+  return id.replace(/[^a-zA-Z0-9]/g, '')
+}
+
+/**
+ * 인쇄·미리보기 공통: 실제 QR 데이터는 표준 사각형(H 오류정정).
+ * 원형 베젤 안에 사각형이 완전히 들어가게 배치해 모서리(_finder_)가 잘리지 않음.
+ */
+function QrTokenCoinVisual({
+  token,
+  qrSrc,
+  variant,
+}: {
+  token: QrToken
+  qrSrc: string | null
+  variant: 'print' | 'preview'
+}) {
+  const sid = safeSvgId(token.id)
+  const topPathId = `qr-token-ring-top-${sid}`
+  const botPathId = `qr-token-ring-bot-${sid}`
+
+  const isPrint = variant === 'print'
+
+  return (
+    <div
+      className={`relative flex aspect-square items-center justify-center rounded-full ${
+        isPrint ? '' : 'mx-auto w-full max-w-[168px]'
+      }`}
+      style={isPrint ? { width: '40mm', height: '40mm' } : undefined}
+    >
+      {/* 외곽 메탈 베젤 */}
+      <div
+        className="absolute inset-0 rounded-full border border-slate-700/80 shadow-[inset_0_2px_4px_rgba(255,255,255,0.12),inset_0_-3px_6px_rgba(0,0,0,0.35)]"
+        style={{
+          background:
+            'radial-gradient(circle at 28% 22%, #64748b 0%, #334155 28%, #1e293b 52%, #0f172a 100%)',
+        }}
+      />
+      {/* 로즈골드 얇은 링 */}
+      <div
+        className="pointer-events-none absolute inset-[5%] rounded-full"
+        style={{
+          boxShadow:
+            'inset 0 0 0 0.35mm rgba(180, 130, 70, 0.95), inset 0 0 0 0.55mm rgba(251, 191, 36, 0.35)',
+        }}
+      />
+
+      {/* 상·하단 원호 텍스트 */}
+      <svg
+        className="pointer-events-none absolute inset-0 h-full w-full text-[3.4px] font-bold uppercase tracking-[0.22em] text-amber-200/95"
+        viewBox="0 0 100 100"
+        aria-hidden
+      >
+        <defs>
+          <path id={topPathId} d="M 18 50 A 32 32 0 0 1 82 50" fill="none" />
+          <path id={botPathId} d="M 82 50 A 32 32 0 0 1 18 50" fill="none" />
+        </defs>
+        <text dominantBaseline="middle">
+          <textPath href={`#${topPathId}`} startOffset="50%" textAnchor="middle">
+            PBS · QR TOKEN
+          </textPath>
+        </text>
+        <text dominantBaseline="middle" className="fill-amber-100/90">
+          <textPath href={`#${botPathId}`} startOffset="50%" textAnchor="middle">
+            {`${token.amount.toLocaleString()}원 · ATM`}
+          </textPath>
+        </text>
+      </svg>
+
+      {/* 중앙 화이트 디스크 + 사각형 QR (잘리지 않음) */}
+      <div
+        className="relative z-[1] flex items-center justify-center rounded-full bg-white shadow-[inset_0_1px_0_rgba(255,255,255,1),0_1px_3px_rgba(0,0,0,0.12)]"
+        style={
+          isPrint
+            ? {
+                width: '72%',
+                height: '72%',
+                maxWidth: '28.8mm',
+                maxHeight: '28.8mm',
+              }
+            : { width: '72%', height: '72%' }
+        }
+      >
+        {qrSrc ? (
+          <img
+            src={qrSrc}
+            alt=""
+            className="block rounded-[1mm] object-contain"
+            style={
+              isPrint
+                ? {
+                    width: '74%',
+                    height: '74%',
+                    maxWidth: '21.2mm',
+                    maxHeight: '21.2mm',
+                  }
+                : { width: '74%', height: '74%', maxWidth: '118px', maxHeight: '118px' }
+            }
+          />
+        ) : (
+          <span className="text-[8px] text-slate-400">{isPrint ? '' : '생성중...'}</span>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export default function QrTokensPage() {
   const [tokens, setTokens] = useState<QrToken[]>([])
   const [loading, setLoading] = useState(true)
@@ -54,10 +162,10 @@ export default function QrTokensPage() {
     const urls: Record<string, string> = {}
     for (const t of tokenList) {
       urls[t.id] = await QRCode.toDataURL(t.code, {
-        width: 200,
-        margin: 1,
-        errorCorrectionLevel: 'M',
-        color: { dark: '#000000', light: '#ffffff' },
+        width: 240,
+        margin: 2,
+        errorCorrectionLevel: 'H',
+        color: { dark: '#0f172a', light: '#ffffff' },
       })
     }
     setQrDataUrls(prev => ({ ...prev, ...urls }))
@@ -165,26 +273,13 @@ export default function QrTokensPage() {
           {newTokenPages.map((page, pageIndex) => (
             <section key={`print-page-${pageIndex}`} className="token-print-sheet">
               <div className="token-print-grid">
-                {page.map(token => (
-                  <div
-                    key={token.id}
-                    className="token-print-sticker flex flex-col items-center justify-center rounded-full border-[1.2px] border-slate-300 bg-[#fffdf8] p-[2.8mm] text-center"
-                  >
-                    <p className="text-[8px] font-black uppercase tracking-[0.28em] text-slate-500">
-                      QR TOKEN
-                    </p>
-                    {qrDataUrls[token.id] && (
-                      <div className="mt-[1.2mm] rounded-[4mm] border border-slate-200 bg-white p-[1.4mm]">
-                        <img
-                          src={qrDataUrls[token.id]}
-                          alt={token.code}
-                          style={{ width: '22mm', height: '22mm', display: 'block' }}
-                        />
-                      </div>
-                    )}
-                    <div className="mt-[1.4mm] rounded-full bg-slate-900 px-[2.2mm] py-[0.7mm] text-[9px] font-black text-white">
-                      {token.amount.toLocaleString()}원
-                    </div>
+                {page.map((token) => (
+                  <div key={token.id} className="token-print-sticker">
+                    <QrTokenCoinVisual
+                      token={token}
+                      qrSrc={qrDataUrls[token.id] ?? null}
+                      variant="print"
+                    />
                   </div>
                 ))}
               </div>
@@ -299,29 +394,19 @@ export default function QrTokensPage() {
               </button>
             </div>
             <p className="text-xs text-gray-500">
-              💡 Windows 인쇄 기준으로 각 토큰이 지름 40mm 원형 스티커로 출력됩니다. QR은 원형 안쪽 중앙에 배치됩니다.
+              💡 40mm 원형 스티커 기준입니다. QR은 <strong>표준 사각형</strong>으로 생성되며, 원형 베젤 안에 <strong>전체가 들어가도록</strong> 배치해 스캔이 깨지지 않습니다. 메탈 링 문구는 인쇄 시 함께 출력됩니다.
             </p>
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
-              {newTokens.map(token => (
+            <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
+              {newTokens.map((token) => (
                 <div
                   key={token.id}
-                  className="flex aspect-square flex-col items-center justify-center rounded-full border-2 border-[#d7e2ef] bg-[radial-gradient(circle_at_top,_#ffffff_0%,_#f8fbff_58%,_#e8f1fb_100%)] p-4 text-center"
+                  className="flex aspect-square flex-col items-center justify-center rounded-full border border-slate-200/80 bg-[radial-gradient(circle_at_30%_20%,#f8fafc_0%,#e2e8f0_55%,#cbd5e1_100%)] p-3 shadow-inner"
                 >
-                  <p className="text-[10px] font-black uppercase tracking-[0.28em] text-slate-500">
-                    QR TOKEN
-                  </p>
-                  {qrDataUrls[token.id] ? (
-                    <div className="mt-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
-                      <img src={qrDataUrls[token.id]} alt={token.code} className="aspect-square w-full max-w-[116px]" />
-                    </div>
-                  ) : (
-                    <div className="mt-2 flex aspect-square w-full max-w-[116px] items-center justify-center rounded-2xl bg-gray-200 text-xs text-gray-400">
-                      생성중...
-                    </div>
-                  )}
-                  <div className="mt-3 rounded-full bg-slate-900 px-3 py-1 text-xs font-black text-white">
-                    {token.amount.toLocaleString()}원
-                  </div>
+                  <QrTokenCoinVisual
+                    token={token}
+                    qrSrc={qrDataUrls[token.id] ?? null}
+                    variant="preview"
+                  />
                 </div>
               ))}
             </div>
