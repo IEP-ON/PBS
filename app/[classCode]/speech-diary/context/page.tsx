@@ -72,13 +72,14 @@ export default function SpeechDiaryContextPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="tablet-page min-h-[calc(100dvh-4rem)] space-y-6 bg-slate-50 p-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">🏫 오늘의 학교 맥락</h1>
-        <p className="text-sm text-gray-500 mt-1">급식, 행사, 메모를 저장하면 말 일기 보정에 참고됩니다.</p>
+        <p className="text-sm font-bold text-sky-700">말 일기장</p>
+        <h1 className="mt-1 text-2xl font-extrabold text-slate-900">오늘의 학교 맥락</h1>
+        <p className="mt-1 text-base text-slate-600">급식, 행사, 메모를 저장하면 말 일기 보정에 참고됩니다.</p>
       </div>
 
-      <div className="bg-white rounded-2xl border border-gray-100 p-6 space-y-4">
+      <div className="space-y-4 rounded-2xl border-2 border-slate-200 bg-white p-6 shadow-sm">
         <label className="block">
           <span className="text-sm font-medium text-gray-700">날짜</span>
           <input
@@ -90,7 +91,9 @@ export default function SpeechDiaryContextPage() {
         </label>
 
         {loading ? (
-          <div className="rounded-xl bg-gray-50 px-4 py-6 text-center text-gray-400">불러오는 중...</div>
+          <div className="rounded-xl bg-slate-50 px-4 py-6 text-center text-base font-semibold text-slate-500">
+            불러오는 중…
+          </div>
         ) : (
           <>
             <label className="block">
@@ -129,17 +132,18 @@ export default function SpeechDiaryContextPage() {
         )}
 
         {message && (
-          <div className="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">
+          <div className="rounded-xl border-2 border-amber-200 bg-amber-50 px-4 py-3 text-base font-semibold text-amber-900">
             {message}
           </div>
         )}
 
         <button
+          type="button"
           onClick={() => void saveContext()}
           disabled={saving}
-          className="px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white font-semibold rounded-xl transition-colors"
+          className="min-h-[48px] rounded-xl bg-sky-600 px-6 py-3 text-lg font-bold text-white transition hover:bg-sky-500 disabled:bg-sky-300"
         >
-          {saving ? '저장 중...' : '저장'}
+          {saving ? '저장 중…' : '저장'}
         </button>
       </div>
     </div>

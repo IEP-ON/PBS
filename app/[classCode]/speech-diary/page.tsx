@@ -189,30 +189,32 @@ export default function SpeechDiaryPage() {
   }
 
   return (
-    <div className="tablet-page space-y-6">
-      <div className="flex flex-col gap-4 rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm xl:flex-row xl:items-start xl:justify-between">
+    <div className="tablet-page space-y-6 bg-slate-50">
+      <div className="flex flex-col gap-4 rounded-2xl border-2 border-slate-200 bg-white p-5 shadow-sm xl:flex-row xl:items-start xl:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">🎙️ 말 일기장</h1>
-          <p className="text-sm text-gray-500 mt-1">QR 카드로 녹음된 학생 일기를 확인하고 수정할 수 있습니다.</p>
+          <p className="text-sm font-bold text-sky-700">말 일기장</p>
+          <h1 className="mt-1 text-2xl font-extrabold text-slate-900">녹음 일기 목록</h1>
+          <p className="mt-1 text-base text-slate-600">QR 카드로 녹음된 학생 일기를 확인하고 수정할 수 있습니다.</p>
         </div>
         <div className="flex flex-wrap gap-3">
           <Link
             href="/diary-kiosk"
             target="_blank"
-            className="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white text-sm font-medium rounded-xl transition-colors"
+            rel="noopener noreferrer"
+            className="inline-flex min-h-[44px] items-center rounded-xl bg-slate-800 px-4 py-2 text-sm font-bold text-white transition hover:bg-slate-900"
           >
             키오스크 열기 ↗
           </Link>
           <Link
             href={`/${classCode}/speech-diary/context`}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl transition-colors"
+            className="inline-flex min-h-[44px] items-center rounded-xl bg-sky-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-sky-500"
           >
             오늘의 맥락
           </Link>
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl border border-gray-100 p-4 flex flex-wrap gap-3 items-center">
+      <div className="flex flex-wrap items-center gap-3 rounded-2xl border-2 border-slate-200 bg-white p-4">
         <span className="text-sm font-medium text-gray-600">학생 필터</span>
         <select
           value={selectedStudentId}

@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 import type { PublicCue } from '@/types'
+import { DiaryKioskChrome } from '@/components/speech-diary/DiaryKioskChrome'
 
 type StudentLookup = {
   studentId: string
@@ -20,6 +20,7 @@ export default function DiaryKioskPage() {
   const jsQrRef = useRef<(typeof import('jsqr'))['default'] | null>(null)
   const lookupCacheRef = useRef<Map<string, StudentLookup>>(new Map())
   const lastScanAtRef = useRef(0)
+  const handleQrDataRef = useRef<(qr: string) => Promise<void>>(async () => {})
 
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -33,52 +34,71 @@ export default function DiaryKioskPage() {
     }
   }, [])
 
-  const handleQrData = useCallback(async (qrCode: string) => {
-    if (loading) return
+  const startCameraRef = useRef<() => Promise<void>>(async () => {})
 
-    stopCamera()
-    setLoading(true)
-    setError('')
+  const handleQrData = useCallback(
+    async (qrCode: string) => {
+      if (loading) return
 
-    try {
-      const cachedStudent = lookupCacheRef.current.get(qrCode)
-      if (cachedStudent) {
-        sessionStorage.setItem('speech-diary-student', JSON.stringify({
-          studentId: cachedStudent.studentId,
-          name: cachedStudent.name,
-          publicCue: cachedStudent.publicCue || null,
-        }))
-        router.push(`/diary-kiosk/record/${cachedStudent.studentId}?name=${encodeURIComponent(cachedStudent.name)}`)
-        return
-      }
+      stopCamera()
+      setLoading(true)
+      setError('')
 
-      const res = await fetch(`/api/speech-diary/student?qrCode=${encodeURIComponent(qrCode)}`, {
-        cache: 'no-store',
-      })
-      const data = await res.json() as StudentLookup & { error?: string }
+      try {
+        const cachedStudent = lookupCacheRef.current.get(qrCode)
+        if (cachedStudent) {
+          sessionStorage.setItem(
+            'speech-diary-student',
+            JSON.stringify({
+              studentId: cachedStudent.studentId,
+              name: cachedStudent.name,
+              publicCue: cachedStudent.publicCue || null,
+            })
+          )
+          router.push(
+            `/diary-kiosk/record/${cachedStudent.studentId}?name=${encodeURIComponent(cachedStudent.name)}`
+          )
+          return
+        }
 
-      if (!res.ok) {
-        setError(data.error || '학생을 찾지 못했습니다.')
+        const res = await fetch(`/api/speech-diary/student?qrCode=${encodeURIComponent(qrCode)}`, {
+          cache: 'no-store',
+        })
+        const data = (await res.json()) as StudentLookup & { error?: string }
+
+        if (!res.ok) {
+          setError(data.error || '학생을 찾지 못했습니다.')
+          setLoading(false)
+          await startCameraRef.current()
+          return
+        }
+
+        lookupCacheRef.current.set(qrCode, {
+          studentId: data.studentId,
+          name: data.name,
+          publicCue: data.publicCue || null,
+        })
+        sessionStorage.setItem(
+          'speech-diary-student',
+          JSON.stringify({
+            studentId: data.studentId,
+            name: data.name,
+            publicCue: data.publicCue || null,
+          })
+        )
+        router.push(`/diary-kiosk/record/${data.studentId}?name=${encodeURIComponent(data.name)}`)
+      } catch {
+        setError('학생 조회 중 오류가 발생했습니다.')
         setLoading(false)
-        return
+        await startCameraRef.current()
       }
+    },
+    [loading, router, stopCamera]
+  )
 
-      lookupCacheRef.current.set(qrCode, {
-        studentId: data.studentId,
-        name: data.name,
-        publicCue: data.publicCue || null,
-      })
-      sessionStorage.setItem('speech-diary-student', JSON.stringify({
-        studentId: data.studentId,
-        name: data.name,
-        publicCue: data.publicCue || null,
-      }))
-      router.push(`/diary-kiosk/record/${data.studentId}?name=${encodeURIComponent(data.name)}`)
-    } catch {
-      setError('학생 조회 중 오류가 발생했습니다.')
-      setLoading(false)
-    }
-  }, [loading, router, stopCamera])
+  useEffect(() => {
+    handleQrDataRef.current = handleQrData
+  }, [handleQrData])
 
   const startCamera = useCallback(async () => {
     setError('')
@@ -158,7 +178,7 @@ export default function DiaryKioskPage() {
         })
 
         if (code?.data) {
-          void handleQrData(code.data)
+          void handleQrDataRef.current(code.data)
           return
         }
 
@@ -169,7 +189,9 @@ export default function DiaryKioskPage() {
     } catch {
       setError('카메라를 사용할 수 없습니다. 권한을 확인해주세요.')
     }
-  }, [handleQrData])
+  }, [])
+
+  startCameraRef.current = startCamera
 
   useEffect(() => {
     void import('jsqr').then((module) => {
@@ -179,107 +201,107 @@ export default function DiaryKioskPage() {
     return () => stopCamera()
   }, [startCamera, stopCamera])
 
-  return (
-    <div className="min-h-[100dvh] bg-slate-100 px-4 py-4 lg:px-6 lg:py-6">
-      <div className="mx-auto flex min-h-[calc(100dvh-2rem)] max-w-6xl flex-col gap-4 lg:min-h-[calc(100dvh-3rem)]">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-sm font-semibold text-sky-700">Speech Diary</p>
-            <h1 className="mt-1 text-3xl font-black tracking-tight text-slate-900 lg:text-4xl">QR 코드를 보여주세요</h1>
-          </div>
-          <Link
-            href="/"
-            className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-          >
-            ← 처음으로
-          </Link>
-        </div>
+  const camera = (
+    <div className="absolute inset-0 flex min-h-[220px] flex-col bg-slate-900 landscape:min-h-0">
+      <video ref={videoRef} className="h-full min-h-0 w-full flex-1 object-cover" playsInline muted />
+      <canvas ref={canvasRef} className="hidden" />
 
-        <div className="grid flex-1 gap-4 lg:grid-cols-[minmax(0,1.55fr)_340px]">
-          <section className="rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm lg:p-5">
-            <div className="relative aspect-[16/10] overflow-hidden rounded-[1.5rem] bg-slate-900">
-              <video ref={videoRef} className="h-full w-full object-cover" playsInline muted />
-              <canvas ref={canvasRef} className="hidden" />
+      <div className="pointer-events-none absolute inset-0 bg-black/18" />
 
-              <div className="pointer-events-none absolute inset-0 bg-black/18" />
-
-              <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-6">
-                <div className="relative h-full max-h-[360px] w-full max-w-[460px] rounded-[1.75rem] border-4 border-white/90">
-                  <div className="absolute -left-1 -top-1 h-10 w-10 rounded-tl-[1.75rem] border-l-8 border-t-8 border-sky-400" />
-                  <div className="absolute -right-1 -top-1 h-10 w-10 rounded-tr-[1.75rem] border-r-8 border-t-8 border-sky-400" />
-                  <div className="absolute -bottom-1 -left-1 h-10 w-10 rounded-bl-[1.75rem] border-b-8 border-l-8 border-sky-400" />
-                  <div className="absolute -bottom-1 -right-1 h-10 w-10 rounded-br-[1.75rem] border-b-8 border-r-8 border-sky-400" />
-                </div>
-              </div>
-
-              <div className="pointer-events-none absolute left-4 top-4 rounded-full bg-white/90 px-3 py-1.5 text-xs font-bold text-slate-700">
-                {ready ? '스캔 중' : '카메라 준비 중'}
-              </div>
-
-              <div className="pointer-events-none absolute bottom-4 left-4 right-4 rounded-2xl bg-black/55 px-4 py-3 text-center text-sm font-medium text-white">
-                학생 QR 카드를 화면 중앙 네모 안에 맞춰주세요
-              </div>
-
-              {!ready && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-slate-950/60">
-                  <div className="h-12 w-12 animate-spin rounded-full border-4 border-white border-t-transparent" />
-                  <p className="text-sm font-semibold text-white">카메라를 연결하고 있어요</p>
-                </div>
-              )}
-            </div>
-          </section>
-
-          <aside className="flex flex-col gap-4">
-            <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-              <h2 className="text-2xl font-black tracking-tight text-slate-900">이렇게 사용해요</h2>
-              <div className="mt-5 space-y-4">
-                <div className="flex gap-3">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-sky-100 text-sm font-black text-sky-700">1</div>
-                  <div>
-                    <p className="font-bold text-slate-900">학생 QR 카드를 준비합니다</p>
-                    <p className="mt-1 text-sm leading-6 text-slate-600">학생 관리에서 출력한 표준 QR 카드를 사용해주세요.</p>
-                  </div>
-                </div>
-                <div className="flex gap-3">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-sky-100 text-sm font-black text-sky-700">2</div>
-                  <div>
-                    <p className="font-bold text-slate-900">화면 중앙에 맞춰 보여줍니다</p>
-                    <p className="mt-1 text-sm leading-6 text-slate-600">카드를 너무 가까이 대지 말고, 네모 안에 들어오게 맞춰주세요.</p>
-                  </div>
-                </div>
-                <div className="flex gap-3">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-sky-100 text-sm font-black text-sky-700">3</div>
-                  <div>
-                    <p className="font-bold text-slate-900">자동으로 다음 화면으로 이동합니다</p>
-                    <p className="mt-1 text-sm leading-6 text-slate-600">학생 확인 후 녹음 카운트다운이 바로 시작됩니다.</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-              <p className="text-sm font-bold text-slate-900">스캔이 잘 안 되면</p>
-              <div className="mt-3 space-y-2 text-sm leading-6 text-slate-600">
-                <p>QR 카드가 구겨지지 않았는지 확인해주세요.</p>
-                <p>조명을 밝게 하거나 그림자를 줄여주세요.</p>
-                <p>카드를 조금 멀리 움직여 초점을 다시 맞춰주세요.</p>
-              </div>
-            </div>
-
-            {loading && (
-              <div className="rounded-[1.5rem] bg-emerald-500 px-5 py-4 text-center text-base font-black text-white shadow-sm">
-                학생을 확인하는 중...
-              </div>
-            )}
-
-            {error && (
-              <div className="rounded-[1.5rem] border border-rose-200 bg-rose-50 px-5 py-4 text-center text-sm font-bold text-rose-600">
-                {error}
-              </div>
-            )}
-          </aside>
+      <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-4 sm:p-6">
+        <div className="relative aspect-square max-h-[min(72vmin,420px)] w-full max-w-[min(88vw,460px)] rounded-[1.75rem] border-4 border-white/90">
+          <div className="absolute -left-1 -top-1 h-10 w-10 rounded-tl-[1.75rem] border-l-8 border-t-8 border-sky-400" />
+          <div className="absolute -right-1 -top-1 h-10 w-10 rounded-tr-[1.75rem] border-r-8 border-t-8 border-sky-400" />
+          <div className="absolute -bottom-1 -left-1 h-10 w-10 rounded-bl-[1.75rem] border-b-8 border-l-8 border-sky-400" />
+          <div className="absolute -bottom-1 -right-1 h-10 w-10 rounded-br-[1.75rem] border-b-8 border-r-8 border-sky-400" />
         </div>
       </div>
+
+      <div className="pointer-events-none absolute left-3 top-3 rounded-full bg-white/95 px-3 py-2 text-sm font-extrabold text-slate-800 sm:left-4 sm:top-4 sm:text-base">
+        {ready ? '스캔 중' : '카메라 준비 중'}
+      </div>
+
+      <div className="pointer-events-none absolute bottom-3 left-3 right-3 rounded-2xl bg-black/60 px-4 py-3 text-center text-base font-bold text-white sm:bottom-4 sm:text-lg">
+        학생 QR 카드를 화면 중앙 네모 안에 맞춰 주세요
+      </div>
+
+      {!ready && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-slate-950/60">
+          <div className="h-14 w-14 animate-spin rounded-full border-4 border-white border-t-transparent" />
+          <p className="text-base font-bold text-white sm:text-lg">카메라를 연결하고 있어요</p>
+        </div>
+      )}
     </div>
+  )
+
+  const panel = (
+    <div className="flex flex-col gap-3">
+      <div className="rounded-2xl border-2 border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+        <h2 className="text-xl font-extrabold text-slate-900 sm:text-2xl">이렇게 사용해요</h2>
+        <ol className="mt-4 space-y-4 text-base text-slate-700 sm:text-lg">
+          <li className="flex gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-sky-100 text-lg font-black text-sky-800">
+              1
+            </span>
+            <span>
+              <span className="font-extrabold text-slate-900">QR 카드 준비</span>
+              <span className="mt-1 block text-slate-600">학생 관리에서 출력한 표준 QR 카드를 사용해 주세요.</span>
+            </span>
+          </li>
+          <li className="flex gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-sky-100 text-lg font-black text-sky-800">
+              2
+            </span>
+            <span>
+              <span className="font-extrabold text-slate-900">화면 중앙에 맞추기</span>
+              <span className="mt-1 block text-slate-600">너무 가깝지 않게, 네모 안에 카드가 들어오게 맞춰 주세요.</span>
+            </span>
+          </li>
+          <li className="flex gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-sky-100 text-lg font-black text-sky-800">
+              3
+            </span>
+            <span>
+              <span className="font-extrabold text-slate-900">다음 화면으로 이동</span>
+              <span className="mt-1 block text-slate-600">학생이 확인되면 녹음 준비 화면으로 자동으로 넘어가요.</span>
+            </span>
+          </li>
+        </ol>
+      </div>
+
+      <div className="rounded-2xl border-2 border-amber-200 bg-amber-50 p-4 sm:p-5">
+        <p className="text-lg font-extrabold text-amber-900 sm:text-xl">스캔이 잘 안 되면</p>
+        <ul className="mt-3 list-disc space-y-2 pl-5 text-base font-medium text-amber-950 sm:text-lg">
+          <li>카드가 구겨지지 않았는지 확인해 주세요.</li>
+          <li>밝은 곳에서 그림자를 줄여 주세요.</li>
+          <li>카드를 살짝 멀리했다 가까이 하며 초점을 맞춰 보세요.</li>
+        </ul>
+      </div>
+
+      {loading ? (
+        <div className="rounded-2xl bg-emerald-600 px-5 py-4 text-center text-lg font-extrabold text-white shadow-md sm:py-5 sm:text-xl">
+          학생을 확인하는 중…
+        </div>
+      ) : null}
+
+      {error ? (
+        <div
+          className="rounded-2xl border-2 border-rose-300 bg-rose-50 px-5 py-4 text-center text-base font-bold text-rose-800 sm:text-lg"
+          role="alert"
+        >
+          {error}
+        </div>
+      ) : null}
+    </div>
+  )
+
+  return (
+    <DiaryKioskChrome
+      step={1}
+      title="QR 코드를 보여 주세요"
+      subtitle="학생 카드를 카메라 앞 중앙에 맞춰 주세요."
+      camera={camera}
+      panel={panel}
+    />
   )
 }
