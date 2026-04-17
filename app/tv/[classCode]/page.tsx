@@ -137,13 +137,21 @@ export default function TvModePage() {
 
   if (loading) {
     return (
-      <div className="h-[100dvh] flex items-center justify-center bg-[#070c18]">
-        <div className="flex items-center gap-3">
-          <span className="relative flex h-2 w-2">
+      <div
+        className="h-[100dvh] flex items-center justify-center bg-[#070c18] text-white"
+        style={{
+          paddingLeft: 'max(0px, env(safe-area-inset-left, 0px))',
+          paddingRight: 'max(0px, env(safe-area-inset-right, 0px))',
+          paddingTop: 'max(0px, env(safe-area-inset-top, 0px))',
+          paddingBottom: 'max(0px, env(safe-area-inset-bottom, 0px))',
+        }}
+      >
+        <div className="flex items-center gap-4 md:gap-5">
+          <span className="relative flex h-3 w-3 md:h-4 md:w-4">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-400" />
+            <span className="relative inline-flex rounded-full h-3 w-3 md:h-4 md:w-4 bg-blue-400" />
           </span>
-          <p className="text-white/50 text-sm font-semibold tracking-widest uppercase">Loading</p>
+          <p className="text-white/50 text-base md:text-xl font-bold tracking-[0.35em] uppercase">Loading</p>
         </div>
       </div>
     )
@@ -160,80 +168,94 @@ export default function TvModePage() {
   ]
 
   return (
-    <div className="h-[100dvh] overflow-hidden flex flex-col bg-[#070c18] text-white select-none"
-      style={{ background: 'radial-gradient(ellipse 80% 50% at 30% 0%, rgba(29,78,216,0.12) 0%, transparent 70%), radial-gradient(ellipse 60% 40% at 80% 80%, rgba(6,182,212,0.06) 0%, transparent 60%), #070c18' }}>
+    <div
+      className="h-[100dvh] overflow-hidden flex flex-col bg-[#070c18] text-white select-none"
+      style={{
+        background:
+          'radial-gradient(ellipse 80% 50% at 30% 0%, rgba(29,78,216,0.12) 0%, transparent 70%), radial-gradient(ellipse 60% 40% at 80% 80%, rgba(6,182,212,0.06) 0%, transparent 60%), #070c18',
+        paddingLeft: 'max(0px, env(safe-area-inset-left, 0px))',
+        paddingRight: 'max(0px, env(safe-area-inset-right, 0px))',
+        paddingTop: 'max(0px, env(safe-area-inset-top, 0px))',
+        paddingBottom: 'max(0px, env(safe-area-inset-bottom, 0px))',
+      }}
+    >
 
       {/* ── Header ── */}
-      <header className="shrink-0 flex items-center justify-between px-5 border-b border-white/[0.05]" style={{ height: '52px' }}>
-        <div className="flex items-center gap-3">
-          <span className="relative flex h-1.5 w-1.5">
+      <header className="shrink-0 flex items-center justify-between gap-2 border-b border-white/[0.06] px-2 py-1.5 min-[480px]:px-3 md:px-4 md:py-2 min-h-[3rem] md:min-h-[3.75rem]">
+        <div className="flex min-w-0 items-center gap-2 md:gap-3">
+          <span className="relative flex h-2 w-2 shrink-0 md:h-2.5 md:w-2.5">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-400" />
+            <span className="relative inline-flex rounded-full h-2 w-2 md:h-2.5 md:w-2.5 bg-emerald-400" />
           </span>
-          <span className="text-[9px] font-bold tracking-[0.35em] uppercase text-white/25">LIVE</span>
-          <div className="h-3 w-px bg-white/10" />
-          <h1 className="text-sm font-black text-white/90">{className || classCode}</h1>
-          <span className="text-[11px] text-white/25">
+          <span className="shrink-0 text-[10px] md:text-xs font-bold tracking-[0.35em] uppercase text-white/30">LIVE</span>
+          <div className="hidden h-4 w-px shrink-0 bg-white/10 min-[400px]:block" />
+          <h1 className="min-w-0 truncate text-base font-black text-white/95 min-[480px]:text-lg md:text-2xl">
+            {className || classCode}
+          </h1>
+          <span className="hidden text-[11px] text-white/30 min-[900px]:inline md:text-sm">
             학생 {rankings.length}명 · 가게 {shopItems.length}개 · 주식 {stocks.length}종목
           </span>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="flex overflow-hidden rounded-lg border border-white/[0.07]">
+        <div className="flex shrink-0 items-center gap-1.5 min-[480px]:gap-2 md:gap-3">
+          <div className="flex overflow-hidden rounded-lg border border-white/[0.08] md:rounded-xl">
             <button
+              type="button"
               onClick={() => setSortMode('today')}
-              className={`px-4 py-1.5 text-xs font-bold transition-colors ${
+              className={`min-h-11 min-w-[5.5rem] px-3 py-2 text-xs font-black transition-colors min-[480px]:px-4 min-[480px]:text-sm md:min-h-12 md:px-6 md:text-base ${
                 sortMode === 'today'
                   ? 'bg-amber-400 text-black'
-                  : 'text-white/40 hover:text-white/80 hover:bg-white/[0.05]'
+                  : 'text-white/45 hover:text-white/90 hover:bg-white/[0.06]'
               }`}
             >
               오늘 획득
             </button>
             <button
+              type="button"
               onClick={() => setSortMode('balance')}
-              className={`px-4 py-1.5 text-xs font-bold border-l border-white/[0.07] transition-colors ${
+              className={`min-h-11 min-w-[5.5rem] border-l border-white/[0.08] px-3 py-2 text-xs font-black transition-colors min-[480px]:px-4 min-[480px]:text-sm md:min-h-12 md:px-6 md:text-base ${
                 sortMode === 'balance'
                   ? 'bg-amber-400 text-black'
-                  : 'text-white/40 hover:text-white/80 hover:bg-white/[0.05]'
+                  : 'text-white/45 hover:text-white/90 hover:bg-white/[0.06]'
               }`}
             >
               전체 잔액
             </button>
           </div>
           <button
+            type="button"
             onClick={loadRankings}
-            className="text-white/25 hover:text-white/60 transition-colors text-base leading-none"
+            className="flex size-11 items-center justify-center text-white/35 transition-colors hover:text-white/80 md:size-12 md:text-2xl"
             title="새로고침"
           >
             ↻
           </button>
-          <span className="text-[11px] text-white/20 tabular-nums font-mono">
+          <span className="hidden text-[11px] text-white/25 tabular-nums font-mono min-[640px]:inline md:text-sm">
             {lastUpdated.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
           </span>
         </div>
       </header>
 
       {/* ── Body ── */}
-      <div className="flex-1 min-h-0 flex">
+      <div className="flex min-h-0 flex-1">
 
         {/* Rankings */}
-        <main className="flex-1 min-w-0 flex flex-col gap-0 p-4">
+        <main className="flex-1 min-w-0 min-h-0 flex flex-col gap-0 px-1 pt-1 pb-0 min-[480px]:px-2 md:px-3 md:pt-2">
           {rankings.length === 0 ? (
-            <div className="flex-1 flex items-center justify-center">
+            <div className="flex flex-1 items-center justify-center px-2">
               <div className="text-center">
-                <p className="text-5xl mb-4">🏫</p>
-                <p className="text-lg font-bold text-white/70">등록된 학생이 없습니다</p>
-                <p className="text-sm text-white/30 mt-1">학생을 등록하면 순위가 여기에 표시됩니다</p>
+                <p className="mb-3 text-6xl md:mb-5 md:text-8xl">🏫</p>
+                <p className="text-xl font-bold text-white/75 md:text-3xl">등록된 학생이 없습니다</p>
+                <p className="mt-2 text-base text-white/35 md:mt-3 md:text-xl">학생을 등록하면 순위가 여기에 표시됩니다</p>
               </div>
             </div>
           ) : (
             <>
               {/* TOP 3 Podium */}
               {top.length > 0 && (
-                <div className="shrink-0 flex items-end justify-center gap-3 pb-3" style={{ height: '42%' }}>
+                <div className="flex min-h-0 flex-[1.08] basis-0 items-end justify-stretch gap-1 pb-1 min-[480px]:gap-2 min-[480px]:pb-1.5 md:gap-3 md:pb-2">
                   {podiumOrder.map((student, i) => {
-                    if (!student) return <div key={i} className="flex-1 max-w-[240px]" />
+                    if (!student) return <div key={i} className="min-w-0 flex-1" />
                     const origIdx = podiumOrigIdx[i]
                     const isFirst = origIdx === 0
                     const value = sortMode === 'today' ? student.todayEarned : student.balance
@@ -241,20 +263,28 @@ export default function TvModePage() {
                     return (
                       <div
                         key={student.id}
-                        className={`flex-1 max-w-[240px] flex flex-col items-center justify-center gap-1.5 rounded-2xl border backdrop-blur-sm px-4 transition-all ${podiumStyles[i]}`}
+                        className={`flex min-w-0 flex-1 flex-col items-center justify-end gap-1 rounded-xl border px-2 py-2 backdrop-blur-sm min-[480px]:gap-1.5 min-[480px]:rounded-2xl min-[480px]:px-3 min-[480px]:py-3 md:gap-2 md:px-5 md:py-4 md:rounded-3xl ${podiumStyles[i]}`}
                         style={{ height: podiumHeights[i] }}
                       >
-                        <span className={`leading-none ${isFirst ? 'text-5xl' : 'text-4xl'}`}>
+                        <span
+                          className={`leading-none ${isFirst ? 'text-5xl min-[480px]:text-6xl md:text-7xl' : 'text-4xl min-[480px]:text-5xl md:text-6xl'}`}
+                        >
                           {MEDAL[origIdx]}
                         </span>
-                        <p className={`font-black text-center leading-snug tracking-tight ${isFirst ? 'text-[1.4rem] text-amber-100' : 'text-xl text-white/85'}`}>
+                        <p
+                          className={`text-center font-black leading-snug tracking-tight ${isFirst ? 'text-lg text-amber-100 min-[480px]:text-2xl md:text-3xl' : 'text-base text-white/85 min-[480px]:text-xl md:text-2xl'}`}
+                        >
                           {displayName(student.name)}
                         </p>
-                        <p className="text-[11px] text-white/30 font-semibold">LV.{student.pbs_stage}</p>
-                        <p className={`font-black tabular-nums ${isFirst ? 'text-2xl text-amber-300' : 'text-xl text-white/75'}`}>
+                        <p className="text-[11px] font-semibold text-white/35 min-[480px]:text-xs md:text-sm">
+                          LV.{student.pbs_stage}
+                        </p>
+                        <p
+                          className={`font-black tabular-nums ${isFirst ? 'text-xl text-amber-300 min-[480px]:text-3xl md:text-4xl' : 'text-lg text-white/75 min-[480px]:text-2xl md:text-3xl'}`}
+                        >
                           {sortMode === 'today' && value > 0 ? `+${formatCurrency(value)}` : formatCurrency(value)}
                         </p>
-                        <p className="text-[9px] uppercase tracking-[0.22em] text-white/25">
+                        <p className="text-[9px] uppercase tracking-[0.22em] text-white/25 min-[480px]:text-[10px] md:text-xs">
                           {sortMode === 'today' ? 'Today' : 'Balance'}
                         </p>
                       </div>
@@ -265,31 +295,37 @@ export default function TvModePage() {
 
               {/* Divider */}
               {top.length > 0 && rest.length > 0 && (
-                <div className="shrink-0 flex items-center gap-2 mb-3">
-                  <div className="flex-1 h-px bg-white/[0.05]" />
-                  <span className="text-[9px] text-white/20 uppercase tracking-[0.25em]">이하 순위</span>
-                  <div className="flex-1 h-px bg-white/[0.05]" />
+                <div className="mb-1 flex shrink-0 items-center gap-2 py-0.5 md:mb-1.5">
+                  <div className="h-px flex-1 bg-white/[0.06]" />
+                  <span className="text-[10px] font-bold uppercase tracking-[0.28em] text-white/25 md:text-xs">
+                    이하 순위
+                  </span>
+                  <div className="h-px flex-1 bg-white/[0.06]" />
                 </div>
               )}
 
               {/* Rest grid */}
               {rest.length > 0 && (
-                <div className="flex-1 min-h-0 overflow-hidden grid grid-cols-2 gap-1.5 content-start">
+                <div className="grid min-h-0 flex-1 basis-0 auto-rows-fr grid-cols-2 gap-1 overflow-hidden min-[900px]:grid-cols-3 min-[900px]:gap-1.5 md:gap-2">
                   {rest.map((student, idx) => {
                     const value = sortMode === 'today' ? student.todayEarned : student.balance
                     return (
                       <div
                         key={student.id}
-                        className="flex items-center gap-3 rounded-xl border border-white/[0.05] bg-white/[0.025] px-4 py-2.5"
+                        className="flex min-h-[3.25rem] items-center gap-2 rounded-lg border border-white/[0.06] bg-white/[0.03] px-2 py-2 min-[480px]:gap-3 min-[480px]:rounded-xl min-[480px]:px-3 min-[480px]:py-2.5 md:min-h-[4.25rem] md:gap-4 md:px-4 md:py-3"
                       >
-                        <span className="w-6 text-sm font-black text-white/20 tabular-nums shrink-0 text-right">
+                        <span className="w-7 shrink-0 text-right text-sm font-black tabular-nums text-white/25 min-[480px]:w-9 min-[480px]:text-base md:w-11 md:text-xl">
                           {idx + 4}
                         </span>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-bold text-white/85 text-sm truncate leading-tight">{displayName(student.name)}</p>
-                          <p className="text-[10px] text-white/30 font-semibold">LV.{student.pbs_stage}</p>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-bold leading-tight text-white/90 min-[480px]:text-base md:text-lg">
+                            {displayName(student.name)}
+                          </p>
+                          <p className="text-[10px] font-semibold text-white/35 min-[480px]:text-xs md:text-sm">
+                            LV.{student.pbs_stage}
+                          </p>
                         </div>
-                        <p className="text-sm font-black text-white/75 tabular-nums shrink-0">
+                        <p className="shrink-0 text-sm font-black tabular-nums text-white/80 min-[480px]:text-base md:text-lg">
                           {sortMode === 'today' && value > 0 ? `+${formatCurrency(value)}` : formatCurrency(value)}
                         </p>
                       </div>
@@ -301,26 +337,24 @@ export default function TvModePage() {
           )}
         </main>
 
-        {/* Sidebar divider */}
-        <div className="shrink-0 w-px bg-white/[0.04]" />
-
         {/* Shop + Stock */}
-        <aside className="shrink-0 w-72 flex flex-col divide-y divide-white/[0.04]">
-
+        <aside className="flex w-[clamp(15.5rem,28vw,27rem)] shrink-0 flex-col divide-y divide-white/[0.06] border-l border-white/[0.06] min-[480px]:w-[clamp(16.5rem,30vw,28rem)] md:w-[clamp(17.5rem,32vw,30rem)]">
           {/* Shop Board */}
-          <section className="flex-1 min-h-0 flex flex-col px-4 py-3">
-            <div className="shrink-0 flex items-center justify-between mb-2.5">
+          <section className="flex min-h-0 flex-1 flex-col px-2 py-2 min-[480px]:px-3 min-[480px]:py-2.5 md:px-4 md:py-3">
+            <div className="mb-1.5 flex shrink-0 items-center justify-between min-[480px]:mb-2">
               <div>
-                <p className="text-[9px] font-bold tracking-[0.3em] uppercase text-white/20">Shop Board</p>
-                <h2 className="text-sm font-black text-white/80 mt-0.5">🏪 가게</h2>
+                <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-white/25 md:text-[10px]">
+                  Shop Board
+                </p>
+                <h2 className="mt-0.5 text-base font-black text-white/85 md:text-xl">🏪 가게</h2>
               </div>
-              <span className="text-[10px] font-semibold text-white/25">{shopItems.length}개 운영</span>
+              <span className="text-[10px] font-semibold text-white/30 md:text-xs">{shopItems.length}개 운영</span>
             </div>
 
-            <div className="flex-1 min-h-0 overflow-hidden flex flex-col gap-1.5">
+            <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-hidden min-[480px]:gap-1.5 md:gap-2">
               {visibleShopItems.length === 0 ? (
-                <div className="flex-1 flex items-center justify-center">
-                  <p className="text-xs text-white/25">아이템 없음</p>
+                <div className="flex flex-1 items-center justify-center">
+                  <p className="text-sm text-white/30 md:text-base">아이템 없음</p>
                 </div>
               ) : (
                 visibleShopItems.map((item) => {
@@ -328,14 +362,22 @@ export default function TvModePage() {
                   return (
                     <div
                       key={item.id}
-                      className="flex items-center gap-2.5 rounded-xl border border-white/[0.05] bg-white/[0.025] px-3 py-2"
+                      className="flex min-h-[3rem] items-center gap-2 rounded-lg border border-white/[0.06] bg-white/[0.035] px-2 py-1.5 min-[480px]:min-h-[3.35rem] min-[480px]:gap-2.5 min-[480px]:rounded-xl min-[480px]:px-3 min-[480px]:py-2 md:min-h-[3.75rem] md:gap-3 md:px-3.5 md:py-2.5"
                     >
-                      <span className="text-lg shrink-0 leading-none">{item.emoji || '🎁'}</span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-bold text-white/85 truncate leading-tight">{item.name}</p>
-                        <p className="text-[10px] text-white/35 tabular-nums">{formatCurrency(item.price)}</p>
+                      <span className="shrink-0 text-xl leading-none min-[480px]:text-2xl md:text-3xl">
+                        {item.emoji || '🎁'}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-bold leading-tight text-white/90 md:text-base">
+                          {item.name}
+                        </p>
+                        <p className="text-[11px] tabular-nums text-white/40 min-[480px]:text-xs md:text-sm">
+                          {formatCurrency(item.price)}
+                        </p>
                       </div>
-                      <span className={`shrink-0 text-[9px] font-bold px-2 py-0.5 rounded-full ${badge.className}`}>
+                      <span
+                        className={`shrink-0 rounded-full px-2 py-0.5 text-[9px] font-bold min-[480px]:px-2.5 min-[480px]:py-1 min-[480px]:text-[10px] md:text-xs ${badge.className}`}
+                      >
                         {badge.label}
                       </span>
                     </div>
@@ -343,7 +385,7 @@ export default function TvModePage() {
                 })
               )}
               {shopItems.length > visibleShopItems.length && (
-                <p className="text-right text-[10px] text-white/20 pt-0.5">
+                <p className="pt-0.5 text-right text-[10px] text-white/25 md:text-xs">
                   +{shopItems.length - visibleShopItems.length}개 더
                 </p>
               )}
@@ -351,19 +393,21 @@ export default function TvModePage() {
           </section>
 
           {/* Stock Board */}
-          <section className="flex-1 min-h-0 flex flex-col px-4 py-3">
-            <div className="shrink-0 flex items-center justify-between mb-2.5">
+          <section className="flex min-h-0 flex-1 flex-col px-2 py-2 min-[480px]:px-3 min-[480px]:py-2.5 md:px-4 md:py-3">
+            <div className="mb-1.5 flex shrink-0 items-center justify-between min-[480px]:mb-2">
               <div>
-                <p className="text-[9px] font-bold tracking-[0.3em] uppercase text-white/20">Stock Board</p>
-                <h2 className="text-sm font-black text-white/80 mt-0.5">📈 주식</h2>
+                <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-white/25 md:text-[10px]">
+                  Stock Board
+                </p>
+                <h2 className="mt-0.5 text-base font-black text-white/85 md:text-xl">📈 주식</h2>
               </div>
-              <span className="text-[10px] font-semibold text-white/25">{stocks.length}종목 운영</span>
+              <span className="text-[10px] font-semibold text-white/30 md:text-xs">{stocks.length}종목 운영</span>
             </div>
 
-            <div className="flex-1 min-h-0 overflow-hidden flex flex-col gap-1.5">
+            <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-hidden min-[480px]:gap-1.5 md:gap-2">
               {visibleStocks.length === 0 ? (
-                <div className="flex-1 flex items-center justify-center">
-                  <p className="text-xs text-white/25">종목 없음</p>
+                <div className="flex flex-1 items-center justify-center">
+                  <p className="text-sm text-white/30 md:text-base">종목 없음</p>
                 </div>
               ) : (
                 visibleStocks.map((stock) => {
@@ -373,20 +417,26 @@ export default function TvModePage() {
                   return (
                     <div
                       key={stock.id}
-                      className="flex items-center gap-2.5 rounded-xl border border-white/[0.05] bg-white/[0.025] px-3 py-2"
+                      className="flex min-h-[3rem] items-center gap-2 rounded-lg border border-white/[0.06] bg-white/[0.035] px-2 py-1.5 min-[480px]:min-h-[3.35rem] min-[480px]:gap-2.5 min-[480px]:rounded-xl min-[480px]:px-3 min-[480px]:py-2 md:min-h-[3.75rem] md:gap-3 md:px-3.5 md:py-2.5"
                     >
-                      <span className="text-lg shrink-0 leading-none">{stock.emoji || '🎲'}</span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-bold text-white/85 truncate leading-tight">{stock.name}</p>
+                      <span className="shrink-0 text-xl leading-none min-[480px]:text-2xl md:text-3xl">
+                        {stock.emoji || '🎲'}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-bold leading-tight text-white/90 md:text-base">
+                          {stock.name}
+                        </p>
                         {delta ? (
-                          <p className={`text-[10px] font-bold ${isRise ? 'text-rose-400' : isFall ? 'text-sky-400' : 'text-white/30'}`}>
+                          <p
+                            className={`text-[11px] font-bold min-[480px]:text-xs md:text-sm ${isRise ? 'text-rose-400' : isFall ? 'text-sky-400' : 'text-white/30'}`}
+                          >
                             {isRise ? '▲' : isFall ? '▼' : '■'} {Math.abs(delta.percent).toFixed(1)}%
                           </p>
                         ) : (
-                          <p className="text-[10px] text-white/25">첫 시세</p>
+                          <p className="text-[11px] text-white/30 min-[480px]:text-xs">첫 시세</p>
                         )}
                       </div>
-                      <p className="text-xs font-black text-white/80 tabular-nums shrink-0">
+                      <p className="shrink-0 text-sm font-black tabular-nums text-white/85 md:text-base">
                         {formatCurrency(stock.current_price)}
                       </p>
                     </div>
@@ -394,29 +444,28 @@ export default function TvModePage() {
                 })
               )}
               {stocks.length > visibleStocks.length && (
-                <p className="text-right text-[10px] text-white/20 pt-0.5">
+                <p className="pt-0.5 text-right text-[10px] text-white/25 md:text-xs">
                   +{stocks.length - visibleStocks.length}종목 더
                 </p>
               )}
             </div>
           </section>
-
         </aside>
       </div>
 
       {tvSettings.showTicker && currentTicker?.publicCue?.todayGoal && (
-        <footer className="shrink-0 flex items-center gap-4 border-t border-white/[0.05] px-5 py-3">
-          <span className="rounded-full bg-white/10 px-3 py-1 text-[10px] font-bold tracking-[0.28em] text-white/55 uppercase">
+        <footer className="flex shrink-0 items-center gap-2 border-t border-white/[0.06] px-2 py-2 min-[480px]:gap-3 min-[480px]:px-3 min-[480px]:py-2.5 md:gap-4 md:px-4 md:py-3.5">
+          <span className="shrink-0 rounded-full bg-white/12 px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.28em] text-white/60 min-[480px]:px-3 min-[480px]:py-1.5 min-[480px]:text-[10px] md:text-xs">
             Today Goal
           </span>
-          <p className="min-w-0 flex-1 truncate text-sm font-semibold text-white/85">
+          <p className="min-w-0 flex-1 truncate text-sm font-semibold text-white/90 min-[480px]:text-base md:text-lg">
             <span className="text-white">{displayName(currentTicker.name)}</span>
-            <span className="mx-2 text-white/25">·</span>
+            <span className="mx-1.5 text-white/30 min-[480px]:mx-2">·</span>
             <span className={getTickerToneClass(currentTicker.publicCue.encouragementTone)}>
               {currentTicker.publicCue.todayGoal}
             </span>
           </p>
-          <span className="text-[10px] text-white/25">
+          <span className="shrink-0 text-[10px] text-white/30 tabular-nums md:text-xs">
             {tickerItems.length > 1 ? `${tickerIndex + 1}/${tickerItems.length}` : '1/1'}
           </span>
         </footer>
