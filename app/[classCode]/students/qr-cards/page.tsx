@@ -4,21 +4,25 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import QRCode from 'qrcode'
-import { formatCurrency } from '@/lib/utils'
+import { formatCurrency, normalizeClassCode } from '@/lib/utils'
 
 interface StudentCard {
   id: string
   name: string
   grade: number | null
   qr_code: string
-  pbs_accounts?: {
-    balance?: number
-  } | { balance?: number }[] | null
+  pbs_accounts?: { balance?: number } | { balance?: number }[] | null
 }
 
 interface CardWithImage extends StudentCard {
   qrImage: string
   balance: number
+}
+
+interface ClassroomMeta {
+  className: string | null
+  schoolName: string | null
+  academicYear: number | null
 }
 
 function getAccountBalance(student: StudentCard) {
@@ -34,21 +38,130 @@ function chunkCards<T>(items: T[], size: number) {
   return chunks
 }
 
+function gradeClassLine(grade: number | null, className: string | null, classCode: string) {
+  const g = grade != null ? `${grade}학년` : '학년 미입력'
+  if (className?.trim()) {
+    const c = className.trim()
+    const hasBan = /반\s*$/.test(c)
+    return `학년 / 반 : ${g} ${hasBan ? c : `${c}반`}`
+  }
+  return `학년 / 반 : ${g} · 학급 ${classCode}`
+}
+
+function issuerLine(schoolName: string | null) {
+  if (!schoolName?.trim()) return '발행처 : 담임교사'
+  const s = schoolName.trim()
+  if (s.endsWith('학교')) return `발행처 : ${s}장`
+  return `발행처 : ${s} 교장`
+}
+
+function validityLine(academicYear: number | null) {
+  const y = academicYear ?? new Date().getFullYear()
+  return `유효기간 : ${y}학년도`
+}
+
+/** 책 위 나무 — 인쇄 시 벡터로 선명하게 유지 */
+function TreeBookMotif({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 120 88" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <path
+        d="M24 62h72c2 0 4 2 4 4v6H20v-6c0-2 2-4 4-4z"
+        fill="#c8e6f5"
+        stroke="#7eb8d8"
+        strokeWidth="1.5"
+      />
+      <path d="M28 62V52h64v10" fill="#e8f4fc" stroke="#7eb8d8" strokeWidth="1.2" />
+      <line x1="60" y1="52" x2="60" y2="62" stroke="#7eb8d8" strokeWidth="1" />
+      <ellipse cx="60" cy="34" rx="22" ry="20" fill="#6bbf6b" stroke="#3d8f3d" strokeWidth="1.2" />
+      <ellipse cx="48" cy="40" rx="12" ry="14" fill="#7dcc7d" stroke="#3d8f3d" strokeWidth="1" />
+      <ellipse cx="72" cy="40" rx="12" ry="14" fill="#7dcc7d" stroke="#3d8f3d" strokeWidth="1" />
+      <circle cx="60" cy="28" r="6" fill="#ffd54f" stroke="#e6a800" strokeWidth="0.8" />
+      <path d="M58 52h4v10h-4z" fill="#8d6e63" />
+    </svg>
+  )
+}
+
+function StudentIdFaceCard({
+  student,
+  rosterNumber,
+  classMeta,
+  classCode,
+}: {
+  student: CardWithImage
+  rosterNumber: number
+  classMeta: ClassroomMeta
+  classCode: string
+}) {
+  return (
+    <article className="id-face-card">
+      <div className="id-face-card__frame">
+        <div className="id-face-card__inner">
+          <div className="id-face-card__top">
+            <TreeBookMotif className="id-face-card__motif" />
+            <p className="id-face-card__line id-face-card__line--strong">
+              {gradeClassLine(student.grade, classMeta.className, classCode)}
+            </p>
+            <p className="id-face-card__line id-face-card__line--strong">번 호 : {rosterNumber}번</p>
+            <p className="id-face-card__name">{student.name}</p>
+          </div>
+
+          <div className="id-face-card__qr-block">
+            <div className="id-face-card__qr-frame">
+              <img
+                src={student.qrImage}
+                alt=""
+                width={512}
+                height={512}
+                className="id-face-card__qr-img"
+              />
+            </div>
+            <p className="id-face-card__qr-hint">자세한 정보는 QR 코드를 스캔하세요.</p>
+            <p className="id-face-card__qr-hint id-face-card__qr-hint--en">Scan for detailed info</p>
+          </div>
+
+          <footer className="id-face-card__footer">
+            <p className="id-face-card__footer-line">{issuerLine(classMeta.schoolName)}</p>
+            <p className="id-face-card__footer-line">{validityLine(classMeta.academicYear)}</p>
+          </footer>
+        </div>
+      </div>
+    </article>
+  )
+}
+
 export default function StudentQrCardsPage() {
   const params = useParams()
   const classCode = params.classCode as string
 
   const [cards, setCards] = useState<CardWithImage[]>([])
+  const [classMeta, setClassMeta] = useState<ClassroomMeta>({
+    className: null,
+    schoolName: null,
+    academicYear: null,
+  })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
   useEffect(() => {
-    const loadCards = async () => {
+    const load = async () => {
       try {
-        const res = await fetch('/api/students')
-        const data = await res.json()
+        const normalizedClassCode = normalizeClassCode(classCode)
+        const [studentsRes, classRes] = await Promise.all([
+          fetch('/api/students'),
+          fetch(`/api/classroom/${encodeURIComponent(normalizedClassCode)}`),
+        ])
 
-        if (!res.ok) {
+        const classJson = classRes.ok ? await classRes.json() : {}
+        if (classRes.ok && !classJson.error) {
+          setClassMeta({
+            className: classJson.className ?? null,
+            schoolName: classJson.schoolName ?? null,
+            academicYear: typeof classJson.academicYear === 'number' ? classJson.academicYear : null,
+          })
+        }
+
+        const data = await studentsRes.json()
+        if (!studentsRes.ok) {
           setError(data.error || '학생 목록을 불러오지 못했습니다.')
           setLoading(false)
           return
@@ -60,9 +173,9 @@ export default function StudentQrCardsPage() {
             ...student,
             balance: getAccountBalance(student),
             qrImage: await QRCode.toDataURL(student.qr_code, {
-              width: 240,
+              width: 512,
               margin: 1,
-              errorCorrectionLevel: 'M',
+              errorCorrectionLevel: 'H',
               color: { dark: '#111827', light: '#ffffff' },
             }),
           }))
@@ -76,18 +189,168 @@ export default function StudentQrCardsPage() {
       }
     }
 
-    void loadCards()
-  }, [])
+    void load()
+  }, [classCode])
 
   const cardPages = chunkCards(cards, 4)
 
   return (
-    <div className="qr-print-page min-h-screen bg-[#f5f2ea] p-6 text-slate-900">
+    <div className="qr-print-page min-h-screen bg-[#eef6fc] p-6 text-slate-900">
       <style jsx global>{`
+        .id-face-card {
+          font-family:
+            'Malgun Gothic',
+            'Apple SD Gothic Neo',
+            'Noto Sans KR',
+            system-ui,
+            sans-serif;
+          height: 100%;
+          min-height: 0;
+          display: flex;
+          flex-direction: column;
+        }
+
+        .id-face-card__frame {
+          flex: 1;
+          min-height: 0;
+          border-radius: 14px;
+          padding: 7px;
+          background: linear-gradient(
+            125deg,
+            #7ec8e3 0%,
+            #ffe566 18%,
+            #ffb3c6 40%,
+            #98d9a0 62%,
+            #ffb366 82%,
+            #9fd4ff 100%
+          );
+          box-sizing: border-box;
+        }
+
+        .id-face-card__inner {
+          background: #fff;
+          border-radius: 10px;
+          height: 100%;
+          min-height: 0;
+          display: flex;
+          flex-direction: column;
+          box-sizing: border-box;
+          overflow: hidden;
+        }
+
+        .id-face-card__top {
+          text-align: center;
+          padding: 6px 10px 4px;
+          flex-shrink: 0;
+        }
+
+        .id-face-card__motif {
+          width: clamp(72px, 22vw, 108px);
+          height: auto;
+          margin: 0 auto 2px;
+        }
+
+        .id-face-card__line {
+          margin: 0;
+          font-size: clamp(11px, 2.6vw, 13px);
+          font-weight: 800;
+          color: #111827;
+          line-height: 1.35;
+        }
+
+        .id-face-card__name {
+          margin: 4px 0 0;
+          font-size: clamp(13px, 3.2vw, 16px);
+          font-weight: 900;
+          color: #0f172a;
+        }
+
+        .id-face-card__qr-block {
+          flex: 1;
+          min-height: 0;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          padding: 4px 10px 6px;
+        }
+
+        /* 고정 정사각형 — 가로·세로 비율 강제로 QR 왜곡 방지 */
+        .id-face-card__qr-frame {
+          width: clamp(104px, 30vw, 132px);
+          height: clamp(104px, 30vw, 132px);
+          max-width: 38mm;
+          max-height: 38mm;
+          aspect-ratio: 1 / 1;
+          flex-shrink: 0;
+          box-sizing: border-box;
+          border: 2px solid #9fd4f0;
+          border-radius: 6px;
+          background: #fff;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 5px;
+        }
+
+        .id-face-card__qr-img {
+          width: 100%;
+          height: 100%;
+          object-fit: contain;
+          display: block;
+        }
+
+        .id-face-card__qr-hint {
+          margin: 6px 0 0;
+          font-size: clamp(9px, 2.1vw, 11px);
+          font-weight: 700;
+          color: #1e293b;
+          text-align: center;
+          line-height: 1.3;
+        }
+
+        .id-face-card__qr-hint--en {
+          font-weight: 600;
+          color: #475569;
+          margin-top: 2px;
+        }
+
+        .id-face-card__footer {
+          flex-shrink: 0;
+          background: #bfe4f7;
+          padding: 8px 10px 9px;
+          text-align: center;
+        }
+
+        .id-face-card__footer-line {
+          margin: 0;
+          font-size: clamp(10px, 2.4vw, 12px);
+          font-weight: 800;
+          color: #0f172a;
+          line-height: 1.45;
+        }
+
+        .id-print-sheet {
+          width: 100%;
+          max-width: 920px;
+          margin: 0 auto;
+        }
+
+        .id-print-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 12px;
+          min-height: 360px;
+        }
+
+        .id-print-grid__cell {
+          min-height: 280px;
+        }
+
         @media print {
           @page {
             size: A4 portrait;
-            margin: 8mm;
+            margin: 0;
           }
 
           html,
@@ -110,6 +373,63 @@ export default function StudentQrCardsPage() {
             margin: 0 !important;
             padding: 0 !important;
             background: white !important;
+            min-height: 0 !important;
+          }
+
+          .id-print-sheet {
+            width: 210mm !important;
+            max-width: none !important;
+            height: 297mm !important;
+            margin: 0 !important;
+            padding: 5mm !important;
+            box-sizing: border-box !important;
+            break-after: page;
+            page-break-after: always;
+          }
+
+          .id-print-grid {
+            width: 100%;
+            height: calc(297mm - 10mm);
+            gap: 4mm !important;
+            min-height: 0 !important;
+          }
+
+          .id-print-grid__cell {
+            min-height: 0 !important;
+            height: 100%;
+            overflow: hidden;
+          }
+
+          .id-face-card__motif {
+            width: 92px;
+            max-width: none;
+          }
+
+          .id-face-card__line {
+            font-size: 11.5pt;
+          }
+
+          .id-face-card__name {
+            font-size: 13pt;
+          }
+
+          .id-face-card__qr-frame {
+            width: 36mm;
+            height: 36mm;
+            max-width: none;
+            max-height: none;
+          }
+
+          .id-face-card__qr-hint {
+            font-size: 9pt;
+          }
+
+          .id-face-card__footer-line {
+            font-size: 10pt;
+          }
+
+          .windows-bankbook {
+            display: block !important;
           }
 
           .print-sheet {
@@ -122,15 +442,19 @@ export default function StudentQrCardsPage() {
             page-break-after: auto;
           }
 
-          .windows-card-grid {
-            display: grid !important;
-            grid-template-columns: 1fr 1fr;
-            gap: 6mm;
+          .bankbook-qr-box img {
+            width: 36mm;
+            height: 36mm;
+            object-fit: contain;
+            display: block;
           }
+        }
 
-          .windows-bankbook {
-            display: block !important;
-          }
+        .bankbook-qr-box img {
+          width: 9rem;
+          height: 9rem;
+          object-fit: contain;
+          display: block;
         }
       `}</style>
 
@@ -142,12 +466,14 @@ export default function StudentQrCardsPage() {
             </Link>
             <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-900">학생 QR 출력</h1>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-              전체 인쇄 시 먼저 <strong>ID 카드가 A4 1페이지당 4장</strong>씩 출력되고,
-              그 다음에 <strong>통장 겉표지</strong>가 학생별로 한 장씩 이어집니다.
-              통장 겉표지는 세로 A4에서 <strong>위에서 아래로 접으면</strong> A5 크기처럼 사용할 수 있게 구성했습니다.
+              <strong>학생증(ID) 카드</strong>는 예시와 같은 세로형 레이아웃이며, Windows 인쇄 시{' '}
+              <strong>A4 한 장에 카드 4장(2×2)</strong>이 맞물리도록 mm 단위 그리드로 맞춰 두었습니다. QR은 정사각형
+              프레임 안에 <strong>비율 고정·고해상도(512px) 생성</strong>으로 인쇄 시 늘어남을 막았습니다. 이어서{' '}
+              <strong>통장 겉표지</strong>가 학생별로 출력됩니다.
             </p>
           </div>
           <button
+            type="button"
             onClick={() => window.print()}
             className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-black"
           >
@@ -155,11 +481,11 @@ export default function StudentQrCardsPage() {
           </button>
         </div>
 
-        <div className="rounded-[1.75rem] border-2 border-[#d8c59f] bg-[#fff8eb] px-6 py-5 text-sm text-[#5e4a25] shadow-sm print:hidden">
-          <p className="font-bold">인쇄 안내</p>
+        <div className="rounded-[1.75rem] border border-sky-200 bg-white px-6 py-5 text-sm text-slate-700 shadow-sm print:hidden">
+          <p className="font-bold text-slate-900">인쇄 안내</p>
           <p className="mt-2 leading-6">
-            카드 페이지는 잘라서 바로 사용할 수 있고, 통장 페이지는 세로 A4 한 장을 중앙 가로선 기준으로 접으면 됩니다.
-            Windows 인쇄 기준으로 색상과 선이 안정적으로 나오도록 단색 배경과 선 중심 레이아웃으로 구성했습니다.
+            브라우저 인쇄 대화상자에서 <strong>용지 크기 A4</strong>, <strong>여백 없음/최소</strong>에 가깝게 맞추면
+            Windows에서도 격자가 안정적으로 맞습니다. 발행처·유효기간은 학급 정보(학교명·학년도)를 사용합니다.
           </p>
         </div>
 
@@ -178,58 +504,26 @@ export default function StudentQrCardsPage() {
         {!loading && !error && (
           <>
             {cardPages.map((page, pageIndex) => (
-              <section key={`card-page-${pageIndex}`} className="print-sheet space-y-4">
-                <div className="rounded-[1.75rem] border border-[#d5e1ef] bg-white p-5 shadow-sm print:hidden">
-                  <p className="text-xs font-black uppercase tracking-[0.28em] text-sky-700">ID CARD PAGE {pageIndex + 1}</p>
-                  <p className="mt-2 text-sm text-slate-600">A4 한 장에 학생 카드 4장이 배치됩니다.</p>
+              <section key={`card-page-${pageIndex}`} className="id-print-sheet space-y-4 print:space-y-0">
+                <div className="rounded-[1.75rem] border border-sky-200 bg-white p-5 shadow-sm print:hidden">
+                  <p className="text-xs font-black uppercase tracking-[0.28em] text-sky-700">ID CARD · PAGE {pageIndex + 1}</p>
+                  <p className="mt-2 text-sm text-slate-600">A4 1페이지당 학생증 4장(2×2)입니다.</p>
                 </div>
 
-                <div className="windows-card-grid grid gap-4 lg:grid-cols-2">
-                  {page.map((student) => (
-                    <article
-                      key={student.id}
-                      className="overflow-hidden rounded-[1.75rem] border-2 border-[#a7d7d5] bg-[#f8fffe] shadow-sm"
-                    >
-                      <div className="border-b border-[#cfe9e7] bg-[#cfeee9] px-5 py-4">
-                        <div className="flex items-center justify-between gap-4">
-                          <div>
-                            <p className="text-[11px] font-black uppercase tracking-[0.28em] text-[#255f59]">STUDENT ID</p>
-                            <h3 className="mt-2 text-3xl font-black tracking-tight text-[#17322f]">{student.name}</h3>
-                            <p className="mt-1 text-sm text-[#476965]">
-                              {student.grade ? `${student.grade}학년` : '학년 미입력'} · {classCode}
-                            </p>
-                          </div>
-                          <div className="rounded-full border-2 border-white bg-[#fff7d6] px-4 py-2 text-sm font-black text-[#7a5b16]">
-                            학생카드
-                          </div>
-                        </div>
+                <div className="id-print-grid">
+                  {page.map((student, i) => {
+                    const globalIndex = pageIndex * 4 + i + 1
+                    return (
+                      <div key={student.id} className="id-print-grid__cell">
+                        <StudentIdFaceCard
+                          student={student}
+                          rosterNumber={globalIndex}
+                          classMeta={classMeta}
+                          classCode={classCode}
+                        />
                       </div>
-
-                      <div className="grid grid-cols-[1.2fr_0.8fr] gap-4 p-5">
-                        <div className="rounded-[1.25rem] border border-dashed border-[#bddad7] bg-white px-4 py-4">
-                          <p className="text-xs font-bold text-[#2d5a56]">사용처</p>
-                          <div className="mt-3 space-y-2 text-sm text-slate-700">
-                            <p>🏧 ATM 로그인</p>
-                            <p>🎙️ 말 일기장 기록</p>
-                            <p>🧒 학생 식별 카드</p>
-                          </div>
-
-                          <div className="mt-4 rounded-xl bg-[#eef8f6] px-4 py-3">
-                            <p className="text-[11px] font-black uppercase tracking-[0.22em] text-[#6d8a87]">현재 잔액</p>
-                            <p className="mt-1 text-2xl font-black text-[#17322f]">{formatCurrency(student.balance)}</p>
-                          </div>
-                        </div>
-
-                        <div className="flex flex-col items-center justify-between rounded-[1.25rem] border border-[#d4e3e1] bg-white p-3">
-                          <img src={student.qrImage} alt={`${student.name} ID 카드 QR`} className="h-32 w-32" />
-                          <div className="mt-3 w-full rounded-xl bg-[#f3f7f7] px-3 py-2 text-center">
-                            <p className="text-[10px] uppercase tracking-[0.22em] text-slate-400">QR</p>
-                            <p className="mt-1 break-all text-[11px] font-mono text-slate-600">{student.qr_code}</p>
-                          </div>
-                        </div>
-                      </div>
-                    </article>
-                  ))}
+                    )
+                  })}
                 </div>
               </section>
             ))}
@@ -276,7 +570,8 @@ export default function StudentQrCardsPage() {
                         <div>
                           <h3 className="text-4xl font-black tracking-tight text-[#2f2413]">{student.name}</h3>
                           <p className="mt-2 text-base text-[#78664d]">
-                            {student.grade ? `${student.grade}학년 · ` : ''}{classCode}
+                            {student.grade ? `${student.grade}학년 · ` : ''}
+                            {classCode}
                           </p>
                           <div className="mt-8 rounded-[1.3rem] border border-[#d9cfbc] bg-white px-5 py-4">
                             <p className="text-[10px] font-black uppercase tracking-[0.24em] text-[#9a896c]">현재 잔액</p>
@@ -284,8 +579,8 @@ export default function StudentQrCardsPage() {
                           </div>
                         </div>
 
-                        <div className="rounded-[1.4rem] border border-[#d9cfbc] bg-white p-4">
-                          <img src={student.qrImage} alt={`${student.name} 통장 QR`} className="h-36 w-36" />
+                        <div className="bankbook-qr-box flex-shrink-0 rounded-[1.4rem] border border-[#d9cfbc] bg-white p-4">
+                          <img src={student.qrImage} alt={`${student.name} 통장 QR`} width={512} height={512} />
                         </div>
                       </div>
 

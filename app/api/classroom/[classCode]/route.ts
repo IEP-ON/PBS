@@ -14,7 +14,7 @@ export async function GET(
 
     const { data, error } = await supabase
       .from('pbs_class_codes')
-      .select('class_name, school_name, is_active, teacher_name')
+      .select('class_name, school_name, is_active, teacher_name, academic_year')
       .eq('code', normalizedCode)
       .single()
 
@@ -27,6 +27,7 @@ export async function GET(
       schoolName: data.school_name,
       teacherName: data.teacher_name,
       isActive: data.is_active,
+      academicYear: data.academic_year,
     })
   } catch {
     return NextResponse.json({ error: '서버 오류가 발생했습니다.' }, { status: 500 })
