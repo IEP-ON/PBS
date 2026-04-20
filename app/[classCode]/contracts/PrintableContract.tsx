@@ -30,6 +30,9 @@ interface PrintableContractProps {
   onClose: () => void
 }
 
+/** 실물 QR 토큰 부착 슬롯 개수 (인쇄 하단 점선 칸) */
+const QR_ATTACH_SLOT_COUNT = 4
+
 export default function PrintableContract({ contract, onClose }: PrintableContractProps) {
   const handlePrint = () => {
     window.print()
@@ -250,12 +253,12 @@ export default function PrintableContract({ contract, onClose }: PrintableContra
           <div className="flex items-center justify-center gap-2 mb-5">
             <span className="text-[16px]">🪙</span>
             <p className="text-[13px] font-bold text-slate-600 tracking-wide">
-              약속을 지킬 때마다 아래 4칸에 QR 토큰(약 40mm)을 붙여주세요!
+              약속을 지킬 때마다 아래 {QR_ATTACH_SLOT_COUNT}칸에 QR 토큰(약 40mm)을 붙여주세요!
             </p>
           </div>
           
           <div className="flex justify-between items-center max-w-[194mm] mx-auto">
-            {[1, 2, 3, 4].map((n) => (
+            {Array.from({ length: QR_ATTACH_SLOT_COUNT }, (_, i) => i + 1).map((n) => (
               <div
                 key={n}
                 className="qr-attach-cell bg-white border-2 border-dashed border-slate-300 rounded-2xl flex items-center justify-center shadow-sm"
