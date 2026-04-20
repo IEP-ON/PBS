@@ -88,8 +88,8 @@ export default function PrintableContract({ contract, onClose }: PrintableContra
           }
 
           .qr-attach-cell {
-            width: 36mm !important;
-            height: 36mm !important;
+            width: 40mm !important;
+            height: 40mm !important;
             flex-shrink: 0 !important;
             box-sizing: border-box !important;
           }
@@ -250,16 +250,16 @@ export default function PrintableContract({ contract, onClose }: PrintableContra
           <div className="flex items-center justify-center gap-2 mb-5">
             <span className="text-[16px]">🪙</span>
             <p className="text-[13px] font-bold text-slate-600 tracking-wide">
-              약속을 지킬 때마다 아래 칸에 QR 토큰을 붙여주세요!
+              약속을 지킬 때마다 아래 4칸에 QR 토큰(약 40mm)을 붙여주세요!
             </p>
           </div>
           
           <div className="flex justify-between items-center max-w-[194mm] mx-auto">
-            {[1, 2, 3, 4, 5].map((n) => (
+            {[1, 2, 3, 4].map((n) => (
               <div
                 key={n}
                 className="qr-attach-cell bg-white border-2 border-dashed border-slate-300 rounded-2xl flex items-center justify-center shadow-sm"
-                style={{ width: '36mm', height: '36mm' }}
+                style={{ width: '40mm', height: '40mm' }}
               >
                 <span className="text-slate-200 text-[24px] font-black">{n}</span>
               </div>

@@ -194,7 +194,7 @@ export default async function StudentDetailPage({
 
       <div className="bg-white rounded-2xl border border-gray-100 p-4 text-center space-y-3">
         <p className="text-xs text-gray-500">QR코드: <span className="font-mono">{student.qr_code}</span></p>
-        <QrCardButton studentId={studentId} />
+        <QrCardButton studentId={studentId} classCode={classCode} />
       </div>
     </div>
   )

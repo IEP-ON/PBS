@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useParams } from 'next/navigation'
+import { useParams, useSearchParams } from 'next/navigation'
 import QRCode from 'qrcode'
 import { formatCurrency, normalizeClassCode } from '@/lib/utils'
 
@@ -17,6 +17,7 @@ interface StudentCard {
 interface CardWithImage extends StudentCard {
   qrImage: string
   balance: number
+  rosterNumber: number
 }
 
 interface ClassroomMeta {
@@ -129,9 +130,11 @@ function StudentIdFaceCard({
   )
 }
 
-export default function StudentQrCardsPage() {
+function StudentQrCardsPageInner() {
   const params = useParams()
   const classCode = params.classCode as string
+  const searchParams = useSearchParams()
+  const filterStudentId = searchParams.get('studentId')
 
   const [cards, setCards] = useState<CardWithImage[]>([])
   const [classMeta, setClassMeta] = useState<ClassroomMeta>({
@@ -168,9 +171,10 @@ export default function StudentQrCardsPage() {
         }
 
         const students = (data.students || []) as StudentCard[]
-        const imageEntries = await Promise.all(
-          students.map(async (student) => ({
+        const imageEntries: CardWithImage[] = await Promise.all(
+          students.map(async (student, index) => ({
             ...student,
+            rosterNumber: index + 1,
             balance: getAccountBalance(student),
             qrImage: await QRCode.toDataURL(student.qr_code, {
               width: 512,
@@ -181,7 +185,18 @@ export default function StudentQrCardsPage() {
           }))
         )
 
-        setCards(imageEntries)
+        const display =
+          filterStudentId && filterStudentId.length > 0
+            ? imageEntries.filter((s) => s.id === filterStudentId)
+            : imageEntries
+
+        if (filterStudentId && display.length === 0) {
+          setError('선택한 학생의 카드를 이 학급 목록에서 찾지 못했습니다. 학생 관리에서 다시 들어와 주세요.')
+          setCards([])
+        } else {
+          setError('')
+          setCards(display)
+        }
       } catch {
         setError('QR 카드 준비 중 오류가 발생했습니다.')
       } finally {
@@ -190,9 +205,10 @@ export default function StudentQrCardsPage() {
     }
 
     void load()
-  }, [classCode])
+  }, [classCode, filterStudentId])
 
   const cardPages = chunkCards(cards, 4)
+  const singleStudent = filterStudentId && cards.length === 1 ? cards[0] : null
 
   return (
     <div className="qr-print-page min-h-screen bg-[#eef6fc] p-6 text-slate-900">
@@ -475,15 +491,39 @@ export default function StudentQrCardsPage() {
       <div className="mx-auto max-w-7xl space-y-6 print:max-w-none">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between print:hidden">
           <div>
-            <Link href={`/${classCode}/students`} className="text-sm font-medium text-slate-500 hover:text-slate-700">
-              ← 학생 관리로
-            </Link>
-            <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-900">학생 QR 출력</h1>
+            {singleStudent ? (
+              <Link
+                href={`/${classCode}/students/${singleStudent.id}`}
+                className="text-sm font-medium text-slate-500 hover:text-slate-700"
+              >
+                ← {singleStudent.name} 학생 페이지로
+              </Link>
+            ) : (
+              <Link href={`/${classCode}/students`} className="text-sm font-medium text-slate-500 hover:text-slate-700">
+                ← 학생 관리로
+              </Link>
+            )}
+            <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-900">
+              {singleStudent ? `${singleStudent.name} · QR 카드` : '학생 QR 출력'}
+            </h1>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-              <strong>학생증(ID) 카드</strong>는 예시와 같은 세로형 레이아웃이며, Windows 인쇄 시{' '}
-              <strong>A4 한 장에 카드 4장(2×2)</strong>이 맞물리도록 mm 단위 그리드로 맞춰 두었습니다. QR은 정사각형
-              프레임 안에 <strong>비율 고정·고해상도(512px) 생성</strong>으로 인쇄 시 늘어남을 막았습니다. 이어서{' '}
-              <strong>통장 겉표지</strong>가 학생별로 출력됩니다.
+              {singleStudent ? (
+                <>
+                  이 화면에는 <strong>{singleStudent.name}</strong> 학생의 학생증(ID) 카드와 통장 겉표지만 포함됩니다.{' '}
+                  학급 전체 출력은{' '}
+                  <Link href={`/${classCode}/students/qr-cards`} className="font-semibold text-sky-700 underline-offset-2 hover:underline">
+                    학생 관리 → QR 카드 일괄 출력
+                  </Link>
+                  으로 이동하세요.
+                </>
+              ) : (
+                <>
+                  <strong>학생증(ID) 카드</strong>는 예시와 같은 세로형 레이아웃이며, Windows 인쇄 시{' '}
+                  <strong>A4 한 장에 카드 4장(2×2)</strong>이 맞물리도록 mm 단위 그리드로 맞춰 두었습니다. QR은 정사각형
+                  프레임 안에 <strong>비율 고정·고해상도(512px) 생성</strong>으로 인쇄 시 늘어남을 막았습니다. 이어서{' '}
+                  <strong>통장 겉표지</strong>가 학생별로 출력됩니다.
+                </>
+              )}
             </p>
           </div>
           <button
@@ -491,7 +531,7 @@ export default function StudentQrCardsPage() {
             onClick={() => window.print()}
             className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-black"
           >
-            🖨️ 전체 인쇄
+            {singleStudent ? '🖨️ 인쇄' : '🖨️ 전체 인쇄'}
           </button>
         </div>
 
@@ -525,19 +565,16 @@ export default function StudentQrCardsPage() {
                 </div>
 
                 <div className="id-print-grid">
-                  {page.map((student, i) => {
-                    const globalIndex = pageIndex * 4 + i + 1
-                    return (
-                      <div key={student.id} className="id-print-grid__cell">
-                        <StudentIdFaceCard
-                          student={student}
-                          rosterNumber={globalIndex}
-                          classMeta={classMeta}
-                          classCode={classCode}
-                        />
-                      </div>
-                    )
-                  })}
+                  {page.map((student) => (
+                    <div key={student.id} className="id-print-grid__cell">
+                      <StudentIdFaceCard
+                        student={student}
+                        rosterNumber={student.rosterNumber}
+                        classMeta={classMeta}
+                        classCode={classCode}
+                      />
+                    </div>
+                  ))}
                 </div>
               </section>
             ))}
@@ -614,5 +651,17 @@ export default function StudentQrCardsPage() {
         )}
       </div>
     </div>
+  )
+}
+
+export default function StudentQrCardsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="qr-print-page min-h-screen bg-[#eef6fc] p-6 text-slate-600">출력 세트를 준비하는 중...</div>
+      }
+    >
+      <StudentQrCardsPageInner />
+    </Suspense>
   )
 }
