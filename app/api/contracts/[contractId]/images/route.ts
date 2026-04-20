@@ -1,3 +1,4 @@
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { getSession } from '@/lib/session'
@@ -5,6 +6,36 @@ import { getSession } from '@/lib/session'
 export const runtime = 'nodejs'
 
 const MAX_BYTES = 4 * 1024 * 1024
+const CONTRACT_IMAGES_BUCKET = 'contract-images'
+
+/** 버킷이 없으면 서비스 롤로 생성(수동 대시보드 작업 불필요) */
+async function ensureContractImagesBucket(
+  supabase: SupabaseClient
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  const { data: buckets, error: listError } = await supabase.storage.listBuckets()
+  if (listError) {
+    return { ok: false, message: listError.message }
+  }
+  const exists = buckets?.some((b) => b.name === CONTRACT_IMAGES_BUCKET || b.id === CONTRACT_IMAGES_BUCKET)
+  if (exists) {
+    return { ok: true }
+  }
+
+  const { error: createError } = await supabase.storage.createBucket(CONTRACT_IMAGES_BUCKET, {
+    public: true,
+    fileSizeLimit: MAX_BYTES,
+    allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
+  })
+
+  if (createError) {
+    const m = createError.message || ''
+    if (/already exists|duplicate/i.test(m)) {
+      return { ok: true }
+    }
+    return { ok: false, message: m }
+  }
+  return { ok: true }
+}
 
 function extFromMime(type: string) {
   if (type.includes('png')) return 'png'
@@ -62,6 +93,18 @@ export async function POST(
       return NextResponse.json({ error: '업로드할 이미지가 없습니다.' }, { status: 400 })
     }
 
+    const bucketReady = await ensureContractImagesBucket(supabase)
+    if (!bucketReady.ok) {
+      console.error('ensureContractImagesBucket:', bucketReady.message)
+      return NextResponse.json(
+        {
+          error: '스토리지 버킷(contract-images)을 만들 수 없습니다.',
+          details: bucketReady.message,
+        },
+        { status: 500 }
+      )
+    }
+
     const uploadedStoragePaths: string[] = []
 
     for (const { file, field, col } of uploads) {
@@ -69,22 +112,17 @@ export async function POST(
       const path = `contracts/${contractId}/${field}_${timestamp}.${ext}`
       const buffer = await file.arrayBuffer()
 
-      const { error: uploadError } = await supabase.storage.from('contract-images').upload(path, buffer, {
+      const { error: uploadError } = await supabase.storage.from(CONTRACT_IMAGES_BUCKET).upload(path, buffer, {
         contentType: file.type || 'image/jpeg',
         upsert: true,
       })
 
       if (uploadError) {
         console.error('contract image upload:', uploadError)
-        const um = uploadError.message || ''
-        const bucketHint =
-          /bucket|not\s*found|does not exist/i.test(um) || /404/.test(um)
-            ? ' 버킷 id는 `contract-images` 한 가지입니다(하이픈 `-` 포함, 띄어쓰기 없음, images 철자). Supabase → SQL Editor에서 supabase/migrations/015_storage_contract_images_bucket.sql 을 실행하거나, Storage → New bucket에서 동일 id로 만드세요.'
-            : ''
         return NextResponse.json(
           {
             error: '스토리지에 이미지를 올리지 못했습니다.',
-            details: um + bucketHint,
+            details: uploadError.message || '',
           },
           { status: 500 }
         )
@@ -92,7 +130,7 @@ export async function POST(
 
       uploadedStoragePaths.push(path)
 
-      const { data: pub } = supabase.storage.from('contract-images').getPublicUrl(path)
+      const { data: pub } = supabase.storage.from(CONTRACT_IMAGES_BUCKET).getPublicUrl(path)
       updateData[col] = pub.publicUrl
     }
 
@@ -105,7 +143,7 @@ export async function POST(
 
     if (updateError || !updated) {
       if (uploadedStoragePaths.length > 0) {
-        await supabase.storage.from('contract-images').remove(uploadedStoragePaths)
+        await supabase.storage.from(CONTRACT_IMAGES_BUCKET).remove(uploadedStoragePaths)
       }
       const em = updateError?.message || ''
       const emLower = em.toLowerCase()
