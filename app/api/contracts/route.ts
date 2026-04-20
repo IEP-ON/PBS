@@ -58,32 +58,58 @@ export async function POST(request: Request) {
 
     const supabase = await createServerSupabase()
 
-    const { data: contract, error } = await supabase
+    const baseRow = {
+      student_id: studentId,
+      class_code_id: session.classroomId,
+      contract_title: contractTitle,
+      target_behavior: targetBehavior,
+      behavior_definition: behaviorDefinition || null,
+      measurement_method: measurementMethod || null,
+      achievement_criteria: achievementCriteria || null,
+      reward_amount: rewardAmount ? Number(rewardAmount) : 0,
+      contract_start: contractStart || new Date().toISOString().split('T')[0],
+      contract_end: contractEnd || null,
+      teacher_note: teacherNote || null,
+      teacher_signed: true,
+    }
+
+    const withRewardDesc = {
+      ...baseRow,
+      reward_description: rewardDescription || null,
+    }
+
+    let { data: contract, error } = await supabase
       .from('pbs_behavior_contracts')
-      .insert({
-        student_id: studentId,
-        class_code_id: session.classroomId,
-        contract_title: contractTitle,
-        target_behavior: targetBehavior,
-        behavior_definition: behaviorDefinition || null,
-        measurement_method: measurementMethod || null,
-        achievement_criteria: achievementCriteria || null,
-        reward_amount: rewardAmount ? Number(rewardAmount) : 0,
-        contract_start: contractStart || new Date().toISOString().split('T')[0],
-        contract_end: contractEnd || null,
-        teacher_note: teacherNote || null,
-        reward_description: rewardDescription || null,
-        teacher_signed: true,
-      })
+      .insert(withRewardDesc)
       .select()
       .single()
 
+    // 마이그레이션 014 미적용 시 reward_description 컬럼 없음 → 재시도
     if (error) {
-      return NextResponse.json({ error: '계약서 생성 실패' }, { status: 500 })
+      const msg = (error.message || '').toLowerCase()
+      const missingRewardCol =
+        msg.includes('reward_description') ||
+        msg.includes('column') && msg.includes('does not exist')
+      if (missingRewardCol) {
+        ;({ data: contract, error } = await supabase
+          .from('pbs_behavior_contracts')
+          .insert(baseRow)
+          .select()
+          .single())
+      }
+    }
+
+    if (error) {
+      console.error('pbs_behavior_contracts insert:', error)
+      return NextResponse.json(
+        { error: '계약서 생성 실패', details: error.message },
+        { status: 500 }
+      )
     }
 
     return NextResponse.json({ contract })
-  } catch {
+  } catch (e) {
+    console.error('POST /api/contracts:', e)
     return NextResponse.json({ error: '서버 오류가 발생했습니다.' }, { status: 500 })
   }
 }

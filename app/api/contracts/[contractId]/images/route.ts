@@ -74,7 +74,10 @@ export async function POST(
 
       if (uploadError) {
         console.error('contract image upload:', uploadError)
-        return NextResponse.json({ error: '이미지 업로드에 실패했습니다.' }, { status: 500 })
+        return NextResponse.json(
+          { error: '이미지 업로드에 실패했습니다.', details: uploadError.message },
+          { status: 500 }
+        )
       }
 
       const { data: pub } = supabase.storage.from('contract-images').getPublicUrl(path)
@@ -89,7 +92,10 @@ export async function POST(
       .single()
 
     if (updateError || !updated) {
-      return NextResponse.json({ error: '이미지 URL 저장에 실패했습니다.' }, { status: 500 })
+      return NextResponse.json(
+        { error: '이미지 URL 저장에 실패했습니다.', details: updateError?.message },
+        { status: 500 }
+      )
     }
 
     return NextResponse.json({

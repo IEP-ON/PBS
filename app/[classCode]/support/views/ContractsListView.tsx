@@ -197,8 +197,11 @@ export function ContractsListView() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         })
+        const patchJson = (await res.json()) as { error?: string; details?: string }
         if (!res.ok) {
-          setFormError('수정 실패')
+          setFormError(
+            [patchJson.error, patchJson.details].filter(Boolean).join(' — ') || '수정 실패'
+          )
           return
         }
       } else {
@@ -207,12 +210,18 @@ export function ContractsListView() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         })
+        const postJson = (await res.json()) as {
+          contract?: { id: string }
+          error?: string
+          details?: string
+        }
         if (!res.ok) {
-          setFormError('등록 실패')
+          setFormError(
+            [postJson.error, postJson.details].filter(Boolean).join(' — ') || '등록 실패'
+          )
           return
         }
-        const data = (await res.json()) as { contract?: { id: string } }
-        contractId = data.contract?.id ?? null
+        contractId = postJson.contract?.id ?? null
       }
 
       if (contractId && (form.behaviorImageFile || form.rewardImageFile)) {
@@ -220,8 +229,12 @@ export function ContractsListView() {
         if (form.behaviorImageFile) fd.append('behaviorImage', form.behaviorImageFile)
         if (form.rewardImageFile) fd.append('rewardImage', form.rewardImageFile)
         const imgRes = await fetch(`/api/contracts/${contractId}/images`, { method: 'POST', body: fd })
+        const imgJson = (await imgRes.json()) as { error?: string; details?: string }
         if (!imgRes.ok) {
-          setFormError('계약은 저장되었으나 이미지 업로드에 실패했습니다.')
+          setFormError(
+            [imgJson.error, imgJson.details].filter(Boolean).join(' — ') ||
+              '계약은 저장되었으나 이미지 업로드에 실패했습니다.'
+          )
           void fetchData()
           return
         }

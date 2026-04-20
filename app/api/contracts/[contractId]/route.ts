@@ -79,7 +79,9 @@ export async function PATCH(
       updateData.version = (oldContract.version || 1) + 1
     }
 
-    const { data: contract, error } = await supabase
+    const optionalCols014 = ['reward_description', 'behavior_image_url', 'reward_image_url'] as const
+
+    let { data: contract, error } = await supabase
       .from('pbs_behavior_contracts')
       .update(updateData)
       .eq('id', contractId)
@@ -87,12 +89,37 @@ export async function PATCH(
       .select()
       .single()
 
+    if (error) {
+      const msg = (error.message || '').toLowerCase()
+      const missing014 = optionalCols014.some((c) => msg.includes(c))
+      if (missing014) {
+        const fallback = { ...updateData }
+        for (const c of optionalCols014) {
+          delete fallback[c]
+        }
+        if (Object.keys(fallback).length > 0) {
+          ;({ data: contract, error } = await supabase
+            .from('pbs_behavior_contracts')
+            .update(fallback)
+            .eq('id', contractId)
+            .eq('class_code_id', session.classroomId)
+            .select()
+            .single())
+        }
+      }
+    }
+
     if (error || !contract) {
-      return NextResponse.json({ error: '계약서 수정 실패' }, { status: 500 })
+      console.error('pbs_behavior_contracts update:', error)
+      return NextResponse.json(
+        { error: '계약서 수정 실패', details: error?.message },
+        { status: 500 }
+      )
     }
 
     return NextResponse.json({ contract })
-  } catch {
+  } catch (e) {
+    console.error('PATCH /api/contracts/[contractId]:', e)
     return NextResponse.json({ error: '서버 오류가 발생했습니다.' }, { status: 500 })
   }
 }
