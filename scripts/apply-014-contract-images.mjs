@@ -1,18 +1,9 @@
 /**
- * 014 계약 이미지 컬럼을 원격 Postgres에 직접 적용합니다.
- * (Supabase SQL Editor에 붙여넣기와 동일한 내용)
+ * contract_images_setup.sql 을 DATABASE_URL 로 원격 실행 (선택)
+ * 권장: Supabase SQL Editor 에 scripts/sql/contract_images_setup.sql 전체 붙여넣기
  *
- * 사용:
- *   npm run db:apply-014
- *
- * 요구:
- *   .env.local 에 DATABASE_URL
- *   Supabase → Project Settings → Database → Connection string → URI
- *   (Direct connection 권장, 비밀번호 포함. sslmode=require 유지)
- *
- * MCP만 쓰는 경우: Supabase 대시보드 SQL Editor에
- *   scripts/sql/apply_014_contract_images.sql
- *   전체를 붙여넣어 실행해도 동일합니다.
+ * 사용: npm run db:apply-014
+ * 요구: .env.local 에 DATABASE_URL (Connection string URI)
  */
 import { readFileSync } from 'fs'
 import { dirname, join } from 'path'
@@ -48,13 +39,12 @@ async function main() {
   if (!databaseUrl) {
     console.error(
       '❌ DATABASE_URL 이 없습니다.\n' +
-        '   Supabase → Settings → Database → Connection string → URI 를 .env.local 에 넣으세요.\n' +
-        '   또는 SQL Editor에서 scripts/sql/apply_014_contract_images.sql 을 실행하세요.',
+        '   Supabase SQL Editor에서 scripts/sql/contract_images_setup.sql 을 실행하세요.',
     )
     process.exit(1)
   }
 
-  const sqlPath = join(repoRoot, 'scripts/sql/apply_014_contract_images.sql')
+  const sqlPath = join(repoRoot, 'scripts/sql/contract_images_setup.sql')
   const sqlText = readFileSync(sqlPath, 'utf8')
 
   const { default: postgres } = await import('postgres')
@@ -62,7 +52,7 @@ async function main() {
 
   try {
     await sql.unsafe(sqlText)
-    console.log('✅ apply_014_contract_images.sql 적용 완료 (PostgREST 캐시 reload 포함)')
+    console.log('✅ contract_images_setup.sql 적용 완료')
   } catch (e) {
     console.error('❌ SQL 실행 실패:', e.message)
     process.exit(1)

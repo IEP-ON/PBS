@@ -157,7 +157,7 @@ export async function POST(
         return NextResponse.json(
           {
             error:
-              'DB에 behavior_image_url 등 컬럼이 없거나 PostgREST 스키마 캐시가 오래됐습니다. 아래 중 하나를 실행한 뒤 1~2분 뒤 다시 시도하세요. ① Supabase SQL Editor에 scripts/sql/apply_014_contract_images.sql 전체 붙여넣기 ② 로컬에서 DATABASE_URL 넣고 npm run db:apply-014',
+              'DB에 behavior_image_url 등 컬럼이 없거나 PostgREST 스키마 캐시가 오래됐습니다. Supabase SQL Editor에 scripts/sql/contract_images_setup.sql 전체를 붙여넣어 실행한 뒤 1~2분 뒤 다시 시도하세요. (또는 DATABASE_URL 이 있으면 npm run db:apply-014)',
             details: em,
           },
           { status: 503 }
