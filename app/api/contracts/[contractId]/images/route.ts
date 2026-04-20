@@ -62,6 +62,8 @@ export async function POST(
       return NextResponse.json({ error: '업로드할 이미지가 없습니다.' }, { status: 400 })
     }
 
+    const uploadedStoragePaths: string[] = []
+
     for (const { file, field, col } of uploads) {
       const ext = extFromMime(file.type || 'image/jpeg')
       const path = `contracts/${contractId}/${field}_${timestamp}.${ext}`
@@ -74,11 +76,21 @@ export async function POST(
 
       if (uploadError) {
         console.error('contract image upload:', uploadError)
+        const um = uploadError.message || ''
+        const bucketHint =
+          /bucket|not\s*found|does not exist/i.test(um) || /404/.test(um)
+            ? ' Supabase 대시보드 → Storage에서 버킷 이름이 정확히 contract-images 인지 확인하세요.'
+            : ''
         return NextResponse.json(
-          { error: '이미지 업로드에 실패했습니다.', details: uploadError.message },
+          {
+            error: '스토리지에 이미지를 올리지 못했습니다.',
+            details: um + bucketHint,
+          },
           { status: 500 }
         )
       }
+
+      uploadedStoragePaths.push(path)
 
       const { data: pub } = supabase.storage.from('contract-images').getPublicUrl(path)
       updateData[col] = pub.publicUrl
@@ -88,12 +100,31 @@ export async function POST(
       .from('pbs_behavior_contracts')
       .update(updateData)
       .eq('id', contractId)
-      .select('behavior_image_url, reward_image_url')
+      .select()
       .single()
 
     if (updateError || !updated) {
+      if (uploadedStoragePaths.length > 0) {
+        await supabase.storage.from('contract-images').remove(uploadedStoragePaths)
+      }
+      const em = updateError?.message || ''
+      const emLower = em.toLowerCase()
+      const missingImageCols =
+        emLower.includes('behavior_image_url') ||
+        emLower.includes('reward_image_url') ||
+        (emLower.includes('column') && emLower.includes('does not exist'))
+      if (missingImageCols) {
+        return NextResponse.json(
+          {
+            error:
+              'DB에 이미지 URL 컬럼이 없습니다. Supabase SQL에 supabase/migrations/014_contract_images.sql 을 실행한 뒤 다시 시도해 주세요.',
+            details: em,
+          },
+          { status: 503 }
+        )
+      }
       return NextResponse.json(
-        { error: '이미지 URL 저장에 실패했습니다.', details: updateError?.message },
+        { error: '이미지 URL을 계약서에 저장하지 못했습니다.', details: em },
         { status: 500 }
       )
     }
