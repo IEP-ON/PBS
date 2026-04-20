@@ -30,6 +30,9 @@ export async function PATCH(
       studentSigned: 'student_signed',
       parentSigned: 'parent_signed',
       teacherNote: 'teacher_note',
+      rewardDescription: 'reward_description',
+      behaviorImageUrl: 'behavior_image_url',
+      rewardImageUrl: 'reward_image_url',
     }
 
     const updateData: Record<string, unknown> = {}

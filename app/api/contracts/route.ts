@@ -49,7 +49,7 @@ export async function POST(request: Request) {
     const {
       studentId, contractTitle, targetBehavior, behaviorDefinition,
       measurementMethod, achievementCriteria, rewardAmount,
-      contractStart, contractEnd, teacherNote,
+      contractStart, contractEnd, teacherNote, rewardDescription,
     } = body
 
     if (!studentId || !contractTitle || !targetBehavior) {
@@ -72,6 +72,7 @@ export async function POST(request: Request) {
         contract_start: contractStart || new Date().toISOString().split('T')[0],
         contract_end: contractEnd || null,
         teacher_note: teacherNote || null,
+        reward_description: rewardDescription || null,
         teacher_signed: true,
       })
       .select()

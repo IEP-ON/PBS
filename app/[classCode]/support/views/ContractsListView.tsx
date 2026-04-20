@@ -1,6 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ChangeEvent } from 'react'
+import Link from 'next/link'
+import { useParams } from 'next/navigation'
 import { formatCurrency } from '@/lib/utils'
 import PrintableContract from '../../contracts/PrintableContract'
 
@@ -18,6 +20,9 @@ interface Contract {
   measurement_method: string | null
   achievement_criteria: string | null
   reward_amount: number
+  reward_description?: string | null
+  behavior_image_url?: string | null
+  reward_image_url?: string | null
   contract_start: string
   contract_end: string | null
   is_active: boolean
@@ -37,12 +42,19 @@ type ContractForm = {
   measurementMethod: string
   achievementCriteria: string
   rewardAmount: string
+  rewardDescription: string
   contractStart: string
   contractEnd: string
   teacherNote: string
+  behaviorImageFile: File | null
+  rewardImageFile: File | null
+  behaviorImagePreview: string
+  rewardImagePreview: string
+  clearBehaviorImage: boolean
+  clearRewardImage: boolean
 }
 
-const emptyForm: ContractForm = {
+const emptyForm = (): ContractForm => ({
   studentId: '',
   contractTitle: '',
   targetBehavior: '',
@@ -50,12 +62,45 @@ const emptyForm: ContractForm = {
   measurementMethod: '',
   achievementCriteria: '',
   rewardAmount: '',
+  rewardDescription: '',
   contractStart: new Date().toISOString().split('T')[0],
   contractEnd: '',
   teacherNote: '',
+  behaviorImageFile: null,
+  rewardImageFile: null,
+  behaviorImagePreview: '',
+  rewardImagePreview: '',
+  clearBehaviorImage: false,
+  clearRewardImage: false,
+})
+
+function buildJsonPayload(form: ContractForm, editingId: string | null) {
+  const base: Record<string, unknown> = {
+    contractTitle: form.contractTitle,
+    targetBehavior: form.targetBehavior,
+    behaviorDefinition: form.behaviorDefinition || null,
+    measurementMethod: form.measurementMethod || null,
+    achievementCriteria: form.achievementCriteria || null,
+    rewardAmount: form.rewardAmount ? Number(form.rewardAmount) : 0,
+    contractStart: form.contractStart || null,
+    contractEnd: form.contractEnd || null,
+    teacherNote: form.teacherNote || null,
+    rewardDescription: form.rewardDescription || null,
+  }
+  if (!editingId) {
+    base.studentId = form.studentId
+  }
+  if (editingId) {
+    if (form.clearBehaviorImage) base.behaviorImageUrl = null
+    if (form.clearRewardImage) base.rewardImageUrl = null
+  }
+  return base
 }
 
 export function ContractsListView() {
+  const params = useParams()
+  const classCode = params.classCode as string
+
   const [students, setStudents] = useState<Student[]>([])
   const [contracts, setContracts] = useState<Contract[]>([])
   const [loading, setLoading] = useState(true)
@@ -68,10 +113,7 @@ export function ContractsListView() {
   const [printContract, setPrintContract] = useState<Contract | null>(null)
 
   const fetchData = async () => {
-    const [sRes, cRes] = await Promise.all([
-      fetch('/api/students'),
-      fetch('/api/contracts'),
-    ])
+    const [sRes, cRes] = await Promise.all([fetch('/api/students'), fetch('/api/contracts')])
     const sData = await sRes.json()
     const cData = await cRes.json()
     setStudents(sData.students || [])
@@ -79,11 +121,13 @@ export function ContractsListView() {
     setLoading(false)
   }
 
-  useEffect(() => { void fetchData() }, [])
+  useEffect(() => {
+    void fetchData()
+  }, [])
 
   const openAddModal = () => {
     setEditingId(null)
-    setForm(emptyForm)
+    setForm(emptyForm())
     setFormError('')
     setShowModal(true)
   }
@@ -98,12 +142,41 @@ export function ContractsListView() {
       measurementMethod: c.measurement_method || '',
       achievementCriteria: c.achievement_criteria || '',
       rewardAmount: String(c.reward_amount || ''),
+      rewardDescription: c.reward_description || '',
       contractStart: c.contract_start || '',
       contractEnd: c.contract_end || '',
       teacherNote: c.teacher_note || '',
+      behaviorImageFile: null,
+      rewardImageFile: null,
+      behaviorImagePreview: c.behavior_image_url || '',
+      rewardImagePreview: c.reward_image_url || '',
+      clearBehaviorImage: false,
+      clearRewardImage: false,
     })
     setFormError('')
     setShowModal(true)
+  }
+
+  const setBehaviorFile = (e: ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0]
+    if (!f) return
+    setForm((prev) => ({
+      ...prev,
+      behaviorImageFile: f,
+      behaviorImagePreview: URL.createObjectURL(f),
+      clearBehaviorImage: false,
+    }))
+  }
+
+  const setRewardFile = (e: ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0]
+    if (!f) return
+    setForm((prev) => ({
+      ...prev,
+      rewardImageFile: f,
+      rewardImagePreview: URL.createObjectURL(f),
+      clearRewardImage: false,
+    }))
   }
 
   const handleSave = async () => {
@@ -115,32 +188,47 @@ export function ContractsListView() {
     setFormError('')
 
     try {
+      const payload = buildJsonPayload(form, editingId)
+      let contractId: string | null = editingId
+
       if (editingId) {
         const res = await fetch(`/api/contracts/${editingId}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contractTitle: form.contractTitle,
-            targetBehavior: form.targetBehavior,
-            behaviorDefinition: form.behaviorDefinition || null,
-            measurementMethod: form.measurementMethod || null,
-            achievementCriteria: form.achievementCriteria || null,
-            rewardAmount: form.rewardAmount ? Number(form.rewardAmount) : 0,
-            contractStart: form.contractStart || null,
-            contractEnd: form.contractEnd || null,
-            teacherNote: form.teacherNote || null,
-          }),
+          body: JSON.stringify(payload),
         })
-        if (!res.ok) { setFormError('수정 실패'); return }
+        if (!res.ok) {
+          setFormError('수정 실패')
+          return
+        }
       } else {
         const res = await fetch('/api/contracts', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(form),
+          body: JSON.stringify(payload),
         })
-        if (!res.ok) { setFormError('등록 실패'); return }
+        if (!res.ok) {
+          setFormError('등록 실패')
+          return
+        }
+        const data = (await res.json()) as { contract?: { id: string } }
+        contractId = data.contract?.id ?? null
       }
+
+      if (contractId && (form.behaviorImageFile || form.rewardImageFile)) {
+        const fd = new FormData()
+        if (form.behaviorImageFile) fd.append('behaviorImage', form.behaviorImageFile)
+        if (form.rewardImageFile) fd.append('rewardImage', form.rewardImageFile)
+        const imgRes = await fetch(`/api/contracts/${contractId}/images`, { method: 'POST', body: fd })
+        if (!imgRes.ok) {
+          setFormError('계약은 저장되었으나 이미지 업로드에 실패했습니다.')
+          void fetchData()
+          return
+        }
+      }
+
       setShowModal(false)
+      setForm(emptyForm())
       void fetchData()
     } finally {
       setSubmitting(false)
@@ -174,12 +262,10 @@ export function ContractsListView() {
     )
   }
 
-  const filtered = filterStudent
-    ? contracts.filter(c => c.student_id === filterStudent)
-    : contracts
+  const filtered = filterStudent ? contracts.filter((c) => c.student_id === filterStudent) : contracts
 
-  const activeContracts = contracts.filter(c => c.is_active)
-  const fullySignedCount = contracts.filter(c => c.teacher_signed && c.student_signed && c.parent_signed).length
+  const activeContracts = contracts.filter((c) => c.is_active)
+  const fullySignedCount = contracts.filter((c) => c.teacher_signed && c.student_signed && c.parent_signed).length
   const totalReward = activeContracts.reduce((s, c) => s + c.reward_amount, 0)
   const today = new Date().toISOString().split('T')[0]
 
@@ -189,13 +275,57 @@ export function ContractsListView() {
     return Math.round((done / total) * 100)
   }
 
+  const imageSlot = (
+    label: string,
+    preview: string,
+    onPick: (e: ChangeEvent<HTMLInputElement>) => void,
+    onClear: () => void,
+    inputId: string
+  ) => (
+    <div className="space-y-1">
+      <span className="text-sm font-medium text-gray-700">{label}</span>
+      <div className="flex gap-2 items-start">
+        <label className="cursor-pointer inline-flex px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm text-gray-800">
+          파일 선택
+          <input id={inputId} type="file" accept="image/*" className="hidden" onChange={onPick} />
+        </label>
+        {preview && (
+          <button
+            type="button"
+            onClick={onClear}
+            className="text-xs text-red-600 hover:underline px-1 py-2"
+          >
+            제거
+          </button>
+        )}
+      </div>
+      {preview ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={preview} alt="" className="mt-1 w-24 h-24 object-cover rounded-lg border border-gray-200" />
+      ) : (
+        <p className="text-xs text-gray-400 mt-1">인쇄 시 아이콘으로 대체됩니다.</p>
+      )}
+    </div>
+  )
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <h1 className="text-2xl font-bold text-gray-900">📝 행동계약서</h1>
-        <button onClick={openAddModal} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl transition-colors">
-          + 계약서 작성
-        </button>
+        <div className="flex items-center gap-2">
+          <Link
+            href={`/${classCode}/students/qr-cards`}
+            className="text-sm text-blue-600 hover:underline"
+          >
+            QR 카드·토큰 인쇄 →
+          </Link>
+          <button
+            onClick={openAddModal}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl transition-colors"
+          >
+            + 계약서 작성
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-3 gap-3">
@@ -215,18 +345,27 @@ export function ContractsListView() {
 
       <div className="flex gap-2 overflow-x-auto pb-1">
         <button
+          type="button"
           onClick={() => setFilterStudent('')}
-          className={`px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${!filterStudent ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 border border-gray-200'}`}
-        >전체 ({contracts.length})</button>
-        {students.map(s => {
-          const cnt = contracts.filter(c => c.student_id === s.id && c.is_active).length
+          className={`px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+            !filterStudent ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 border border-gray-200'
+          }`}
+        >
+          전체 ({contracts.length})
+        </button>
+        {students.map((s) => {
+          const cnt = contracts.filter((c) => c.student_id === s.id && c.is_active).length
           return (
             <button
               key={s.id}
+              type="button"
               onClick={() => setFilterStudent(s.id)}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${filterStudent === s.id ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 border border-gray-200'}`}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+                filterStudent === s.id ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 border border-gray-200'
+              }`}
             >
-              {s.name}{cnt > 0 && <span className="ml-1 text-xs opacity-70">({cnt})</span>}
+              {s.name}
+              {cnt > 0 && <span className="ml-1 text-xs opacity-70">({cnt})</span>}
             </button>
           )
         })}
@@ -240,31 +379,84 @@ export function ContractsListView() {
         </div>
       ) : (
         <div className="space-y-4">
-          {filtered.map(c => {
+          {filtered.map((c) => {
             const isExpiring = c.is_active && c.contract_end && c.contract_end <= today
             const signPct = signProgress(c)
             return (
-              <div key={c.id} className={`bg-white rounded-2xl border p-5 space-y-3 ${isExpiring ? 'border-red-300' : c.is_active ? 'border-green-200' : 'border-gray-100 opacity-60'}`}>
-                <div className="flex items-start justify-between">
-                  <div>
+              <div
+                key={c.id}
+                className={`bg-white rounded-2xl border p-5 space-y-3 ${
+                  isExpiring ? 'border-red-300' : c.is_active ? 'border-green-200' : 'border-gray-100 opacity-60'
+                }`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="font-bold text-gray-900">{c.contract_title}</p>
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${c.is_active ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-500'}`}>
+                      <span
+                        className={`text-xs px-2 py-0.5 rounded-full ${
+                          c.is_active ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-500'
+                        }`}
+                      >
                         {c.is_active ? '진행중' : '종료'}
                       </span>
-                      {isExpiring && <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-600">⚠️ 만료</span>}
+                      {isExpiring && (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-600">⚠️ 만료</span>
+                      )}
                     </div>
                     <p className="text-sm text-gray-500 mt-0.5">
                       {c.pbs_students?.name || '학생'} · {c.target_behavior}
                     </p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <button onClick={() => setPrintContract(c)} className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-xl transition-colors text-sm" title="계약서 출력">🖨️</button>
-                    <button onClick={() => openEditModal(c)} className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors text-sm">✏️</button>
-                    <button onClick={() => toggleActive(c)} className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${c.is_active ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'bg-green-50 text-green-600 hover:bg-green-100'}`}>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setPrintContract(c)}
+                      className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-xl transition-colors text-sm"
+                      title="계약서 출력"
+                    >
+                      🖨️
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openEditModal(c)}
+                      className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors text-sm"
+                    >
+                      ✏️
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => toggleActive(c)}
+                      className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                        c.is_active ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'bg-green-50 text-green-600 hover:bg-green-100'
+                      }`}
+                    >
                       {c.is_active ? '종료' : '재활성'}
                     </button>
                   </div>
+                </div>
+
+                <div className="flex gap-2 flex-wrap">
+                  {(c.behavior_image_url || c.reward_image_url) && (
+                    <div className="flex gap-2">
+                      {c.behavior_image_url && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={c.behavior_image_url}
+                          alt="행동"
+                          className="w-14 h-14 object-cover rounded-lg border border-gray-100"
+                        />
+                      )}
+                      {c.reward_image_url && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={c.reward_image_url}
+                          alt="보상"
+                          className="w-14 h-14 object-cover rounded-lg border border-gray-100"
+                        />
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 text-sm">
@@ -284,6 +476,12 @@ export function ContractsListView() {
                     <div className="bg-amber-50 rounded-lg p-3 border border-amber-100">
                       <p className="text-xs text-amber-600 font-medium">달성 기준</p>
                       <p className="text-gray-700 text-xs mt-0.5">{c.achievement_criteria}</p>
+                    </div>
+                  )}
+                  {c.reward_description && (
+                    <div className="bg-violet-50 rounded-lg p-3 border border-violet-100">
+                      <p className="text-xs text-violet-700 font-medium">보상 설명</p>
+                      <p className="text-gray-700 text-xs mt-0.5">{c.reward_description}</p>
                     </div>
                   )}
                   {c.reward_amount > 0 && (
@@ -307,14 +505,33 @@ export function ContractsListView() {
                   </div>
                   <div className="flex items-center justify-between">
                     <p className="text-xs text-gray-400">
-                      {c.contract_start}{c.contract_end ? ` ~ ${c.contract_end}` : ' ~'}
+                      {c.contract_start}
+                      {c.contract_end ? ` ~ ${c.contract_end}` : ' ~'}
                     </p>
                     <div className="flex gap-1.5">
-                      <span className={`text-xs px-2 py-0.5 rounded-lg ${c.teacher_signed ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-400'}`}>교사 {c.teacher_signed ? '✓' : '○'}</span>
-                      <button onClick={() => toggleSign(c, 'studentSigned')} className={`text-xs px-2 py-0.5 rounded-lg transition-colors ${c.student_signed ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400 hover:bg-green-50'}`}>
+                      <span
+                        className={`text-xs px-2 py-0.5 rounded-lg ${
+                          c.teacher_signed ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-400'
+                        }`}
+                      >
+                        교사 {c.teacher_signed ? '✓' : '○'}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => toggleSign(c, 'studentSigned')}
+                        className={`text-xs px-2 py-0.5 rounded-lg transition-colors ${
+                          c.student_signed ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400 hover:bg-green-50'
+                        }`}
+                      >
                         학생 {c.student_signed ? '✓' : '○'}
                       </button>
-                      <button onClick={() => toggleSign(c, 'parentSigned')} className={`text-xs px-2 py-0.5 rounded-lg transition-colors ${c.parent_signed ? 'bg-purple-100 text-purple-600' : 'bg-gray-100 text-gray-400 hover:bg-purple-50'}`}>
+                      <button
+                        type="button"
+                        onClick={() => toggleSign(c, 'parentSigned')}
+                        className={`text-xs px-2 py-0.5 rounded-lg transition-colors ${
+                          c.parent_signed ? 'bg-purple-100 text-purple-600' : 'bg-gray-100 text-gray-400 hover:bg-purple-50'
+                        }`}
+                      >
                         보호자 {c.parent_signed ? '✓' : '○'}
                       </button>
                     </div>
@@ -329,71 +546,181 @@ export function ContractsListView() {
       {showModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl w-full max-w-lg p-6 space-y-4 shadow-xl max-h-[90vh] overflow-y-auto">
-            <h2 className="text-lg font-bold text-gray-900">
-              {editingId ? '계약서 수정' : '행동계약서 작성'}
-            </h2>
+            <h2 className="text-lg font-bold text-gray-900">{editingId ? '계약서 수정' : '행동계약서 작성'}</h2>
 
             {!editingId && (
               <label className="block">
                 <span className="text-sm font-medium text-gray-700">학생 *</span>
-                <select value={form.studentId} onChange={e => setForm({ ...form, studentId: e.target.value })} className="mt-1 block w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <select
+                  value={form.studentId}
+                  onChange={(e) => setForm({ ...form, studentId: e.target.value })}
+                  className="mt-1 block w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
                   <option value="">학생 선택</option>
-                  {students.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  {students.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
                 </select>
               </label>
             )}
 
             <label className="block">
               <span className="text-sm font-medium text-gray-700">계약 제목 *</span>
-              <input type="text" value={form.contractTitle} onChange={e => setForm({ ...form, contractTitle: e.target.value })} placeholder="예: 수업 중 이탈 행동 감소" className="mt-1 block w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              <input
+                type="text"
+                value={form.contractTitle}
+                onChange={(e) => setForm({ ...form, contractTitle: e.target.value })}
+                placeholder="예: 수업 중 이탈 행동 감소"
+                className="mt-1 block w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
             </label>
 
             <label className="block">
               <span className="text-sm font-medium text-gray-700">표적 행동 *</span>
-              <input type="text" value={form.targetBehavior} onChange={e => setForm({ ...form, targetBehavior: e.target.value })} placeholder="예: 자리 이탈" className="mt-1 block w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              <input
+                type="text"
+                value={form.targetBehavior}
+                onChange={(e) => setForm({ ...form, targetBehavior: e.target.value })}
+                placeholder="예: 자리 이탈"
+                className="mt-1 block w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
             </label>
 
             <label className="block">
               <span className="text-sm font-medium text-gray-700">행동 정의</span>
-              <textarea value={form.behaviorDefinition} onChange={e => setForm({ ...form, behaviorDefinition: e.target.value })} placeholder="관찰 가능한 행동 정의" rows={2} className="mt-1 block w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+              <textarea
+                value={form.behaviorDefinition}
+                onChange={(e) => setForm({ ...form, behaviorDefinition: e.target.value })}
+                placeholder="관찰 가능한 행동 정의"
+                rows={2}
+                className="mt-1 block w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              />
             </label>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-3 bg-slate-50 rounded-xl border border-slate-100">
+              {imageSlot(
+                '표적 행동 그림 (난독 지원)',
+                form.behaviorImagePreview,
+                setBehaviorFile,
+                () =>
+                  setForm((prev) => ({
+                    ...prev,
+                    behaviorImageFile: null,
+                    behaviorImagePreview: '',
+                    clearBehaviorImage: Boolean(editingId),
+                  })),
+                'contract-behavior-img'
+              )}
+              {imageSlot(
+                '보상 그림 (난독 지원)',
+                form.rewardImagePreview,
+                setRewardFile,
+                () =>
+                  setForm((prev) => ({
+                    ...prev,
+                    rewardImageFile: null,
+                    rewardImagePreview: '',
+                    clearRewardImage: Boolean(editingId),
+                  })),
+                'contract-reward-img'
+              )}
+            </div>
 
             <div className="grid grid-cols-2 gap-3">
               <label className="block">
                 <span className="text-sm font-medium text-gray-700">측정 방법</span>
-                <input type="text" value={form.measurementMethod} onChange={e => setForm({ ...form, measurementMethod: e.target.value })} placeholder="빈도/지속시간" className="mt-1 block w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <input
+                  type="text"
+                  value={form.measurementMethod}
+                  onChange={(e) => setForm({ ...form, measurementMethod: e.target.value })}
+                  placeholder="빈도/지속시간"
+                  className="mt-1 block w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
               </label>
               <label className="block">
                 <span className="text-sm font-medium text-gray-700">달성 기준</span>
-                <input type="text" value={form.achievementCriteria} onChange={e => setForm({ ...form, achievementCriteria: e.target.value })} placeholder="하루 2회 이하" className="mt-1 block w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <input
+                  type="text"
+                  value={form.achievementCriteria}
+                  onChange={(e) => setForm({ ...form, achievementCriteria: e.target.value })}
+                  placeholder="하루 2회 이하"
+                  className="mt-1 block w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
               </label>
             </div>
+
+            <label className="block">
+              <span className="text-sm font-medium text-gray-700">보상 내용 설명</span>
+              <input
+                type="text"
+                value={form.rewardDescription}
+                onChange={(e) => setForm({ ...form, rewardDescription: e.target.value })}
+                placeholder="예: 쉬는 시간 5분 더, 스티커 1장"
+                className="mt-1 block w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </label>
 
             <div className="grid grid-cols-3 gap-3">
               <label className="block">
                 <span className="text-sm font-medium text-gray-700">보상 금액</span>
-                <input type="number" value={form.rewardAmount} onChange={e => setForm({ ...form, rewardAmount: e.target.value })} placeholder="500" min={0} className="mt-1 block w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <input
+                  type="number"
+                  value={form.rewardAmount}
+                  onChange={(e) => setForm({ ...form, rewardAmount: e.target.value })}
+                  placeholder="500"
+                  min={0}
+                  className="mt-1 block w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
               </label>
               <label className="block">
                 <span className="text-sm font-medium text-gray-700">시작일</span>
-                <input type="date" value={form.contractStart} onChange={e => setForm({ ...form, contractStart: e.target.value })} className="mt-1 block w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <input
+                  type="date"
+                  value={form.contractStart}
+                  onChange={(e) => setForm({ ...form, contractStart: e.target.value })}
+                  className="mt-1 block w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
               </label>
               <label className="block">
                 <span className="text-sm font-medium text-gray-700">종료일</span>
-                <input type="date" value={form.contractEnd} onChange={e => setForm({ ...form, contractEnd: e.target.value })} className="mt-1 block w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <input
+                  type="date"
+                  value={form.contractEnd}
+                  onChange={(e) => setForm({ ...form, contractEnd: e.target.value })}
+                  className="mt-1 block w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
               </label>
             </div>
 
             <label className="block">
               <span className="text-sm font-medium text-gray-700">교사 메모</span>
-              <textarea value={form.teacherNote} onChange={e => setForm({ ...form, teacherNote: e.target.value })} placeholder="교사 참고 메모 (학생에게 미공개)" rows={2} className="mt-1 block w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+              <textarea
+                value={form.teacherNote}
+                onChange={(e) => setForm({ ...form, teacherNote: e.target.value })}
+                placeholder="교사 참고 메모 (학생에게 미공개)"
+                rows={2}
+                className="mt-1 block w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              />
             </label>
 
             {formError && <p className="text-red-500 text-sm">{formError}</p>}
 
             <div className="flex gap-3 pt-2">
-              <button onClick={() => setShowModal(false)} className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-xl transition-colors">취소</button>
-              <button onClick={handleSave} disabled={submitting} className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white font-semibold rounded-xl transition-colors">
+              <button
+                type="button"
+                onClick={() => setShowModal(false)}
+                className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-xl transition-colors"
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleSave()}
+                disabled={submitting}
+                className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white font-semibold rounded-xl transition-colors"
+              >
                 {submitting ? '저장 중...' : editingId ? '수정' : '작성'}
               </button>
             </div>
@@ -401,12 +728,7 @@ export function ContractsListView() {
         </div>
       )}
 
-      {printContract && (
-        <PrintableContract
-          contract={printContract}
-          onClose={() => setPrintContract(null)}
-        />
-      )}
+      {printContract && <PrintableContract contract={printContract} onClose={() => setPrintContract(null)} />}
     </div>
   )
 }
