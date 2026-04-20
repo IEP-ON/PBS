@@ -147,6 +147,8 @@ export default function QrTokensPage() {
   const [message, setMessage] = useState('')
   const [newTokens, setNewTokens] = useState<QrToken[]>([])
   const [qrDataUrls, setQrDataUrls] = useState<Record<string, string>>({})
+  const [reviveInput, setReviveInput] = useState('')
+  const [reviving, setReviving] = useState(false)
 
   const fetchTokens = async () => {
     const res = await fetch('/api/qr-tokens')
@@ -201,6 +203,34 @@ export default function QrTokensPage() {
 
   const handlePrint = () => {
     window.print()
+  }
+
+  const reviveTokenByCode = async (code: string) => {
+    const trimmed = code.trim()
+    if (!trimmed) {
+      setMessage('❌ 토큰 코드를 입력해 주세요.')
+      return
+    }
+    setReviving(true)
+    setMessage('')
+    try {
+      const res = await fetch('/api/qr-tokens/revive', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: trimmed }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        const amt = data.token?.amount as number
+        setMessage(`✅ 토큰을 미사용으로 되돌렸습니다. (${amt?.toLocaleString() ?? '?'}원)`)
+        setReviveInput('')
+        fetchTokens()
+      } else {
+        setMessage(`❌ ${data.error || '부활에 실패했습니다.'}`)
+      }
+    } finally {
+      setReviving(false)
+    }
   }
 
   const usedCount = tokens.filter(t => t.is_used).length
@@ -307,6 +337,36 @@ export default function QrTokensPage() {
             {message}
           </div>
         )}
+
+        {/* 사용된 실물 코인 재활용: DB상 미사용으로만 되돌림 (학생 잔액은 그대로) */}
+        <div className="bg-white rounded-2xl border border-amber-100 p-5 space-y-3">
+          <h2 className="font-bold text-gray-900">사용된 토큰 부활</h2>
+          <p className="text-xs text-gray-500 leading-relaxed">
+            스캐너로 읽은 값 또는 QR 데이터(<span className="font-mono">PT:…</span>)를 붙여 넣은 뒤 부활하면 ATM에서 다시 사용할 수 있습니다.
+            이미 충전된 학생 계좌는 자동으로 차감되지 않습니다.
+          </p>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+            <label className="block flex-1">
+              <span className="text-sm font-medium text-gray-700">토큰 코드</span>
+              <input
+                type="text"
+                value={reviveInput}
+                onChange={e => setReviveInput(e.target.value)}
+                placeholder="PT:xxxxxxxx-xxxx-..."
+                autoComplete="off"
+                className="mt-1 block w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+              />
+            </label>
+            <button
+              type="button"
+              onClick={() => void reviveTokenByCode(reviveInput)}
+              disabled={reviving}
+              className="shrink-0 rounded-xl bg-amber-600 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-amber-700 disabled:bg-amber-300"
+            >
+              {reviving ? '처리 중…' : '부활'}
+            </button>
+          </div>
+        </div>
 
         {/* 토큰 생성 폼 */}
         <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-4">
@@ -427,14 +487,14 @@ export default function QrTokensPage() {
               {tokens.map(token => (
                 <div
                   key={token.id}
-                  className={`flex items-center justify-between px-4 py-3 rounded-xl border text-sm ${
+                  className={`flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between px-4 py-3 rounded-xl border text-sm ${
                     token.is_used
                       ? 'bg-gray-50 border-gray-100 text-gray-400'
                       : 'bg-green-50 border-green-100'
                   }`}
                 >
-                  <div className="flex items-center gap-3">
-                    <span className={`w-2 h-2 rounded-full ${token.is_used ? 'bg-gray-300' : 'bg-green-500'}`} />
+                  <div className="flex flex-wrap items-center gap-3">
+                    <span className={`w-2 h-2 shrink-0 rounded-full ${token.is_used ? 'bg-gray-300' : 'bg-green-500'}`} />
                     <span className="font-mono text-xs text-gray-500">
                       {token.code.slice(3, 11)}…
                     </span>
@@ -443,12 +503,22 @@ export default function QrTokensPage() {
                     </span>
                     <span className="text-gray-500">{token.label}</span>
                   </div>
-                  <div className="text-right">
+                  <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
                     {token.is_used ? (
-                      <span className="text-xs text-gray-400">
-                        {token.pbs_students?.name || '—'} 사용 ·{' '}
-                        {token.used_at ? new Date(token.used_at).toLocaleDateString('ko-KR') : ''}
-                      </span>
+                      <>
+                        <span className="text-xs text-gray-400">
+                          {token.pbs_students?.name || '—'} 사용 ·{' '}
+                          {token.used_at ? new Date(token.used_at).toLocaleDateString('ko-KR') : ''}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => void reviveTokenByCode(token.code)}
+                          disabled={reviving}
+                          className="rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-700 disabled:bg-amber-300"
+                        >
+                          부활
+                        </button>
+                      </>
                     ) : (
                       <span className="text-xs text-green-600 font-medium">미사용</span>
                     )}
