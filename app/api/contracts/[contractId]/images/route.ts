@@ -79,7 +79,7 @@ export async function POST(
         const um = uploadError.message || ''
         const bucketHint =
           /bucket|not\s*found|does not exist/i.test(um) || /404/.test(um)
-            ? ' Supabase 대시보드 → Storage에서 버킷 이름이 정확히 contract-images 인지 확인하세요.'
+            ? ' 버킷 id는 `contract-images` 한 가지입니다(하이픈 `-` 포함, 띄어쓰기 없음, images 철자). Supabase → SQL Editor에서 supabase/migrations/015_storage_contract_images_bucket.sql 을 실행하거나, Storage → New bucket에서 동일 id로 만드세요.'
             : ''
         return NextResponse.json(
           {
