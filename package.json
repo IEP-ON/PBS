@@ -11,7 +11,8 @@
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:install": "playwright install chromium",
     "test:e2e:supabase-sample": "node scripts/run-e2e-supabase-sample.mjs",
-    "db:apply-010-seed": "node scripts/apply-010-seed-remote.mjs"
+    "db:apply-010-seed": "node scripts/apply-010-seed-remote.mjs",
+    "db:apply-014": "node scripts/apply-014-contract-images.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.9.0",
@@ -36,6 +37,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.1",
+    "postgres": "^3.4.5",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

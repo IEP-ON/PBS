@@ -138,7 +138,7 @@ export async function POST(
       .from('pbs_behavior_contracts')
       .update(updateData)
       .eq('id', contractId)
-      .select()
+      .select('id')
       .single()
 
     if (updateError || !updated) {
@@ -149,13 +149,15 @@ export async function POST(
       const emLower = em.toLowerCase()
       const missingImageCols =
         emLower.includes('behavior_image_url') ||
+        emLower.includes('behavior_image_urt') ||
         emLower.includes('reward_image_url') ||
+        emLower.includes('schema cache') ||
         (emLower.includes('column') && emLower.includes('does not exist'))
       if (missingImageCols) {
         return NextResponse.json(
           {
             error:
-              'DB에 이미지 URL 컬럼이 없습니다. Supabase SQL에 supabase/migrations/014_contract_images.sql 을 실행한 뒤 다시 시도해 주세요.',
+              'DB에 behavior_image_url 등 컬럼이 없거나 PostgREST 스키마 캐시가 오래됐습니다. 아래 중 하나를 실행한 뒤 1~2분 뒤 다시 시도하세요. ① Supabase SQL Editor에 scripts/sql/apply_014_contract_images.sql 전체 붙여넣기 ② 로컬에서 DATABASE_URL 넣고 npm run db:apply-014',
             details: em,
           },
           { status: 503 }
@@ -168,8 +170,8 @@ export async function POST(
     }
 
     return NextResponse.json({
-      behaviorImageUrl: updated.behavior_image_url ?? null,
-      rewardImageUrl: updated.reward_image_url ?? null,
+      behaviorImageUrl: updateData.behavior_image_url ?? null,
+      rewardImageUrl: updateData.reward_image_url ?? null,
     })
   } catch (e) {
     console.error('contract images POST:', e)
