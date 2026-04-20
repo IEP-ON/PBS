@@ -30,9 +30,6 @@ interface PrintableContractProps {
   onClose: () => void
 }
 
-/** 실물 QR 토큰 부착 슬롯 개수 (인쇄 하단 점선 칸) */
-const QR_ATTACH_SLOT_COUNT = 4
-
 export default function PrintableContract({ contract, onClose }: PrintableContractProps) {
   const handlePrint = () => {
     window.print()
@@ -52,8 +49,7 @@ export default function PrintableContract({ contract, onClose }: PrintableContra
         @media print {
           @page {
             size: A4 portrait;
-            /* 1페이지 안에 4슬롯까지 들어가도록 여백 소폭 축소 */
-            margin: 5mm;
+            margin: 8mm;
           }
           body * { visibility: hidden !important; }
           .print-outer,
@@ -76,11 +72,10 @@ export default function PrintableContract({ contract, onClose }: PrintableContra
             z-index: 99999 !important;
           }
           
-          /* A4 width 210mm, @page margin 5mm each → usable width 200mm */
+          /* A4 width is 210mm. Margins are 8mm each side. Available width = 194mm */
           .print-wrapper {
-            width: 200mm !important;
-            max-width: 200mm !important;
-            min-height: unset !important;
+            width: 194mm !important;
+            max-width: 194mm !important;
             margin: 0 auto !important;
             padding: 0 !important;
             box-shadow: none !important;
@@ -124,21 +119,19 @@ export default function PrintableContract({ contract, onClose }: PrintableContra
         </button>
       </div>
 
-      <div
-        className="print-wrapper w-full max-w-[194mm] min-h-[277mm] print:max-w-[200mm] print:min-h-0 mx-auto bg-white border border-slate-200 shadow-xl relative flex flex-col mb-10"
-        style={{ fontFamily: "'Noto Sans KR', sans-serif" }}
-      >
+      <div className="print-wrapper w-full max-w-[194mm] min-h-[277mm] mx-auto bg-white border border-slate-200 shadow-xl relative flex flex-col mb-10" style={{ fontFamily: "'Noto Sans KR', sans-serif" }}>
+        
         {/* Header */}
-        <div className="text-center py-8 print:py-4 border-b-[6px] border-blue-500 bg-blue-50/30">
+        <div className="text-center py-8 border-b-[6px] border-blue-500 bg-blue-50/30">
           <p className="text-[14px] font-bold text-blue-600 tracking-[2px] mb-2">통합학급에서 함께 지키는 약속</p>
           <h1 className="text-[32px] font-black text-slate-900 tracking-tight">행동 약속 증서</h1>
-          <div className="absolute top-6 right-8 print:top-3 print:right-5 text-right">
+          <div className="absolute top-6 right-8 text-right">
             <p className="text-[11px] text-slate-400 font-medium">No. HCB-{new Date().getFullYear()}-{contract.id.slice(0, 8)}</p>
           </div>
         </div>
 
         {/* Info Bar */}
-        <div className="flex justify-between items-center px-10 py-5 print:px-8 print:py-3 border-b border-slate-200">
+        <div className="flex justify-between items-center px-10 py-5 border-b border-slate-200">
           <div className="flex items-baseline gap-3">
             <span className="text-[13px] font-bold text-slate-400">학생</span>
             <span className="text-[20px] font-black text-slate-900">{contract.pbs_students?.name || '학생'}</span>
@@ -152,16 +145,16 @@ export default function PrintableContract({ contract, onClose }: PrintableContra
         </div>
 
         {/* Main Content: 2 Columns */}
-        <div className="flex gap-6 print:gap-4 px-10 py-8 print:px-8 print:py-4 flex-1">
+        <div className="flex gap-6 px-10 py-8 flex-1">
           
           {/* Behavior Column */}
-          <div className="flex-1 bg-blue-50/50 rounded-3xl p-6 print:p-4 border-2 border-blue-100 flex flex-col items-center text-center relative overflow-hidden">
+          <div className="flex-1 bg-blue-50/50 rounded-3xl p-6 border-2 border-blue-100 flex flex-col items-center text-center relative overflow-hidden">
             <div className="absolute top-0 left-0 right-0 h-2 bg-blue-400"></div>
-            <div className="bg-blue-500 text-white px-5 py-1.5 rounded-full text-[13px] font-bold tracking-wide mb-6 print:mb-3 mt-2 print:mt-1 shadow-sm">
+            <div className="bg-blue-500 text-white px-5 py-1.5 rounded-full text-[13px] font-bold tracking-wide mb-6 mt-2 shadow-sm">
               내가 지킬 행동
             </div>
             
-            <div className="w-[120px] h-[120px] print:w-[100px] print:h-[100px] bg-white rounded-2xl border-2 border-blue-100 flex items-center justify-center mb-6 print:mb-4 shadow-sm overflow-hidden">
+            <div className="w-[120px] h-[120px] bg-white rounded-2xl border-2 border-blue-100 flex items-center justify-center mb-6 shadow-sm overflow-hidden">
               {contract.behavior_image_url ? (
                 <img src={contract.behavior_image_url} alt="표적 행동" className="w-full h-full object-cover" />
               ) : (
@@ -169,18 +162,18 @@ export default function PrintableContract({ contract, onClose }: PrintableContra
               )}
             </div>
 
-            <h2 className="text-[20px] print:text-[17px] font-black text-slate-900 mb-3 print:mb-2 leading-tight break-keep">
+            <h2 className="text-[20px] font-black text-slate-900 mb-3 leading-tight break-keep">
               {contract.target_behavior}
             </h2>
             
             {contract.behavior_definition && (
-              <p className="text-[14px] print:text-[12px] text-slate-600 leading-relaxed print:leading-snug font-medium break-keep">
+              <p className="text-[14px] text-slate-600 leading-relaxed font-medium break-keep">
                 {contract.behavior_definition}
               </p>
             )}
             
             {contract.measurement_method && (
-              <div className="mt-auto pt-4 print:pt-2">
+              <div className="mt-auto pt-4">
                 <span className="inline-block bg-blue-100 text-blue-700 px-3 py-1 rounded-lg text-[12px] font-bold">
                   측정: {contract.measurement_method}
                 </span>
@@ -189,13 +182,13 @@ export default function PrintableContract({ contract, onClose }: PrintableContra
           </div>
 
           {/* Reward Column */}
-          <div className="flex-1 bg-amber-50/50 rounded-3xl p-6 print:p-4 border-2 border-amber-100 flex flex-col items-center text-center relative overflow-hidden">
+          <div className="flex-1 bg-amber-50/50 rounded-3xl p-6 border-2 border-amber-100 flex flex-col items-center text-center relative overflow-hidden">
             <div className="absolute top-0 left-0 right-0 h-2 bg-amber-400"></div>
-            <div className="bg-amber-500 text-white px-5 py-1.5 rounded-full text-[13px] font-bold tracking-wide mb-6 print:mb-3 mt-2 print:mt-1 shadow-sm">
+            <div className="bg-amber-500 text-white px-5 py-1.5 rounded-full text-[13px] font-bold tracking-wide mb-6 mt-2 shadow-sm">
               지키면 받는 것
             </div>
             
-            <div className="w-[120px] h-[120px] print:w-[100px] print:h-[100px] bg-white rounded-2xl border-2 border-amber-100 flex items-center justify-center mb-6 print:mb-4 shadow-sm overflow-hidden">
+            <div className="w-[120px] h-[120px] bg-white rounded-2xl border-2 border-amber-100 flex items-center justify-center mb-6 shadow-sm overflow-hidden">
               {contract.reward_image_url ? (
                 <img src={contract.reward_image_url} alt="보상" className="w-full h-full object-cover" />
               ) : (
@@ -203,18 +196,18 @@ export default function PrintableContract({ contract, onClose }: PrintableContra
               )}
             </div>
 
-            <h2 className="text-[20px] print:text-[17px] font-black text-slate-900 mb-3 print:mb-2 leading-tight break-keep">
+            <h2 className="text-[20px] font-black text-slate-900 mb-3 leading-tight break-keep">
               {contract.reward_description || '약속 달성 보상'}
             </h2>
 
             {contract.achievement_criteria && (
-              <p className="text-[14px] print:text-[12px] text-slate-600 leading-relaxed print:leading-snug font-medium break-keep mb-4 print:mb-2">
+              <p className="text-[14px] text-slate-600 leading-relaxed font-medium break-keep mb-4">
                 조건: {contract.achievement_criteria}
               </p>
             )}
 
-            <div className="mt-auto pt-2 print:pt-1">
-              <span className="inline-block bg-green-600 text-white px-4 py-1.5 rounded-xl text-[18px] print:text-[16px] font-black shadow-sm">
+            <div className="mt-auto pt-2">
+              <span className="inline-block bg-green-600 text-white px-4 py-1.5 rounded-xl text-[18px] font-black shadow-sm">
                 +{formatCurrency(contract.reward_amount)} 코인
               </span>
             </div>
@@ -223,29 +216,29 @@ export default function PrintableContract({ contract, onClose }: PrintableContra
         </div>
 
         {/* Signatures */}
-        <div className="px-10 py-6 print:px-8 print:py-3">
-          <p className="text-center text-[15px] print:text-[14px] font-bold text-slate-700 mb-6 print:mb-3">
+        <div className="px-10 py-6">
+          <p className="text-center text-[15px] font-bold text-slate-700 mb-6">
             위 약속을 잘 지킬 것을 다짐하며 서명합니다.
           </p>
-          <div className="flex justify-center gap-6 print:gap-4">
+          <div className="flex justify-center gap-6">
             {/* Teacher */}
-            <div className="w-[140px] print:w-[128px] border-b-2 border-slate-300 pb-2 text-center relative">
+            <div className="w-[140px] border-b-2 border-slate-300 pb-2 text-center relative">
               <span className="text-[11px] font-bold text-slate-400 absolute top-[-18px] left-0 right-0">선생님</span>
-              <div className="h-[40px] print:h-[32px] flex items-end justify-center">
+              <div className="h-[40px] flex items-end justify-center">
                 {contract.teacher_signed ? <span className="text-blue-600 font-bold text-[14px]">✓ 서명완료</span> : <span className="text-slate-300 text-[12px]">(서명)</span>}
               </div>
             </div>
             {/* Student */}
-            <div className="w-[140px] print:w-[128px] border-b-2 border-slate-300 pb-2 text-center relative">
+            <div className="w-[140px] border-b-2 border-slate-300 pb-2 text-center relative">
               <span className="text-[11px] font-bold text-slate-400 absolute top-[-18px] left-0 right-0">학생</span>
-              <div className="h-[40px] print:h-[32px] flex items-end justify-center">
+              <div className="h-[40px] flex items-end justify-center">
                 {contract.student_signed ? <span className="text-[24px]">👋</span> : <span className="text-slate-300 text-[12px]">(손도장/서명)</span>}
               </div>
             </div>
             {/* Parent */}
-            <div className="w-[140px] print:w-[128px] border-b-2 border-slate-300 pb-2 text-center relative">
+            <div className="w-[140px] border-b-2 border-slate-300 pb-2 text-center relative">
               <span className="text-[11px] font-bold text-slate-400 absolute top-[-18px] left-0 right-0">보호자</span>
-              <div className="h-[40px] print:h-[32px] flex items-end justify-center">
+              <div className="h-[40px] flex items-end justify-center">
                 {contract.parent_signed ? <span className="text-purple-600 font-bold text-[14px]">✓ 서명완료</span> : <span className="text-slate-300 text-[12px]">(서명)</span>}
               </div>
             </div>
@@ -253,22 +246,22 @@ export default function PrintableContract({ contract, onClose }: PrintableContra
         </div>
 
         {/* QR Strip */}
-        <div className="qr-attach-strip mt-auto bg-slate-50 px-10 py-8 print:px-8 print:py-4 border-t border-slate-200">
-          <div className="flex items-center justify-center gap-2 mb-5 print:mb-2">
+        <div className="qr-attach-strip mt-auto bg-slate-50 px-10 py-8 border-t border-slate-200">
+          <div className="flex items-center justify-center gap-2 mb-5">
             <span className="text-[16px]">🪙</span>
-            <p className="text-[13px] print:text-[11px] font-bold text-slate-600 tracking-wide">
-              약속을 지킬 때마다 아래 {QR_ATTACH_SLOT_COUNT}칸에 QR 토큰(약 40mm)을 붙여주세요!
+            <p className="text-[13px] font-bold text-slate-600 tracking-wide">
+              약속을 지킬 때마다 아래 칸에 QR 토큰을 붙여주세요!
             </p>
           </div>
           
-          <div className="flex justify-between items-center max-w-[194mm] mx-auto">
-            {Array.from({ length: QR_ATTACH_SLOT_COUNT }, (_, i) => i + 1).map((n) => (
+          <div className="flex justify-center items-center gap-[2mm] max-w-[194mm] mx-auto">
+            {[1, 2, 3, 4].map((n) => (
               <div
                 key={n}
                 className="qr-attach-cell bg-white border-2 border-dashed border-slate-300 rounded-2xl flex items-center justify-center shadow-sm"
                 style={{ width: '40mm', height: '40mm' }}
               >
-                <span className="text-slate-200 text-[24px] font-black">{n}</span>
+                <span className="text-slate-200 text-[28px] font-black">{n}</span>
               </div>
             ))}
           </div>
