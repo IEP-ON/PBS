@@ -65,3 +65,44 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: '서버 오류' }, { status: 500 })
   }
 }
+
+const MAX_DELETE_BATCH = 500
+
+// DELETE /api/qr-tokens — 교사: 발급 토큰 일괄 삭제 (본인 학급만)
+export async function DELETE(request: Request) {
+  try {
+    const session = await getSession()
+    if (!session.classroomId || session.role !== 'teacher') {
+      return NextResponse.json({ error: '교사 권한이 필요합니다.' }, { status: 403 })
+    }
+
+    const body = await request.json()
+    const rawIds = body.tokenIds
+    if (!Array.isArray(rawIds) || rawIds.length === 0) {
+      return NextResponse.json({ error: '삭제할 토큰을 선택해 주세요.' }, { status: 400 })
+    }
+    if (rawIds.length > MAX_DELETE_BATCH) {
+      return NextResponse.json({ error: `한 번에 최대 ${MAX_DELETE_BATCH}개까지 삭제할 수 있습니다.` }, { status: 400 })
+    }
+
+    const tokenIds = [...new Set(rawIds.map((id: unknown) => String(id).trim()).filter(Boolean))]
+    if (tokenIds.length === 0) {
+      return NextResponse.json({ error: '삭제할 토큰을 선택해 주세요.' }, { status: 400 })
+    }
+
+    const supabase = await createServerSupabase()
+    const { error, count } = await supabase
+      .from('pbs_qr_tokens')
+      .delete({ count: 'exact' })
+      .in('id', tokenIds)
+      .eq('class_code_id', session.classroomId)
+
+    if (error) {
+      return NextResponse.json({ error: '삭제에 실패했습니다.' }, { status: 500 })
+    }
+
+    return NextResponse.json({ ok: true, deleted: count ?? tokenIds.length })
+  } catch {
+    return NextResponse.json({ error: '서버 오류' }, { status: 500 })
+  }
+}
