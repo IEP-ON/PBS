@@ -28,8 +28,13 @@ export default function DiaryResultPage() {
   const [secondsLeft, setSecondsLeft] = useState(AUTO_RETURN_SECONDS)
 
   useEffect(() => {
+    sessionStorage.removeItem('speech-diary-student')
+  }, [])
+
+  useEffect(() => {
     if (secondsLeft <= 0) {
       sessionStorage.removeItem('speech-diary-result')
+      sessionStorage.removeItem('speech-diary-student')
       router.push('/diary-kiosk')
       return
     }
@@ -79,6 +84,7 @@ export default function DiaryResultPage() {
         type="button"
         onClick={() => {
           sessionStorage.removeItem('speech-diary-result')
+          sessionStorage.removeItem('speech-diary-student')
           router.push('/diary-kiosk')
         }}
         className="min-h-[56px] w-full rounded-2xl bg-sky-600 px-6 py-4 text-xl font-extrabold text-white shadow-md transition hover:bg-sky-500 sm:min-h-[60px] sm:text-2xl"

@@ -112,8 +112,8 @@ export default async function SupportHubPage({
     <div className="p-6 space-y-6">
       <div className="flex flex-col gap-3 rounded-[1.8rem] border border-slate-200 bg-white p-5 shadow-sm xl:flex-row xl:items-center xl:justify-between">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.24em] text-blue-500">학생 지원 허브</p>
-          <h1 className="mt-1 text-2xl font-bold text-gray-900">행동 지원 계획</h1>
+          <p className="text-xs font-bold uppercase tracking-[0.24em] text-blue-500">말로 모으는 하루</p>
+          <h1 className="mt-1 text-2xl font-bold text-gray-900">학생 AI 프로필</h1>
           <p className="mt-2 text-sm text-gray-500">
             사정 → 계획 → 실행 → 점검 흐름으로 학생 상태를 한 번에 보고, 상세 관리 화면으로 이어집니다.
           </p>

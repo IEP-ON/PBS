@@ -21,7 +21,7 @@ async function assertNoSeriousA11yExceptColorContrast(page: import('@playwright/
 test.describe('public smoke + axe', () => {
   test('landing /', async ({ page }) => {
     await page.goto('/')
-    await expect(page.getByRole('heading', { name: /PBS 토큰 이코노미/ })).toBeVisible()
+    await expect(page.getByRole('heading', { name: /말로 모으는 하루/ })).toBeVisible()
     await assertNoSeriousA11yViolations(page, '/')
   })
 
@@ -66,7 +66,7 @@ test.describe('teacher flow (optional env)', () => {
     const code = page.url().match(/\/([^/]+)\/dashboard/)?.[1]
     expect(code).toBeTruthy()
     await page.goto(`/${code}/support`)
-    await expect(page.getByRole('heading', { name: '학생 지원 허브' })).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByRole('heading', { name: '학생 AI 프로필' })).toBeVisible({ timeout: 15_000 })
     await assertNoSeriousA11yExceptColorContrast(page, '/[class]/support')
   })
 })

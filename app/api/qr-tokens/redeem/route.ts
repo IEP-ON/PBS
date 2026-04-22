@@ -15,6 +15,9 @@ export async function POST(request: Request) {
     const studentId = body.studentId?.trim()
     const studentName = body.studentName?.trim()
     const studentPin = body.studentPin?.toString().trim()
+    const settingRaw = body.setting?.toString().trim()
+    const setting =
+      settingRaw === 'integrated' || settingRaw === 'resource' ? settingRaw : null
 
     if (!code || !classCode) {
       return NextResponse.json({ error: '필수 항목이 누락되었습니다.' }, { status: 400 })
@@ -115,6 +118,7 @@ export async function POST(request: Request) {
       amount: token.amount,
       balance_after: newBalance,
       description: `QR 토큰 충전: ${token.label || token.amount + '원'} (+${token.amount}원)`,
+      setting,
     })
 
     // 7. 토큰 사용 처리

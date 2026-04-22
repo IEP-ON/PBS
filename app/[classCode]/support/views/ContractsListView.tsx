@@ -111,6 +111,13 @@ export function ContractsListView() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [filterStudent, setFilterStudent] = useState('')
   const [printContract, setPrintContract] = useState<Contract | null>(null)
+  const [qrIssueContract, setQrIssueContract] = useState<Contract | null>(null)
+  const [qrIssueCount, setQrIssueCount] = useState('1')
+  const [qrIssueAmount, setQrIssueAmount] = useState('')
+  const [qrIssueLabel, setQrIssueLabel] = useState('')
+  const [qrIssueBusy, setQrIssueBusy] = useState(false)
+  const [qrIssueError, setQrIssueError] = useState('')
+  const [qrIssueCodes, setQrIssueCodes] = useState<string[]>([])
 
   const fetchData = async () => {
     const [sRes, cRes] = await Promise.all([fetch('/api/students'), fetch('/api/contracts')])
@@ -257,6 +264,49 @@ export function ContractsListView() {
     void fetchData()
   }
 
+  const openQrIssueModal = (c: Contract) => {
+    setQrIssueContract(c)
+    setQrIssueCount('1')
+    setQrIssueAmount(c.reward_amount > 0 ? String(c.reward_amount) : '100')
+    setQrIssueLabel(`${c.contract_title} 보상`)
+    setQrIssueError('')
+    setQrIssueCodes([])
+  }
+
+  const issueQrTokens = async () => {
+    if (!qrIssueContract) return
+    const count = Math.min(50, Math.max(1, Math.floor(Number(qrIssueCount) || 1)))
+    const amount = Math.max(1, Math.floor(Number(qrIssueAmount) || 0))
+    if (!amount) {
+      setQrIssueError('금액을 입력해 주세요.')
+      return
+    }
+    setQrIssueBusy(true)
+    setQrIssueError('')
+    try {
+      const res = await fetch('/api/qr-tokens', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount,
+          count,
+          label: qrIssueLabel.trim() || `${qrIssueContract.contract_title} 보상`,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setQrIssueError(data.error || '발급에 실패했습니다.')
+        return
+      }
+      const codes = (data.tokens as { code: string }[] | undefined)?.map((t) => t.code) || []
+      setQrIssueCodes(codes)
+    } catch {
+      setQrIssueError('네트워크 오류가 발생했습니다.')
+    } finally {
+      setQrIssueBusy(false)
+    }
+  }
+
   const toggleSign = async (c: Contract, field: 'studentSigned' | 'parentSigned') => {
     const current = field === 'studentSigned' ? c.student_signed : c.parent_signed
     await fetch(`/api/contracts/${c.id}`, {
@@ -326,6 +376,9 @@ export function ContractsListView() {
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h1 className="text-2xl font-bold text-gray-900">📝 행동계약서</h1>
         <div className="flex items-center gap-2">
+          <Link href={`/${classCode}/qr-tokens`} className="text-sm text-emerald-700 hover:underline">
+            QR 토큰 관리 →
+          </Link>
           <Link
             href={`/${classCode}/students/qr-cards`}
             className="text-sm text-blue-600 hover:underline"
@@ -429,6 +482,14 @@ export function ContractsListView() {
                       title="계약서 출력"
                     >
                       🖨️
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openQrIssueModal(c)}
+                      className="p-2 text-gray-400 hover:text-amber-700 hover:bg-amber-50 rounded-xl transition-colors text-sm"
+                      title="달성 보상 QR 토큰 발급"
+                    >
+                      🪙
                     </button>
                     <button
                       type="button"
@@ -735,6 +796,85 @@ export function ContractsListView() {
                 className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white font-semibold rounded-xl transition-colors"
               >
                 {submitting ? '저장 중...' : editingId ? '수정' : '작성'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {qrIssueContract && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl space-y-4">
+            <h2 className="text-lg font-bold text-gray-900">QR 토큰 발급</h2>
+            <p className="text-sm text-gray-600">
+              <span className="font-semibold text-gray-900">{qrIssueContract.contract_title}</span> ·{' '}
+              {qrIssueContract.pbs_students?.name || '학생'}
+            </p>
+            <label className="block text-sm font-medium text-gray-700">
+              금액 (원)
+              <input
+                type="number"
+                min={1}
+                value={qrIssueAmount}
+                onChange={(e) => setQrIssueAmount(e.target.value)}
+                className="mt-1 block w-full rounded-xl border border-gray-200 px-3 py-2"
+              />
+            </label>
+            <label className="block text-sm font-medium text-gray-700">
+              개수 (최대 50)
+              <input
+                type="number"
+                min={1}
+                max={50}
+                value={qrIssueCount}
+                onChange={(e) => setQrIssueCount(e.target.value)}
+                className="mt-1 block w-full rounded-xl border border-gray-200 px-3 py-2"
+              />
+            </label>
+            <label className="block text-sm font-medium text-gray-700">
+              라벨
+              <input
+                type="text"
+                value={qrIssueLabel}
+                onChange={(e) => setQrIssueLabel(e.target.value)}
+                className="mt-1 block w-full rounded-xl border border-gray-200 px-3 py-2"
+              />
+            </label>
+            {qrIssueError ? <p className="text-sm text-red-600">{qrIssueError}</p> : null}
+            {qrIssueCodes.length > 0 ? (
+              <div>
+                <p className="text-sm font-semibold text-emerald-800">발급 완료 · 코드 {qrIssueCodes.length}개</p>
+                <textarea
+                  readOnly
+                  className="mt-2 h-32 w-full rounded-xl border border-gray-200 bg-gray-50 p-3 font-mono text-xs"
+                  value={qrIssueCodes.join('\n')}
+                />
+                <p className="mt-2 text-xs text-gray-500">
+                  QR 토큰 관리 화면에서 동전 형태로 인쇄할 수 있습니다.
+                </p>
+                <Link
+                  href={`/${classCode}/qr-tokens`}
+                  className="mt-2 inline-block text-sm font-bold text-emerald-700 hover:underline"
+                >
+                  QR 토큰 관리로 이동 →
+                </Link>
+              </div>
+            ) : null}
+            <div className="flex gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setQrIssueContract(null)}
+                className="flex-1 rounded-xl bg-gray-100 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-200"
+              >
+                닫기
+              </button>
+              <button
+                type="button"
+                disabled={qrIssueBusy || qrIssueCodes.length > 0}
+                onClick={() => void issueQrTokens()}
+                className="flex-1 rounded-xl bg-amber-600 py-3 text-sm font-bold text-white hover:bg-amber-500 disabled:bg-amber-300"
+              >
+                {qrIssueBusy ? '발급 중…' : '발급'}
               </button>
             </div>
           </div>

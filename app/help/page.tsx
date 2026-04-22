@@ -224,7 +224,7 @@ export default function HelpPage() {
       <aside className="hidden w-[min(100%,280px)] shrink-0 flex-col border-r border-slate-200 bg-white lg:flex">
         <div className="border-b border-slate-100 p-5">
           <p className="text-lg font-bold text-blue-700">도움말</p>
-          <p className="mt-1 text-xs leading-relaxed text-slate-500">PBS 토큰 이코노미 · 교육자료전 · PTR 연동</p>
+          <p className="mt-1 text-xs leading-relaxed text-slate-500">말로 모으는 하루 · 교육자료전 · PTR 연동</p>
         </div>
         <nav className="flex-1 space-y-1 overflow-y-auto p-3">
           {GROUPS.map((group) => (

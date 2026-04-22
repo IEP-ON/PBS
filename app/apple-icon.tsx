@@ -10,25 +10,61 @@ export default function AppleIcon() {
         style={{
           width: '100%',
           height: '100%',
-          background: 'linear-gradient(135deg, #2563eb 0%, #1e40af 100%)',
+          background: 'linear-gradient(135deg, #4FA3E8 0%, #1E2A44 100%)',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
           borderRadius: '40px',
+          padding: '24px',
         }}
       >
-        <div style={{ fontSize: '90px', lineHeight: '1' }}>🏦</div>
         <div
           style={{
-            color: 'white',
-            fontSize: '32px',
+            position: 'relative',
+            width: '94px',
+            height: '78px',
+            borderRadius: '24px',
+            background: '#ffffff',
+            color: '#1E2A44',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '34px',
             fontWeight: 700,
-            marginTop: '4px',
-            letterSpacing: '0.1em',
+            boxShadow: '0 16px 28px rgba(30, 42, 68, 0.2)',
           }}
         >
-          PBS
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+            }}
+          >
+            {[0, 1, 2].map((index) => (
+              <div
+                key={index}
+                style={{
+                  width: '12px',
+                  height: '12px',
+                  borderRadius: '999px',
+                  background: index === 1 ? '#F2C94C' : '#4FA3E8',
+                }}
+              />
+            ))}
+          </div>
+          <div
+            style={{
+              position: 'absolute',
+              bottom: '-8px',
+              left: '16px',
+              width: '20px',
+              height: '20px',
+              background: '#ffffff',
+              transform: 'rotate(45deg)',
+            }}
+          />
         </div>
       </div>
     ),

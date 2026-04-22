@@ -206,6 +206,12 @@ export default function SpeechDiaryPage() {
             키오스크 열기 ↗
           </Link>
           <Link
+            href={`/${classCode}/speech-diary/analytics`}
+            className="inline-flex min-h-[44px] items-center rounded-xl bg-violet-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-violet-500"
+          >
+            분석 보기
+          </Link>
+          <Link
             href={`/${classCode}/speech-diary/context`}
             className="inline-flex min-h-[44px] items-center rounded-xl bg-sky-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-sky-500"
           >

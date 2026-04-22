@@ -7,6 +7,12 @@ import { DiaryKioskChrome } from '@/components/speech-diary/DiaryKioskChrome'
 import { useMicLevel } from '@/components/speech-diary/useMicLevel'
 
 type RecordingState = 'idle' | 'recording' | 'processing'
+type EndedBy = 'student' | 'timeout' | 'error'
+
+interface RecordingMeta {
+  durationSeconds: number
+  endedBy: EndedBy
+}
 
 function readStoredPublicCue(studentId: string): PublicCue | null {
   if (typeof window === 'undefined') return null
@@ -24,7 +30,7 @@ function readStoredPublicCue(studentId: string): PublicCue | null {
 
 export default function DiaryRecordPage() {
   const AUTO_START_COUNTDOWN = 5
-  const AUTO_RECORDING_SECONDS = 15
+  const MAX_RECORDING_SECONDS = 60
 
   const router = useRouter()
   const params = useParams()
@@ -52,6 +58,9 @@ export default function DiaryRecordPage() {
   const autoStopRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const snapshotBlobRef = useRef<Blob | null>(null)
   const startRecordingRef = useRef<() => void>(() => {})
+  const stopRecordingRef = useRef<(reason: EndedBy) => void>(() => {})
+  const recordingStartedAtRef = useRef<number | null>(null)
+  const recordingMetaRef = useRef<RecordingMeta | null>(null)
 
   const meterActive =
     Boolean(meterStream) &&
@@ -65,7 +74,7 @@ export default function DiaryRecordPage() {
   const sessionProgress = useMemo(() => {
     if (state === 'processing') return 100
     if (state === 'recording') {
-      return 25 + Math.min(1, recordingTime / AUTO_RECORDING_SECONDS) * 75
+      return 25 + Math.min(1, recordingTime / MAX_RECORDING_SECONDS) * 75
     }
     if (countdown === null || countdown < 0) return 0
     if (countdown === 0) return 25
@@ -138,6 +147,8 @@ export default function DiaryRecordPage() {
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((track) => track.stop())
       }
+      recordingStartedAtRef.current = null
+      recordingMetaRef.current = null
       setMeterStream(null)
     }
   }, [])
@@ -187,19 +198,36 @@ export default function DiaryRecordPage() {
       }
 
       recorder.onstop = async () => {
+        const fallbackDurationSeconds =
+          recordingStartedAtRef.current === null
+            ? 0
+            : Number(
+                (
+                  Math.min(MAX_RECORDING_SECONDS * 1000, Math.max(0, performance.now() - recordingStartedAtRef.current)) / 1000
+                ).toFixed(1)
+              )
+        const meta = recordingMetaRef.current ?? {
+          durationSeconds: fallbackDurationSeconds,
+          endedBy: 'error' as EndedBy,
+        }
+
         if (chunksRef.current.length === 0) {
           setError('녹음된 내용이 없습니다. 다시 시도해 주세요.')
           setState('idle')
           setRecordingTime(0)
+          recordingStartedAtRef.current = null
+          recordingMetaRef.current = null
           return
         }
 
         const finalMimeType = recorder.mimeType || 'audio/webm'
         const audioBlob = new Blob(chunksRef.current, { type: finalMimeType })
-        await processAudio(audioBlob, finalMimeType)
+        await processAudio(audioBlob, finalMimeType, meta)
       }
 
       mediaRecorderRef.current = recorder
+      recordingStartedAtRef.current = performance.now()
+      recordingMetaRef.current = null
       recorder.start()
       setState('recording')
       setRecordingTime(0)
@@ -209,36 +237,57 @@ export default function DiaryRecordPage() {
       timerRef.current = setInterval(() => {
         setRecordingTime((prev) => {
           const next = prev + 1
-          if (next >= AUTO_RECORDING_SECONDS) {
-            stopRecording()
-            return AUTO_RECORDING_SECONDS
+          if (next >= MAX_RECORDING_SECONDS) {
+            stopRecordingRef.current('timeout')
+            return MAX_RECORDING_SECONDS
           }
           return next
         })
       }, 1000)
 
-      autoStopRef.current = setTimeout(() => stopRecording(), AUTO_RECORDING_SECONDS * 1000)
+      autoStopRef.current = setTimeout(() => stopRecordingRef.current('timeout'), MAX_RECORDING_SECONDS * 1000)
     } catch {
       setError('녹음을 시작할 수 없습니다.')
+      recordingStartedAtRef.current = null
+      recordingMetaRef.current = null
     }
   }
 
-  const stopRecording = () => {
-    if (timerRef.current) clearInterval(timerRef.current)
-    if (autoStopRef.current) clearTimeout(autoStopRef.current)
+  const stopRecording = (reason: EndedBy) => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current)
+      timerRef.current = null
+    }
+    if (autoStopRef.current) {
+      clearTimeout(autoStopRef.current)
+      autoStopRef.current = null
+    }
 
     const recorder = mediaRecorderRef.current
     if (!recorder || recorder.state === 'inactive') return
 
+    const startedAt = recordingStartedAtRef.current ?? performance.now()
+    const durationSeconds = Number(
+      (
+        Math.min(MAX_RECORDING_SECONDS * 1000, Math.max(0, performance.now() - startedAt)) / 1000
+      ).toFixed(1)
+    )
+
+    recordingMetaRef.current = {
+      durationSeconds,
+      endedBy: reason,
+    }
     setState('processing')
     recorder.stop()
   }
 
-  const processAudio = async (audioBlob: Blob, mimeType: string) => {
+  const processAudio = async (audioBlob: Blob, mimeType: string, meta: RecordingMeta) => {
     const extension = mimeType.includes('mp4') ? 'm4a' : 'webm'
     const formData = new FormData()
     formData.append('audio', audioBlob, `recording-${Date.now()}.${extension}`)
     formData.append('studentId', studentId)
+    formData.append('durationSeconds', String(meta.durationSeconds))
+    formData.append('endedBy', meta.endedBy)
 
     if (snapshotBlobRef.current) {
       formData.append('image', snapshotBlobRef.current, `snapshot-${Date.now()}.jpg`)
@@ -256,6 +305,8 @@ export default function DiaryRecordPage() {
         setState('idle')
         setRecordingTime(0)
         setCountdown(null)
+        recordingStartedAtRef.current = null
+        recordingMetaRef.current = null
         return
       }
 
@@ -271,12 +322,31 @@ export default function DiaryRecordPage() {
     } catch {
       setError('서버 연결 중 오류가 발생했습니다.')
       setState('idle')
+    } finally {
+      recordingStartedAtRef.current = null
+      recordingMetaRef.current = null
     }
   }
 
   useEffect(() => {
     startRecordingRef.current = startRecording
+    stopRecordingRef.current = stopRecording
   })
+
+  useEffect(() => {
+    if (state !== 'recording') return
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.repeat) return
+      if (event.code === 'Space' || event.code === 'Enter') {
+        event.preventDefault()
+        stopRecordingRef.current('student')
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [state])
 
   useEffect(() => {
     if (!cameraReady || countdown === null || countdown <= 0) return
@@ -332,7 +402,7 @@ export default function DiaryRecordPage() {
 
       {state === 'recording' && (
         <div className="absolute left-3 top-3 rounded-full bg-rose-600 px-4 py-2 text-base font-extrabold text-white shadow-lg sm:left-4 sm:top-4 sm:text-lg">
-          녹음 {recordingTime}초 / {AUTO_RECORDING_SECONDS}초
+          녹음 {recordingTime}초 / {MAX_RECORDING_SECONDS}초
         </div>
       )}
 
@@ -363,7 +433,9 @@ export default function DiaryRecordPage() {
       <div className="rounded-2xl border-2 border-slate-200 bg-white p-4 shadow-sm sm:p-5">
         <p className="text-sm font-bold text-sky-700 sm:text-base">말하기 단계</p>
         <p className="mt-1 text-2xl font-extrabold text-slate-900 sm:text-3xl">{studentName}</p>
-        <p className="mt-2 text-lg font-semibold text-slate-700">카운트다운이 끝나면 바로 말해 주세요.</p>
+        <p className="mt-2 text-lg font-semibold text-slate-700">
+          카운트다운이 끝나면 바로 말하고, 말이 끝나면 완료 버튼을 눌러 주세요.
+        </p>
 
         <div className="mt-4">
           <div className="flex items-center justify-between text-sm font-bold text-slate-600 sm:text-base">
@@ -396,11 +468,28 @@ export default function DiaryRecordPage() {
             탭에 조금 더 가까이 가서, 크게 말해 볼까요?
           </p>
         ) : null}
+
+        {state === 'recording' ? (
+          <div className="mt-5 space-y-3">
+            <button
+              type="button"
+              onClick={() => stopRecording('student')}
+              className="min-h-[80px] w-full rounded-2xl bg-sky-600 px-6 py-4 text-2xl font-extrabold text-white shadow-lg shadow-sky-200 transition hover:bg-sky-500"
+            >
+              말하기 끝
+            </button>
+            <p className="text-center text-sm font-medium text-slate-500">
+              말이 끝났으면 눌러요. 스페이스바나 Enter 키로도 끝낼 수 있어요.
+            </p>
+          </div>
+        ) : null}
       </div>
 
       <div className="rounded-2xl border-2 border-slate-200 bg-slate-50 p-4 sm:p-5">
         <p className="text-xl font-extrabold text-slate-900 sm:text-2xl">오늘 있었던 일을 짧게 말해 보세요</p>
-        <p className="mt-2 text-base text-slate-600 sm:text-lg">학교, 집, 급식, 친구, 주말 이야기 모두 괜찮아요.</p>
+        <p className="mt-2 text-base text-slate-600 sm:text-lg">
+          학교, 집, 급식, 친구, 주말 이야기 모두 괜찮아요. 최대 60초까지 천천히 말할 수 있어요.
+        </p>
         {publicCue?.todayGoal && (
           <p className="mt-4 rounded-xl border-2 border-amber-200 bg-amber-50 px-4 py-3 text-base font-bold text-amber-950">
             오늘의 목표 · {publicCue.todayGoal}

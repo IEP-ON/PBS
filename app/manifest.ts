@@ -2,13 +2,13 @@ import type { MetadataRoute } from 'next'
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'PBS 토큰 이코노미',
-    short_name: 'PBS',
-    description: '특수학급 PBS 긍정적 행동지원 토큰 이코노미 시스템',
+    name: '말로 모으는 하루',
+    short_name: '말모하',
+    description: '말 일기와 통합학급 연계를 중심으로 운영하는 특수학급 지원 플랫폼',
     start_url: '/login',
     display: 'standalone',
-    background_color: '#ffffff',
-    theme_color: '#2563eb',
+    background_color: '#FAF7F0',
+    theme_color: '#4FA3E8',
     lang: 'ko',
     categories: ['education'],
     icons: [
@@ -21,6 +21,12 @@ export default function manifest(): MetadataRoute.Manifest {
         name: 'ATM',
         url: '/atm',
         description: '학생 ATM 토큰 충전',
+        icons: [{ src: '/icon?size=192', sizes: '192x192' }],
+      },
+      {
+        name: '말 일기장',
+        url: '/diary-kiosk',
+        description: '학생 말 일기 녹음 키오스크',
         icons: [{ src: '/icon?size=192', sizes: '192x192' }],
       },
     ],

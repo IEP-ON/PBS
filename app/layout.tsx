@@ -15,13 +15,13 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "PBS 토큰 이코노미",
-  description: "특수학급 PBS 긍정적 행동지원 토큰 이코노미 시스템",
-  applicationName: "PBS",
+  title: "말로 모으는 하루",
+  description: "말 일기와 통합학급 연계를 중심으로 운영하는 특수학급 지원 플랫폼",
+  applicationName: "말로 모으는 하루",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "PBS",
+    title: "말모하",
   },
   formatDetection: { telephone: false },
   manifest: "/manifest.webmanifest",
@@ -34,8 +34,8 @@ export const viewport: Viewport = {
   userScalable: false,
   viewportFit: "cover",
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#2563eb" },
-    { media: "(prefers-color-scheme: dark)", color: "#1e40af" },
+    { media: "(prefers-color-scheme: light)", color: "#4FA3E8" },
+    { media: "(prefers-color-scheme: dark)", color: "#1E2A44" },
   ],
 };
 

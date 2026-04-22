@@ -40,6 +40,13 @@ export interface SessionData {
   studentName?: string
 }
 
+/** /bank 개별 학생 세션 (교사 세션과 분리) */
+export interface BankSessionData {
+  studentId?: string
+  classCode?: string
+  studentName?: string
+}
+
 // ===== 데이터 모델 =====
 
 export interface ClassCode {

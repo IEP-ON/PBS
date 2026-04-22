@@ -83,6 +83,8 @@ export default function AtmPage() {
   const [session, setSession] = useState<StudentSession | null>(null)
   const [kioskPanel, setKioskPanel] = useState<KioskPanel>(IDLE_PANEL)
   const [redeemSuccess, setRedeemSuccess] = useState<{ amount: number; balanceAfter: number } | null>(null)
+  /** QR 코인을 어디서 받았는지 — 대시보드·통합 모듈 집계용 */
+  const [grantSetting, setGrantSetting] = useState<'integrated' | 'resource'>('integrated')
   const [cameraReady, setCameraReady] = useState(false)
   const [cameraDenied, setCameraDenied] = useState(false)
   const [requestingCamera, setRequestingCamera] = useState(false)
@@ -227,6 +229,7 @@ export default function AtmPage() {
               code: trimmed,
               classCode: activeSession.classCode,
               studentId: activeSession.studentId,
+              setting: grantSetting,
             }),
           })
           const result = await res.json()
@@ -723,6 +726,38 @@ export default function AtmPage() {
         </div>
 
         <div className="flex min-h-0 flex-1 flex-col justify-center gap-3 overflow-y-auto px-4 py-4 text-center landscape:gap-5 landscape:px-8 landscape:py-6 landscape:text-left">
+          {!redeemSuccess && session ? (
+            <div className="pointer-events-auto mb-1 flex flex-col gap-2 rounded-2xl border border-white/15 bg-black/40 px-3 py-3 text-left landscape:mb-2">
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-400">토큰을 받은 곳</p>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setGrantSetting('integrated')}
+                  className={`rounded-xl px-3 py-3 text-sm font-extrabold landscape:py-4 landscape:text-base ${
+                    grantSetting === 'integrated'
+                      ? 'bg-emerald-600 text-white ring-2 ring-emerald-300'
+                      : 'border border-white/20 bg-white/10 text-slate-200 hover:bg-white/15'
+                  }`}
+                >
+                  통합학급
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setGrantSetting('resource')}
+                  className={`rounded-xl px-3 py-3 text-sm font-extrabold landscape:py-4 landscape:text-base ${
+                    grantSetting === 'resource'
+                      ? 'bg-sky-600 text-white ring-2 ring-sky-300'
+                      : 'border border-white/20 bg-white/10 text-slate-200 hover:bg-white/15'
+                  }`}
+                >
+                  특수학급
+                </button>
+              </div>
+              <p className="text-[11px] leading-snug text-slate-500 landscape:text-xs">
+                큐알 코인을 비추기 전에 선택해 주세요. 기본은 통합학급입니다.
+              </p>
+            </div>
+          ) : null}
           {redeemSuccess ? (
             <div className="hidden flex-col gap-3 landscape:flex">
               <p className="text-3xl font-black text-emerald-400 landscape:text-4xl">인식되었습니다</p>

@@ -280,6 +280,43 @@ export default function SettingsPage() {
           </a>
         </div>
       </div>
+
+      {/* 확장 전략 카탈로그 — 메인 사이드바에서는 숨김 */}
+      <div className="rounded-2xl border-2 border-amber-100 bg-white p-5 space-y-4">
+        <div>
+          <h2 className="font-bold text-gray-900">🧩 확장 전략 카탈로그</h2>
+          <p className="mt-1 text-sm text-gray-600">
+            출품작 메인 흐름(말 일기장·통합학급 연계) 바깥의 고급 PBS·경제 도구입니다. URL로 직접 들어오거나 여기 링크로만 이동합니다.
+          </p>
+        </div>
+        <ul className="grid gap-2 sm:grid-cols-2">
+          {[
+            { href: `/${classCode}/pbs`, label: '행동 목표 체크' },
+            { href: `/${classCode}/fba`, label: 'FBA 사정' },
+            { href: `/${classCode}/dro`, label: 'DRO 타이머' },
+            { href: `/${classCode}/contracts`, label: '행동계약서' },
+            { href: `/${classCode}/interventions`, label: '중재 라이브러리' },
+            { href: `/${classCode}/stocks`, label: '주식·금융' },
+            { href: `/${classCode}/response-cost`, label: '반응대가' },
+            { href: `/${classCode}/extinction-alerts`, label: '소거 경보' },
+            { href: `/${classCode}/shop`, label: '가게 관리' },
+            { href: `/${classCode}/ethics`, label: '윤리 가이드' },
+            { href: `/${classCode}/class-account`, label: '학급 공동 계좌' },
+            { href: `/${classCode}/qr-tokens`, label: 'QR 토큰 설정' },
+            { href: `/${classCode}/behavior-analysis`, label: '행동 분석 요약' },
+          ].map((item) => (
+            <li key={item.href}>
+              <a
+                href={item.href}
+                className="flex items-center justify-between rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm font-medium text-gray-800 transition hover:border-sky-200 hover:bg-sky-50"
+              >
+                <span>{item.label}</span>
+                <span className="text-xs text-gray-400">→</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
   )
 }

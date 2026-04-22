@@ -19,6 +19,8 @@ export async function POST(request: Request) {
     const audioFile = formData.get('audio') as File | null
     const imageFile = formData.get('image') as File | null
     const studentId = formData.get('studentId')?.toString()
+    const durationSecondsRaw = formData.get('durationSeconds')?.toString()
+    const endedByRaw = formData.get('endedBy')?.toString()
 
     if (!audioFile || !studentId) {
       return NextResponse.json({ error: '오디오 파일과 학생 정보가 필요합니다.' }, { status: 400 })
@@ -27,6 +29,16 @@ export async function POST(request: Request) {
     if (audioFile.size === 0) {
       return NextResponse.json({ error: '녹음된 내용이 없습니다.' }, { status: 400 })
     }
+
+    const durationSecondsValue = durationSecondsRaw ? Number(durationSecondsRaw) : null
+    const durationSeconds =
+      durationSecondsValue !== null && Number.isFinite(durationSecondsValue)
+        ? Number(Math.max(0, Math.min(60, durationSecondsValue)).toFixed(1))
+        : null
+    const endedBy =
+      endedByRaw === 'student' || endedByRaw === 'timeout' || endedByRaw === 'error'
+        ? endedByRaw
+        : null
 
     const supabase = await createServerSupabase()
     const { data: student } = await supabase
@@ -154,6 +166,8 @@ ${aiProfileInfo}
         image_url: imageUrl,
         sentiment: result.sentiment || null,
         keywords: Array.isArray(result.keywords) ? result.keywords : [],
+        duration_seconds: durationSeconds,
+        ended_by: endedBy,
       })
       .select()
       .single()

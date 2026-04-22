@@ -9,7 +9,6 @@ interface NavItem {
   label: string
   icon: string
   description: string
-  badge?: string
 }
 
 interface TooltipState {
@@ -41,85 +40,63 @@ export default function SidebarNav({
       href: `/${classCode}/dashboard`,
       label: '대시보드',
       icon: '📊',
-      description: '학생 잔액 및 오늘 현황 요약 · 소거 알림',
-    },
-    {
-      href: `/${classCode}/pbs`,
-      label: '행동 목표 체크',
-      icon: '✅',
-      description: '학생별 목표 행동 달성 확인 · 토큰 지급',
-    },
-    {
-      href: `/${classCode}/students`,
-      label: '학생 관리',
-      icon: '👨‍🎓',
-      description: '학생 등록·수정·QR 통장 발급',
-    },
-    {
-      href: `/${classCode}/token-economy`,
-      label: '보상 · 가게',
-      icon: '🏪',
-      description: '가게·주식·QR토큰·학급계좌 보상 관리',
+      description: '학급 운영 요약',
     },
     {
       href: `/${classCode}/speech-diary`,
       label: '말 일기장',
       icon: '🎙️',
-      description: 'QR 카드로 음성 녹음·누적 일기 관리',
-      badge: 'Whisper',
+      description: '녹음 일기 목록·교사 수정',
     },
     {
-      href: `/${classCode}/support`,
-      label: '학생 지원 계획',
-      icon: '🧠',
-      description: '사정→계획→실행→점검 흐름으로 행동 지원',
-      badge: 'GPT-4o',
+      href: `/${classCode}/speech-diary/analytics`,
+      label: '말 일기 분석',
+      icon: '📈',
+      description: '참여·길이·TTR·전사 보정 유사도',
+    },
+    {
+      href: `/${classCode}/contracts`,
+      label: '행동계약서',
+      icon: '📝',
+      description: '계약 작성·QR 보상 발급',
+    },
+    {
+      href: `/${classCode}/qr-tokens`,
+      label: 'QR 토큰',
+      icon: '🪙',
+      description: '실물 토큰 발급·인쇄·관리',
+    },
+    {
+      href: `/${classCode}/shop`,
+      label: '가게',
+      icon: '🏪',
+      description: '보상 아이템·가격',
+    },
+    {
+      href: `/${classCode}/students`,
+      label: '학생 관리',
+      icon: '👨‍🎓',
+      description: '학생 등록·QR 통장',
     },
     {
       href: `/${classCode}/settings`,
       label: '설정',
       icon: '⚙️',
-      description: '급여·보상 가격·윤리 기준 설정',
+      description: '학급 설정·고급 기능 안내',
     },
   ]
 
   return (
     <>
       <nav className={`flex-1 space-y-1 overflow-y-auto p-3 ${collapsed ? 'px-2' : ''}`}>
-        {/* 수업 모드 — 최상단 고정 */}
-        <Link
-          href={`/${classCode}/teach`}
-          onMouseEnter={(e) =>
-            showTooltip(e, {
-              href: `/${classCode}/teach`,
-              label: '수업 모드',
-              icon: '👨‍🏫',
-              description: '6명 동시 체크 · 강화 타이머 · 사건 기록 · 수업 종료 정산',
-            })
-          }
-          onMouseLeave={() => setTooltip(null)}
-          onClick={onNavigate}
-          className={`mb-2 flex items-center rounded-2xl px-3 py-3 text-sm font-bold transition-colors ${
-            collapsed ? 'justify-center' : 'gap-3'
-          } ${
-            pathname === `/${classCode}/teach`
-              ? 'bg-blue-600 text-white'
-              : 'bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200'
-          }`}
-        >
-          <span className="text-lg flex-shrink-0">👨‍🏫</span>
-          {!collapsed && (
-            <>
-              <span className="flex-1 truncate">수업 모드</span>
-              <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-200 text-blue-800 rounded-full flex-shrink-0">
-                NEW
-              </span>
-            </>
-          )}
-        </Link>
-
         {navItems.map((item) => {
-          const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
+          const isActive = (() => {
+            if (pathname === item.href) return true
+            if (item.href.endsWith('/speech-diary')) {
+              return pathname.startsWith(`${item.href}/context`)
+            }
+            return pathname.startsWith(`${item.href}/`)
+          })()
           return (
             <Link
               key={item.href}
@@ -136,48 +113,11 @@ export default function SidebarNav({
               }`}
             >
               <span className="text-lg flex-shrink-0">{item.icon}</span>
-              {!collapsed && (
-                <>
-                  <span className="flex-1 truncate">{item.label}</span>
-                  {item.badge && (
-                    <span className="text-[9px] font-bold px-1.5 py-0.5 bg-purple-100 text-purple-600 rounded-full flex-shrink-0">
-                      AI
-                    </span>
-                  )}
-                </>
-              )}
+              {!collapsed && <span className="flex-1 truncate">{item.label}</span>}
             </Link>
           )
         })}
 
-        {/* TV 모드 (새 탭으로 열기) */}
-        <a
-          href={`/tv/${classCode}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={`flex items-center rounded-2xl px-3 py-3 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 hover:text-gray-900 ${
-            collapsed ? 'justify-center' : 'gap-3'
-          }`}
-          onMouseEnter={(e) =>
-            showTooltip(e, {
-              href: `/tv/${classCode}`,
-              label: 'TV 순위판',
-              icon: '📺',
-              description: '교실 화면용 학생 잔액 순위판 (새 탭)',
-            })
-          }
-          onMouseLeave={() => setTooltip(null)}
-        >
-          <span className="text-lg flex-shrink-0">📺</span>
-          {!collapsed && (
-            <>
-              <span className="flex-1 truncate">TV 순위판</span>
-              <span className="text-[9px] text-gray-400">↗</span>
-            </>
-          )}
-        </a>
-
-        {/* 도움말 */}
         <a
           href="/help"
           target="_blank"
@@ -188,9 +128,9 @@ export default function SidebarNav({
           onMouseEnter={(e) =>
             showTooltip(e, {
               href: '/help',
-              label: '시작 가이드',
+              label: '도움말',
               icon: '❓',
-              description: 'PBS 구조와 사용 흐름을 보는 도움말',
+              description: '시작 가이드(새 탭)',
             })
           }
           onMouseLeave={() => setTooltip(null)}
@@ -198,14 +138,13 @@ export default function SidebarNav({
           <span className="text-lg flex-shrink-0">❓</span>
           {!collapsed && (
             <>
-              <span className="flex-1 truncate">시작 가이드</span>
+              <span className="flex-1 truncate">도움말</span>
               <span className="text-[9px] text-gray-400">↗</span>
             </>
           )}
         </a>
       </nav>
 
-      {/* fixed 툴팁 — overflow 잘림 없음 */}
       {tooltip && (
         <div
           style={{ top: tooltip.y, left: tooltip.x }}
@@ -213,9 +152,6 @@ export default function SidebarNav({
         >
           <p className="font-semibold text-white mb-0.5">{tooltip.item.label}</p>
           <p className="text-gray-400 leading-relaxed">{tooltip.item.description}</p>
-          {tooltip.item.badge && (
-            <p className="text-purple-400 mt-1.5">✨ {tooltip.item.badge} AI 분석 지원</p>
-          )}
           <div className="absolute right-full top-3 border-4 border-transparent border-r-gray-900" />
         </div>
       )}

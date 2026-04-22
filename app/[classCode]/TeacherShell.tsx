@@ -50,12 +50,12 @@ export default function TeacherShell({
         >
           <div className="flex items-center gap-3 border-b border-slate-100 px-4 py-4">
             <Link href={`/${classCode}/dashboard`} className="flex min-w-0 flex-1 items-center gap-3">
-              <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-600 text-2xl text-white shadow-lg shadow-blue-200">
-                🏦
+              <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-sky-600 text-2xl text-white shadow-lg shadow-sky-200">
+                💬
               </span>
               {!collapsed && (
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-black text-slate-900">PBS 토큰 이코노미</p>
+                  <p className="truncate text-sm font-black text-slate-900">말로 모으는 하루</p>
                   <p className="truncate font-mono text-[11px] text-slate-400">{classCode}</p>
                 </div>
               )}
@@ -103,27 +103,19 @@ export default function TeacherShell({
                 ☰
               </button>
               <div className="min-w-0">
-                <p className="truncate text-sm font-black text-slate-900">PBS 토큰 이코노미</p>
-                <p className="truncate text-xs text-slate-500">{classCode} · 교사 운영</p>
+                <p className="truncate text-sm font-black text-slate-900">말로 모으는 하루</p>
+                <p className="truncate text-xs text-slate-500">{classCode} · 교사 운영 화면</p>
               </div>
             </div>
 
             <div className="hidden items-center gap-2 md:flex">
-              <a
-                href={`/tv/${classCode}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
-              >
-                📺 TV
-              </a>
               <a
                 href="/help"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
               >
-                ❓ Help
+                도움말 ↗
               </a>
             </div>
           </header>
